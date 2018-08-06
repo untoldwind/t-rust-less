@@ -1,3 +1,5 @@
+// We use this implmentation as the OpenSSL implmentation has too strict memory limits.
+// Might become obsolete once rust-openssl upgrades to OpenSSL 1.1
 use std;
 use std::{io, mem, ptr};
 use std::mem::size_of;
@@ -6,9 +8,56 @@ use openssl::pkcs5::pbkdf2_hmac;
 use openssl::hash::MessageDigest;
 use openssl::error::ErrorStack;
 
+/// Copy bytes from src to dest
+#[inline]
+pub fn copy_memory(src: &[u8], dst: &mut [u8]) {
+    assert!(dst.len() >= src.len());
+    unsafe {
+        let srcp = src.as_ptr();
+        let dstp = dst.as_mut_ptr();
+        ptr::copy_nonoverlapping(srcp, dstp, src.len());
+    }
+}
+
+/// Read the value of a vector of bytes as a u32 value in little-endian format.
+pub fn read_u32_le(input: &[u8]) -> u32 {
+    assert!(input.len() == 4);
+    unsafe {
+        let mut tmp: u32 = mem::uninitialized();
+        ptr::copy_nonoverlapping(input.get_unchecked(0), &mut tmp as *mut _ as *mut u8, 4);
+        u32::from_le(tmp)
+    }
+}
+
+/// Write a u32 into a vector, which must be 4 bytes long. The value is written in little-endian
+/// format.
+pub fn write_u32_le(dst: &mut [u8], mut input: u32) {
+    assert!(dst.len() == 4);
+    input = input.to_le();
+    unsafe {
+        let tmp = &input as *const _ as *const u8;
+        ptr::copy_nonoverlapping(tmp, dst.get_unchecked_mut(0), 4);
+    }
+}
+
+/// Read a vector of bytes into a vector of u32s. The values are read in little-endian format.
+pub fn read_u32v_le(dst: &mut [u32], input: &[u8]) {
+    assert!(dst.len() * 4 == input.len());
+    unsafe {
+        let mut x: *mut u32 = dst.get_unchecked_mut(0);
+        let mut y: *const u8 = input.get_unchecked(0);
+        for _ in 0..dst.len() {
+            let mut tmp: u32 = mem::uninitialized();
+            ptr::copy_nonoverlapping(y, &mut tmp as *mut _ as *mut u8, 4);
+            *x = u32::from_le(tmp);
+            x = x.offset(1);
+            y = y.offset(4);
+        }
+    }
+}
+
 // The salsa20/8 core function.
 fn salsa20_8(input: &[u8], output: &mut [u8]) {
-
     let mut x = [0u32; 16];
     read_u32v_le(&mut x, input);
 
@@ -60,7 +109,8 @@ fn salsa20_8(input: &[u8], output: &mut [u8]) {
     for i in 0..16 {
         write_u32_le(
             &mut output[i * 4..(i + 1) * 4],
-            x[i].wrapping_add(read_u32_le(&input[i * 4..(i + 1) * 4])));
+            x[i].wrapping_add(read_u32_le(&input[i * 4..(i + 1) * 4])),
+        );
     }
 }
 
@@ -82,7 +132,11 @@ fn scrypt_block_mix(input: &[u8], output: &mut [u8]) {
     for (i, chunk) in input.chunks(64).enumerate() {
         xor(&x, chunk, &mut t);
         salsa20_8(&t, &mut x);
-        let pos = if i % 2 == 0 { (i / 2) * 64 } else { (i / 2) * 64 + input.len() / 2 };
+        let pos = if i % 2 == 0 {
+            (i / 2) * 64
+        } else {
+            (i / 2) * 64 + input.len() / 2
+        };
         copy_memory(&x, &mut output[pos..pos + 64]);
     }
 }
@@ -99,7 +153,8 @@ fn scrypt_ro_mix(b: &mut [u8], v: &mut [u8], t: &mut [u8], n: usize) {
         let mask = n - 1;
         // This cast is safe since we're going to get the value mod n (which is a power of 2), so we
         // don't have to care about truncating any of the high bits off
-        (read_u32_le(&x[x.len() - 64..x.len() - 60]) as usize) & mask
+        let result = (read_u32_le(&x[x.len() - 64..x.len() - 60]) as usize) & mask;
+        result
     }
 
     let len = b.len();
@@ -116,50 +171,6 @@ fn scrypt_ro_mix(b: &mut [u8], v: &mut [u8], t: &mut [u8], n: usize) {
     }
 }
 
-fn read_u32_le(input: &[u8]) -> u32 {
-    assert_eq!(input.len(), 4);
-    unsafe {
-        let mut tmp: u32 = mem::uninitialized();
-        ptr::copy_nonoverlapping(input.get_unchecked(0), &mut tmp as *mut _ as *mut u8, 4);
-        u32::from_le(tmp)
-    }
-}
-
-fn read_u32v_le(dst: &mut[u32], input: &[u8]) {
-    assert_eq!(dst.len() * 4, input.len());
-    unsafe {
-        let mut x: *mut u32 = dst.get_unchecked_mut(0);
-        let mut y: *const u8 = input.get_unchecked(0);
-        for _ in 0..dst.len() {
-            let mut tmp: u32 = mem::uninitialized();
-            ptr::copy_nonoverlapping(y, &mut tmp as *mut _ as *mut u8, 4);
-            *x = u32::from_le(tmp);
-            x = x.offset(1);
-            y = y.offset(4);
-        }
-    }
-}
-
-fn write_u32_le(dst: &mut[u8], mut input: u32) {
-    assert_eq!(dst.len(), 4);
-    input = input.to_le();
-    unsafe {
-        let tmp = &input as *const _ as *const u8;
-        ptr::copy_nonoverlapping(tmp, dst.get_unchecked_mut(0), 4);
-    }
-}
-
-/// Copy bytes from src to dest
-#[inline]
-fn copy_memory(src: &[u8], dst: &mut [u8]) {
-    assert!(dst.len() >= src.len());
-    unsafe {
-        let srcp = src.as_ptr();
-        let dstp = dst.as_mut_ptr();
-        ptr::copy_nonoverlapping(srcp, dstp, src.len());
-    }
-}
-
 /**
  * The Scrypt parameter values.
  */
@@ -167,7 +178,7 @@ fn copy_memory(src: &[u8], dst: &mut [u8]) {
 pub struct ScryptParams {
     log_n: u8,
     r: u32,
-    p: u32
+    p: u32,
 }
 
 impl ScryptParams {
@@ -176,9 +187,9 @@ impl ScryptParams {
      *
      * # Arguments
      *
-     * * `log_n` - The log2 of the Scrypt parameter N
-     * * `r` - The Scrypt parameter r
-     * * `p` - The Scrypt parameter p
+     * * log_n - The log2 of the Scrypt parameter N
+     * * r - The Scrypt parameter r
+     * * p - The Scrypt parameter p
      *
      */
     pub fn new(log_n: u8, r: u32, p: u32) -> ScryptParams {
@@ -186,8 +197,7 @@ impl ScryptParams {
         assert!(p > 0);
         assert!(log_n > 0);
         assert!((log_n as usize) < size_of::<usize>() * 8);
-        assert!(size_of::<usize>() >= size_of::<u32>()
-                || (r <= std::usize::MAX as u32 && p < std::usize::MAX as u32));
+        assert!(size_of::<usize>() >= size_of::<u32>() || (r <= std::usize::MAX as u32 && p < std::usize::MAX as u32));
 
         let r = r as usize;
         let p = p as usize;
@@ -195,16 +205,21 @@ impl ScryptParams {
         let n: usize = 1 << log_n;
 
         // check that r * 128 doesn't overflow
-        let r128 = r.checked_mul(128).expect("Invalid Scrypt parameters.");
+        let r128 = match r.checked_mul(128) {
+            Some(x) => x,
+            None => panic!("Invalid Scrypt parameters."),
+        };
 
         // check that n * r * 128 doesn't overflow
-        if r128.checked_mul(n).is_none() {
-            panic!("Invalid Scrypt parameters.");
+        match r128.checked_mul(n) {
+            Some(_) => {}
+            None => panic!("Invalid Scrypt parameters."),
         };
 
         // check that p * r * 128 doesn't overflow
-        if r128.checked_mul(p).is_none() {
-            panic!("Invalid Scrypt parameters.");
+        match r128.checked_mul(p) {
+            Some(_) => {}
+            None => panic!("Invalid Scrypt parameters."),
         };
 
         // This check required by Scrypt:
@@ -221,12 +236,10 @@ impl ScryptParams {
         ScryptParams {
             log_n: log_n,
             r: r as u32,
-            p: p as u32
+            p: p as u32,
         }
     }
 }
-
-use std::time::SystemTime;
 
 /**
  * The scrypt key derivation function.
@@ -245,21 +258,20 @@ pub fn scrypt(password: &[u8], salt: &[u8], params: &ScryptParams, output: &mut 
     assert!(!output.is_empty());
     assert!(output.len() / 32 <= 0xffffffff);
 
-    let start = SystemTime::now();
     // The checks in the ScryptParams constructor guarantee that the following is safe:
     let n = 1 << params.log_n;
     let r128 = (params.r as usize) * 128;
     let pr128 = (params.p as usize) * r128;
     let nr128 = n * r128;
 
-    let mut b: Vec<u8> = vec![0;  r128];
-    pbkdf2_hmac(password, salt, 1, MessageDigest::sha256(), b.as_mut_slice())?;
+    let mut b: Vec<u8> = vec![0; pr128];
+    pbkdf2_hmac(password, salt, 1, MessageDigest::sha256(), &mut b)?;
 
     let mut v: Vec<u8> = vec![0; nr128];
     let mut t: Vec<u8> = vec![0; r128];
 
-    for chunk in b.as_mut_slice().chunks_mut(r128) {
-        scrypt_ro_mix(chunk, v.as_mut_slice(), t.as_mut_slice(), n);
+    for chunk in &mut b.chunks_mut(r128) {
+        scrypt_ro_mix(chunk, &mut v, &mut t, n);
     }
 
     pbkdf2_hmac(password, &b, 1, MessageDigest::sha256(), output)?;
