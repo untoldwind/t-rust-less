@@ -7,6 +7,7 @@ error_chain! {
     }
 
     foreign_links {
+        OpenSSL(::openssl::error::ErrorStack);
         Io(::std::io::Error);
     }
 
@@ -19,7 +20,7 @@ error_chain! {
 }
 
 impl<T> From<PoisonError<T>> for Error {
-    fn from(_err : PoisonError<T>) -> Error {
+    fn from(_err: PoisonError<T>) -> Error {
         ErrorKind::MutexPoisoned.into()
     }
 }

@@ -1,6 +1,6 @@
 use data_encoding::BASE64;
 use super::scrypt::{scrypt, ScryptParams};
-use super::scrypt_stream::{encrypt, decrypt};
+use super::scrypt_stream::{decrypt, encrypt};
 use openssl::rand::rand_bytes;
 
 #[test]
@@ -41,23 +41,28 @@ fn compat_scrypt_stream_decrypt() {
 
 #[test]
 fn scrypt_stream_encrypt_decrypt() {
-    let mut simple_message : &[u8] = b"Simple test message";
+    let mut simple_message: &[u8] = b"Simple test message";
     let mut encrypted_out = vec![];
     let mut decrypted_out = vec![];
 
     encrypt(b"12345678", &mut simple_message, &mut encrypted_out, None).unwrap();
-    let mut encrypted : &[u8] = &encrypted_out[..];
+    let mut encrypted: &[u8] = &encrypted_out[..];
     decrypt(b"12345678", &mut encrypted, &mut decrypted_out).unwrap();
     assert_eq!(b"Simple test message", &decrypted_out[..]);
 
     let mut long_message = [0u8; 20000];
     rand_bytes(&mut long_message).unwrap();
-    let mut long_message_in : &[u8] = &long_message;
-    let mut long_encrypted_out = vec![];    
+    let mut long_message_in: &[u8] = &long_message;
+    let mut long_encrypted_out = vec![];
     let mut long_decrypted_out = vec![];
 
-    encrypt(b"12345678", &mut long_message_in, &mut long_encrypted_out, None).unwrap();
-    let mut long_encrypted : &[u8] = &long_encrypted_out[..];
+    encrypt(
+        b"12345678",
+        &mut long_message_in,
+        &mut long_encrypted_out,
+        None,
+    ).unwrap();
+    let mut long_encrypted: &[u8] = &long_encrypted_out[..];
     decrypt(b"12345678", &mut long_encrypted, &mut long_decrypted_out).unwrap();
     assert_eq!(long_message[..], long_decrypted_out[..]);
 }
