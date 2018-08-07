@@ -1,7 +1,7 @@
 // We use this implmentation as the OpenSSL implmentation has too strict memory limits.
 // Might become obsolete once rust-openssl upgrades to OpenSSL 1.1
 use std;
-use std::{io, mem, ptr};
+use std::{mem, ptr};
 use std::mem::size_of;
 
 use openssl::pkcs5::pbkdf2_hmac;

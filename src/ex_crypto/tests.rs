@@ -1,18 +1,22 @@
-use openssl::init;
 use data_encoding::BASE64;
-use std::io::prelude::*;
 use super::scrypt::{scrypt, ScryptParams};
-use super::scrypt_stream::decrypt;
-use std::time::{SystemTime, UNIX_EPOCH};
+use super::scrypt_stream::{encrypt, decrypt};
+use openssl::rand::rand_bytes;
+
+#[test]
+fn compat_scrypt_measure() {
+    let params = ScryptParams::new(7, 1, 1);
+    let mut target: [u8; 1] = [0; 1];
+
+    assert!(scrypt(b"", b"", &params, &mut target).is_ok())
+}
 
 #[test]
 fn compat_scrypt() {
     let mut out: [u8; 64] = [0; 64];
 
     let params = ScryptParams::new(14, 8, 1);
-    let start = SystemTime::now();
     scrypt(b"Test password", b"testsalt", &params, &mut out).unwrap();
-    println!("{:?}", SystemTime::now().duration_since(start).unwrap());
     assert_eq!(
         BASE64.encode(&out),
         "cYlZa6NMNcxwrHaXJ3Zby5Xr+P3qrHFm88OK63LSnynxr7edun08Zt47qF3k91WPlHyCaId2hZfUwkfZ4A/G4Q=="
@@ -33,6 +37,29 @@ fn compat_scrypt_stream_decrypt() {
 
     decrypt(b"12345678", &mut slice, &mut out).unwrap();
     assert_eq!(b"This is a test.\n", out.as_slice());
+}
+
+#[test]
+fn scrypt_stream_encrypt_decrypt() {
+    let mut simple_message : &[u8] = b"Simple test message";
+    let mut encrypted_out = vec![];
+    let mut decrypted_out = vec![];
+
+    encrypt(b"12345678", &mut simple_message, &mut encrypted_out, None).unwrap();
+    let mut encrypted : &[u8] = &encrypted_out[..];
+    decrypt(b"12345678", &mut encrypted, &mut decrypted_out).unwrap();
+    assert_eq!(b"Simple test message", &decrypted_out[..]);
+
+    let mut long_message = [0u8; 20000];
+    rand_bytes(&mut long_message).unwrap();
+    let mut long_message_in : &[u8] = &long_message;
+    let mut long_encrypted_out = vec![];    
+    let mut long_decrypted_out = vec![];
+
+    encrypt(b"12345678", &mut long_message_in, &mut long_encrypted_out, None).unwrap();
+    let mut long_encrypted : &[u8] = &long_encrypted_out[..];
+    decrypt(b"12345678", &mut long_encrypted, &mut long_decrypted_out).unwrap();
+    assert_eq!(long_message[..], long_decrypted_out[..]);
 }
 
 struct Test {
