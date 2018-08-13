@@ -9,10 +9,13 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
+extern crate url;
 
+mod api;
 mod cli;
 mod ex_crypto;
 mod store;
+mod secrets;
 
 fn main() {
     cli::cli_run()

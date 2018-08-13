@@ -13,6 +13,8 @@ data-encoding = "2.1.1"
 openssl = { version = "0.10.11", features = ["vendored"] }
 byteorder = "1.2.4"
 chrono = { version = "0.4.5", features = ["serde"] }
+url = "1.7.1"
+tokio = "0.1.7"
 
 [dependencies.clap]
 version = "2.32.0"

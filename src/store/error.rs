@@ -9,12 +9,18 @@ error_chain! {
     foreign_links {
         OpenSSL(::openssl::error::ErrorStack);
         Io(::std::io::Error);
+        Url(::url::ParseError);
     }
 
     errors {
         MutexPoisoned {
             description("Mutex is poisoned")
             display("Mutex is poisoned")
+        }
+
+        InvalidStoreUrl(url: String) {
+            description("Invalid store url")
+            display("Invalid store url: {}", url)
         }
     }
 }

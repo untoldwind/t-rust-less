@@ -8,6 +8,7 @@ use data_encoding::HEXLOWER;
 use super::{Change, ChangeLog, Operation, Store};
 use super::error::Result;
 
+#[derive(Debug)]
 pub struct LocalDir {
     lock: Mutex<()>,
     base_dir: PathBuf,
