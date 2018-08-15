@@ -8,7 +8,7 @@ use std::fmt::Debug;
 mod error;
 mod pgp;
 
-pub trait Secrets : Debug {
+pub trait Secrets: Debug {
     fn status() -> Result<Status>;
 
     fn lock() -> Result<()>;
