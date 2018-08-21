@@ -59,11 +59,8 @@ named!(new_packet_header(&[u8]) -> (Version, Tag, usize), bits!(do_parse!(
 named!(pub parser<Packet>, do_parse!(
        head: alt!(new_packet_header | old_packet_header)
     >> body: take!(head.2)
-    >> (Packet{
-            version: head.0,
-            tag: head.1,
-            body: body.to_vec(),
-        })
+    >> packet: expr_res!(Packet::new(head.0, head.1, body.to_vec()))
+    >> (packet)
 ));
 
 /// Parse packets, in a streaming fashion from the given reader.

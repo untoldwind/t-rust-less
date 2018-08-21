@@ -112,9 +112,9 @@ pub fn end_of_line(input: CompleteStr) -> IResult<CompleteStr, CompleteStr> {
 // Adapted from https://github.com/Geal/nom/pull/684
 #[inline]
 pub fn rest_len<T>(input: T) -> IResult<T, usize>
-    where
-        T: Slice<Range<usize>> + Slice<RangeFrom<usize>> + Slice<RangeTo<usize>>,
-        T: InputLength,
+where
+    T: Slice<Range<usize>> + Slice<RangeFrom<usize>> + Slice<RangeTo<usize>>,
+    T: InputLength,
 {
     let len = input.input_len();
     Ok((input, len))

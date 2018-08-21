@@ -1,3 +1,4 @@
+mod tags;
 mod ecc_curve;
 mod keys;
 mod symmetric;
@@ -6,154 +7,77 @@ mod sig;
 mod hash;
 mod util;
 
+pub use self::tags::*;
 use chrono::{DateTime, Utc};
-use ex_crypto::openpgp::packet::symmetric::SymmetricKeyAlgorithm;
-use ex_crypto::openpgp::packet::keys::PublicKeyAlgorithm;
-use ex_crypto::openpgp::packet::sig::Signature;
-use ex_crypto::openpgp::packet::hash::HashAlgorithm;
+use self::symmetric::SymmetricKeyAlgorithm;
+use self::keys::{public_key, PublicKey, PublicKeyAlgorithm};
+use self::sig::Signature;
+use self::hash::HashAlgorithm;
+use ex_crypto::error::Result;
 
 #[cfg(test)]
 mod tests;
 
 /// Represents a Packet. A packet is the record structure used to encode a chunk of data in OpenPGP.
 /// Ref: https://tools.ietf.org/html/rfc4880.html#section-4
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Packet {
-    /// Indicator if this is an old or new versioned packet
-    pub version: Version,
-    /// Denotes the type of data this packet holds
-    pub tag: Tag,
-    /// The raw bytes of the packet
-    pub body: Vec<u8>,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, FromPrimitive, ToPrimitive)]
-pub enum Tag {
+#[derive(Debug, PartialEq, Eq)]
+pub enum Packet {
     /// Public-Key Encrypted Session Key Packet
-    PublicKeyEncryptedSessionKey = 1,
+    PublicKeyEncryptedSessionKey(Version, Tag, Vec<u8>),
     /// Signature Packet
-    Signature = 2,
+    Signature(Version, Tag, Vec<u8>),
     /// Symmetric-Key Encrypted Session Key Packet
-    SymKeyEncryptedSessionKey = 3,
+    SymKeyEncryptedSessionKey(Version, Tag, Vec<u8>),
     /// One-Pass Signature Packet
-    OnePassSignature = 4,
+    OnePassSignature(Version, Tag, Vec<u8>),
     /// Secret-Key Packet
-    SecretKey = 5,
+    SecretKey(Version, Tag, Vec<u8>),
     /// Public-Key Packet
-    PublicKey = 6,
+    PublicKey(PublicKey),
     /// Secret-Subkey Packet
-    SecretSubkey = 7,
+    SecretSubkey(Version, Tag, Vec<u8>),
     /// Compressed Data Packet
-    CompressedData = 8,
+    CompressedData(Version, Tag, Vec<u8>),
     /// Symmetrically Encrypted Data Packet
-    SymetricEncryptedData = 9,
+    SymetricEncryptedData(Version, Tag, Vec<u8>),
     /// Marker Packet
-    Marker = 10,
+    Marker(Version, Tag, Vec<u8>),
     /// Literal Data Packet
-    Literal = 11,
+    Literal(Version, Tag, Vec<u8>),
     /// Trust Packet
-    Trust = 12,
+    Trust(Version, Tag, Vec<u8>),
     /// User ID Packet
-    UserID = 13,
+    UserID(String),
     /// Public-Subkey Packet
-    PublicSubkey = 14,
+    PublicSubkey(Version, Tag, Vec<u8>),
     /// User Attribute Packet
-    UserAttribute = 17,
+    UserAttribute(Version, Tag, Vec<u8>),
     /// Sym. Encrypted and Integrity Protected Data Packet
-    SymEncryptedProtectedData = 18,
+    SymEncryptedProtectedData(Version, Tag, Vec<u8>),
     /// Modification Detection Code Packet
-    ModDetectionCode = 19,
+    ModDetectionCode(Version, Tag, Vec<u8>),
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, FromPrimitive, ToPrimitive)]
-pub enum Version {
-    /// Old Packet Format
-    Old = 0,
-    /// New Packet Format
-    New = 1,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, FromPrimitive, ToPrimitive)]
-/// Available signature subpacket types
-pub enum SubpacketType {
-    SignatureCreationTime = 2,
-    SignatureExpirationTime = 3,
-    ExportableCertification = 4,
-    TrustSignature = 5,
-    RegularExpression = 6,
-    Revocable = 7,
-    KeyExpirationTime = 9,
-    PreferredSymmetricAlgorithms = 11,
-    RevocationKey = 12,
-    Issuer = 16,
-    NotationData = 20,
-    PreferredHashAlgorithms = 21,
-    PreferredCompressionAlgorithms = 22,
-    KeyServerPreferences = 23,
-    PreferredKeyServer = 24,
-    PrimaryUserID = 25,
-    PolicyURI = 26,
-    KeyFlags = 27,
-    SignersUserID = 28,
-    RevocationReason = 29,
-    Features = 30,
-    SignatureTarget = 31,
-    EmbeddedSignature = 32,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Subpacket {
-    /// The time the signature was made.
-    SignatureCreationTime(DateTime<Utc>),
-    /// The time the signature will expire.
-    SignatureExpirationTime(DateTime<Utc>),
-    /// When the key is going to expire
-    KeyExpirationTime(DateTime<Utc>),
-    Issuer([u8; 8]),
-    /// List of symmetric algorithms that indicate which algorithms the key holder prefers to use.
-    PreferredSymmetricAlgorithms(Vec<SymmetricKeyAlgorithm>),
-    /// List of hash algorithms that indicate which algorithms the key holder prefers to use.
-    PreferredHashAlgorithms(Vec<HashAlgorithm>),
-    /// List of compression algorithms that indicate which algorithms the key holder prefers to use.
-    PreferredCompressionAlgorithms(Vec<CompressionAlgorithm>),
-    KeyServerPreferences(Vec<u8>),
-    KeyFlags(Vec<u8>),
-    Features(Vec<u8>),
-    RevocationReason(RevocationCode, Vec<u8>),
-    IsPrimary(bool),
-    Revocable(bool),
-    EmbeddedSignature(Box<Signature>),
-    PreferredKeyServer(String),
-    Notation(String, String),
-    RevocationKey(u8, PublicKeyAlgorithm, [u8; 20]),
-    SignersUserID(String),
-    PolicyURI(String),
-    TrustSignature(u8),
-    RegularExpression(String),
-    ExportableCertification(bool),
-}
-
-/// Codes for revocation reasons
-#[derive(Debug, PartialEq, Eq, Clone, FromPrimitive, ToPrimitive)]
-pub enum RevocationCode {
-    /// No reason specified (key revocations or cert revocations)
-    NoReason = 0,
-    /// Key is superseded (key revocations)
-    KeySuperseded = 1,
-    /// Key material has been compromised (key revocations)
-    KeyCompromised = 2,
-    /// Key is retired and no longer used (key revocations)
-    KeyRetired = 3,
-    /// User ID information is no longer valid (cert revocations)
-    CertUserIdInvalid = 32,
-}
-
-/// Available compression algorithms.
-/// Ref: https://tools.ietf.org/html/rfc4880.html#section-9.3
-#[derive(Debug, PartialEq, Eq, Clone, FromPrimitive, ToPrimitive)]
-pub enum CompressionAlgorithm {
-    Uncompressed = 0,
-    ZIP = 1,
-    ZLIB = 2,
-    BZip2 = 3,
+impl Packet {
+    pub fn new(version: Version, tag: Tag, body: Vec<u8>) -> Result<Packet> {
+        match tag {
+            Tag::PublicKeyEncryptedSessionKey => Ok(Packet::PublicKeyEncryptedSessionKey(version, tag, body)),
+            Tag::Signature => Ok(Packet::Signature(version, tag, body)),
+            Tag::SymKeyEncryptedSessionKey => Ok(Packet::SymKeyEncryptedSessionKey(version, tag, body)),
+            Tag::OnePassSignature => Ok(Packet::OnePassSignature(version, tag, body)),
+            Tag::SecretKey => Ok(Packet::SecretKey(version, tag, body)),
+            Tag::PublicKey => Ok(Packet::PublicKey(public_key::parser(&body)?.1)),
+            Tag::SecretSubkey => Ok(Packet::SecretSubkey(version, tag, body)),
+            Tag::CompressedData => Ok(Packet::CompressedData(version, tag, body)),
+            Tag::SymetricEncryptedData => Ok(Packet::SymetricEncryptedData(version, tag, body)),
+            Tag::Marker => Ok(Packet::Marker(version, tag, body)),
+            Tag::Literal => Ok(Packet::Literal(version, tag, body)),
+            Tag::Trust => Ok(Packet::Trust(version, tag, body)),
+            Tag::UserID => Ok(Packet::UserID(String::from_utf8_lossy(&body).into())),
+            Tag::PublicSubkey => Ok(Packet::PublicSubkey(version, tag, body)),
+            Tag::UserAttribute => Ok(Packet::UserAttribute(version, tag, body)),
+            Tag::SymEncryptedProtectedData => Ok(Packet::SymEncryptedProtectedData(version, tag, body)),
+            Tag::ModDetectionCode => Ok(Packet::ModDetectionCode(version, tag, body)),
+        }
+    }
 }
