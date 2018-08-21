@@ -16,7 +16,6 @@ fn read_demo_pub_ring() {
             _ => (),
         }
     }
-    assert!(false)
 }
 
 #[test]
@@ -24,5 +23,11 @@ fn read_demo_ring() {
     let file = File::open("fixtures/demo/ring").unwrap();
     let packets = read_packets(file).unwrap();
 
-    println!("{:?}", packets);
+    for packet in packets {
+        println!("{:?}", packet);
+        match packet {
+            Packet::PublicKey(key) => println!("{}", HEXUPPER.encode(&key.key_id().unwrap())),
+            _ => (),
+        }
+    }
 }
