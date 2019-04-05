@@ -76,5 +76,4 @@ fn test_memory_store() {
   let mut store = open_store("memory://").unwrap();
 
   common_store_tests(store.as_mut());
-
 }

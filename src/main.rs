@@ -1,8 +1,8 @@
 mod api;
 mod cli;
-mod secrets;
-mod secrets_capnp {
-  include!(concat!(env!("OUT_DIR"), "/src/secrets/secrets_capnp.rs"));
+mod secret_store;
+mod secret_store_capnp {
+  include!(concat!(env!("OUT_DIR"), "/src/secret_store/secret_store_capnp.rs"));
 }
 mod store;
 
