@@ -10,21 +10,22 @@ enum KeyType {
     ed25519Chacha20Poly1305 @1;
 }
 
+struct Recipient {
+    id @0 : Data;
+    name @1 : Text;
+    email @2 : Text;
+    publicKeys @3 : List(PublicKey);
+}
+
 struct PublicRing {
     recipients @0 : List(Recipient);
 
-    struct Recipient {
-        id @0 : Data;
-        name @1 : Text;
-        email @2 : Text;
-        publicKeys @3 : List(PublicKey);
-    }
 }
 
 struct Ring {
-    recipients @0 : List(Recipient);
+    recipients @0 : List(User);
 
-    struct Recipient {
+    struct User {
         id @0 : Data;
         privateKeys @1 : List(PrivateKey);
     }

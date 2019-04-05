@@ -34,7 +34,7 @@ fn open_store(url: &str) -> StoreResult<Box<Store>> {
 
   match store_url.scheme() {
     "file" => Ok(Box::new(local_dir::LocalDir::new(store_url.path()))),
-      "memory" => Ok(Box::new(memory::Memory::new())),
+    "memory" => Ok(Box::new(memory::Memory::new())),
     _ => Err(StoreError::InvalidStoreUrl(url.to_string())),
   }
 }
