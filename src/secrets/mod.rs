@@ -1,25 +1,21 @@
-use api::{Identity, SecretList, SecretListFilter, SecretType, SecretVersion, Status};
-use api::Secret;
-use self::error::Result;
-use api::PasswordEstimate;
-use api::PasswordStrength;
-use std::fmt::Debug;
+use crate::api::{Identity, SecretList, SecretListFilter, SecretType, SecretVersion, Status, Secret, PasswordEstimate, PasswordStrength};
 
 mod error;
-mod pgp;
 
-pub trait Secrets: Debug {
-    fn status() -> Result<Status>;
+pub use self::error::SecretsResult;
 
-    fn lock() -> Result<()>;
-    fn unlock(name: &String, email: &String, passphrase: &String) -> Result<()>;
+pub trait Secrets {
+    fn status() -> SecretsResult<Status>;
 
-    fn identities() -> Result<Vec<Identity>>;
+    fn lock() -> SecretsResult<()>;
+    fn unlock(name: &String, email: &String, passphrase: &String) -> SecretsResult<()>;
 
-    fn list(filter: &SecretListFilter) -> Result<SecretList>;
+    fn identities() -> SecretsResult<Vec<Identity>>;
 
-    fn add(id: &String, secret_type: SecretType, secret_version: &SecretVersion) -> Result<()>;
-    fn get(id: &String) -> Result<Secret>;
+    fn list(filter: &SecretListFilter) -> SecretsResult<SecretList>;
 
-    fn estimate_strength(estimate: &PasswordEstimate) -> Result<PasswordStrength>;
+    fn add(id: &String, secret_type: SecretType, secret_version: &SecretVersion) -> SecretsResult<()>;
+    fn get(id: &String) -> SecretsResult<Secret>;
+
+    fn estimate_strength(estimate: &PasswordEstimate) -> SecretsResult<PasswordStrength>;
 }

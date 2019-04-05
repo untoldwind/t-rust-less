@@ -5,8 +5,7 @@ use std::fs::{read_dir, DirBuilder, File, OpenOptions};
 use std::path::{Path, PathBuf};
 use openssl::hash::{Hasher, MessageDigest};
 use data_encoding::HEXLOWER;
-use super::{Change, ChangeLog, Operation, Store};
-use super::error::Result;
+use super::{Change, ChangeLog, Operation, Store, StoreResult};
 
 #[derive(Debug)]
 pub struct LocalDir {
@@ -24,12 +23,12 @@ impl LocalDir {
 }
 
 impl Store for LocalDir {
-    fn get_ring(&self) -> Result<Option<Vec<u8>>> {
+    fn get_ring(&self) -> StoreResult<Option<Vec<u8>>> {
         let _guard = self.lock.lock()?;
         read_optional_file(self.base_dir.join("ring"))
     }
 
-    fn store_ring(&self, raw: &[u8]) -> Result<()> {
+    fn store_ring(&self, raw: &[u8]) -> StoreResult<()> {
         let maybe_current = self.get_ring()?;
         let _guard = self.lock.lock()?;
 
@@ -52,12 +51,12 @@ impl Store for LocalDir {
         Ok(())
     }
 
-    fn get_public_ring(&self) -> Result<Option<Vec<u8>>> {
+    fn get_public_ring(&self) -> StoreResult<Option<Vec<u8>>> {
         let _guard = self.lock.lock()?;
         read_optional_file(self.base_dir.join("ring.pub"))
     }
 
-    fn store_public_ring(&self, raw: &[u8]) -> Result<()> {
+    fn store_public_ring(&self, raw: &[u8]) -> StoreResult<()> {
         let maybe_current = self.get_public_ring()?;
         let _guard = self.lock.lock()?;
 
@@ -80,7 +79,7 @@ impl Store for LocalDir {
         Ok(())
     }
 
-    fn change_logs(&self) -> Result<Vec<ChangeLog>> {
+    fn change_logs(&self) -> StoreResult<Vec<ChangeLog>> {
         let _guard = self.lock.lock()?;
         let commit_dir = read_dir(self.base_dir.join("logs"))?;
         let mut change_logs: Vec<ChangeLog> = vec![];
@@ -100,12 +99,12 @@ impl Store for LocalDir {
         Ok(change_logs)
     }
 
-    fn get_index(&self, node: &String) -> Result<Option<Vec<u8>>> {
+    fn get_index(&self, node: &String) -> StoreResult<Option<Vec<u8>>> {
         let _guard = self.lock.lock()?;
         read_optional_file(self.base_dir.join("indexes").join(node))
     }
 
-    fn store_index(&self, node: &String, raw: &[u8]) -> Result<()> {
+    fn store_index(&self, node: &String, raw: &[u8]) -> StoreResult<()> {
         DirBuilder::new()
             .recursive(true)
             .create(self.base_dir.join("indexes"))?;
@@ -117,7 +116,7 @@ impl Store for LocalDir {
         Ok(())
     }
 
-    fn add_block(&self, raw: &[u8]) -> Result<String> {
+    fn add_block(&self, raw: &[u8]) -> StoreResult<String> {
         DirBuilder::new()
             .recursive(true)
             .create(self.base_dir.join("blocks"))?;
@@ -130,7 +129,7 @@ impl Store for LocalDir {
         Ok(block_id)
     }
 
-    fn get_block(&self, block: &String) -> Result<Vec<u8>> {
+    fn get_block(&self, block: &String) -> StoreResult<Vec<u8>> {
         let mut block_file = File::create(self.base_dir.join("blocks").join(block))?;
         let mut content = vec![];
 
@@ -139,7 +138,7 @@ impl Store for LocalDir {
         Ok(content)
     }
 
-    fn commit(&self, node: &String, changes: &[Change]) -> Result<()> {
+    fn commit(&self, node: &String, changes: &[Change]) -> StoreResult<()> {
         DirBuilder::new()
             .recursive(true)
             .create(self.base_dir.join("logs"))?;
@@ -160,7 +159,7 @@ impl Store for LocalDir {
     }
 }
 
-fn read_optional_file<P: AsRef<Path>>(path: P) -> Result<Option<Vec<u8>>> {
+fn read_optional_file<P: AsRef<Path>>(path: P) -> StoreResult<Option<Vec<u8>>> {
     match File::open(path) {
         Ok(mut index_file) => {
             let mut content = vec![];
@@ -170,11 +169,11 @@ fn read_optional_file<P: AsRef<Path>>(path: P) -> Result<Option<Vec<u8>>> {
             Ok(Some(content))
         }
         Err(ref err) if err.kind() == io::ErrorKind::NotFound => Ok(None),
-        Err(err) => bail!(err),
+        Err(err) => Err(err.into()),
     }
 }
 
-fn parse_change_log(file_name: &str, path: &Path) -> Result<ChangeLog> {
+fn parse_change_log(file_name: &str, path: &Path) -> StoreResult<ChangeLog> {
     let file = File::open(path)?;
     let reader = BufReader::new(file);
     let mut change_log = ChangeLog::new(file_name);
@@ -193,7 +192,7 @@ fn parse_change_log(file_name: &str, path: &Path) -> Result<ChangeLog> {
     Ok(change_log)
 }
 
-fn generate_id(data: &[u8]) -> Result<String> {
+fn generate_id(data: &[u8]) -> StoreResult<String> {
     let mut sha256 = Hasher::new(MessageDigest::sha256())?;
 
     sha256.update(data)?;

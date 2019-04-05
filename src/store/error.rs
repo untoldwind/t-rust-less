@@ -1,32 +1,35 @@
 use std::convert::From;
 use std::sync::PoisonError;
+use std::fmt;
 
-error_chain! {
-    types {
-        Error, ErrorKind, ResultExt, Result;
-    }
+pub enum StoreError {
+    InvalidStoreUrl(String),
+    IO(String),
+    Mutex(String),
+}
 
-    foreign_links {
-        OpenSSL(::openssl::error::ErrorStack);
-        Io(::std::io::Error);
-        Url(::url::ParseError);
-    }
-
-    errors {
-        MutexPoisoned {
-            description("Mutex is poisoned")
-            display("Mutex is poisoned")
-        }
-
-        InvalidStoreUrl(url: String) {
-            description("Invalid store url")
-            display("Invalid store url: {}", url)
-        }
+impl fmt::Display for StoreError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        unimplemented!()
     }
 }
 
-impl<T> From<PoisonError<T>> for Error {
-    fn from(_err: PoisonError<T>) -> Error {
-        ErrorKind::MutexPoisoned.into()
+pub type StoreResult<T> = Result<T, StoreError>;
+
+impl From<std::io::Error> for StoreError {
+    fn from(error: std::io::Error) -> Self {
+        StoreError::IO(format!("{}", error))
+    }
+}
+
+impl<T> From<std::sync::PoisonError<T>> for StoreError {
+    fn from(error: std::sync::PoisonError<T>) -> Self {
+        StoreError::Mutex(format!("{}", error))
+    }
+}
+
+impl From<url::ParseError> for StoreError {
+    fn from(error: url::ParseError) -> Self {
+        StoreError::InvalidStoreUrl(format!("{}", error))
     }
 }

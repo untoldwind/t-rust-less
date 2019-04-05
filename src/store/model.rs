@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use serde_derive::{Serialize, Deserialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]

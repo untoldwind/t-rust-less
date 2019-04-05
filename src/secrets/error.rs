@@ -1,14 +1,13 @@
-use ex_crypto;
+use std::fmt;
 
-error_chain! {
-    types {
-        Error, ErrorKind, ResultExt, Result;
-    }
-
-    links {
-        Crypto(ex_crypto::error::Error, ex_crypto::error::ErrorKind);
-    }
-
-    errors {
-    }
+pub enum SecretsError {
+  InvalidStoreUrl,
 }
+
+impl fmt::Display for SecretsError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    unimplemented!()
+  }
+}
+
+pub type SecretsResult<T> = Result<T, SecretsError>;
