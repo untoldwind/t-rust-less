@@ -1,7 +1,7 @@
 use super::{open_store, Store, StoreError};
-use tempdir::TempDir;
-use rand::{ Rng, ThreadRng, thread_rng};
+use rand::{thread_rng, Rng, ThreadRng};
 use spectral::prelude::*;
+use tempdir::TempDir;
 
 fn common_store_tests(store: &mut Store) {
   let mut rng = thread_rng();
@@ -10,7 +10,7 @@ fn common_store_tests(store: &mut Store) {
   common_test_blocks(store, &mut rng);
 }
 
-fn common_test_ring(store : &mut Store, rng: &mut ThreadRng) {
+fn common_test_ring(store: &mut Store, rng: &mut ThreadRng) {
   let ring1 = rng.gen_iter::<u8>().take(200).collect::<Vec<u8>>();
   let ring2 = rng.gen_iter::<u8>().take(300).collect::<Vec<u8>>();
 
@@ -69,4 +69,12 @@ fn test_local_dir_store() {
   let mut store = open_store(&url).unwrap();
 
   common_store_tests(store.as_mut());
+}
+
+#[test]
+fn test_memory_store() {
+  let mut store = open_store("memory://").unwrap();
+
+  common_store_tests(store.as_mut());
+
 }
