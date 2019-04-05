@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -36,18 +36,4 @@ impl ChangeLog {
             changes: vec![],
         }
     }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Commit {
-    node: String,
-    prev: String,
-    timestamp: DateTime<Utc>,
-    changes: Vec<Change>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Head {
-    node: String,
-    commit: String,
 }

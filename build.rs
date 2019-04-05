@@ -1,7 +1,6 @@
-
 use std::env;
-use std::process;
 use std::fs::{self, File};
+use std::process;
 
 use clap::Shell;
 
@@ -23,4 +22,10 @@ fn main() {
     app.gen_completions("t-rust-less", Shell::Fish, &outdir);
     app.gen_completions("t-rust-less", Shell::Zsh, &outdir);
     app.gen_completions("t-rust-less", Shell::PowerShell, &outdir);
+
+    capnpc::CompilerCommand::new()
+        .file("src/secrets/secrets.capnp")
+        .edition(capnpc::RustEdition::Rust2018)
+        .run()
+        .expect("compiling schema");
 }

@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
+use serde_derive::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::collections::HashMap;
-use serde_derive::{Serialize, Deserialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Status {

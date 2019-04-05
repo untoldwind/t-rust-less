@@ -1,8 +1,10 @@
 use std::convert::From;
-use std::sync::PoisonError;
 use std::fmt;
+use std::sync::PoisonError;
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum StoreError {
+    InvalidBlock(String),
     InvalidStoreUrl(String),
     IO(String),
     Mutex(String),
@@ -10,7 +12,13 @@ pub enum StoreError {
 
 impl fmt::Display for StoreError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        unimplemented!()
+        match self {
+            StoreError::InvalidBlock(block_id) => write!(f, "Invalid block: {}", block_id)?,
+            StoreError::InvalidStoreUrl(url) => write!(f, "Invalid store url: {}", url)?,
+            StoreError::IO(error) => write!(f, "IO: {}", error)?,
+            StoreError::Mutex(error) => write!(f, "Internal locking problem: {}", error)?,
+        }
+        Ok(())
     }
 }
 

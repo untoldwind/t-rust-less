@@ -1,4 +1,7 @@
-use crate::api::{Identity, SecretList, SecretListFilter, SecretType, SecretVersion, Status, Secret, PasswordEstimate, PasswordStrength};
+use crate::api::{
+    Identity, PasswordEstimate, PasswordStrength, Secret, SecretList, SecretListFilter, SecretType, SecretVersion,
+    Status,
+};
 
 mod error;
 
