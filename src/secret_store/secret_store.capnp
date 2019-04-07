@@ -1,13 +1,13 @@
 @0x89ae7248ac2e8067;
 
-struct PublicKey {
-    type @0 : KeyType;
-    key @1 : KeyType;
-}
-
 enum KeyType {
     rsaAesGcm @0;
     ed25519Chacha20Poly1305 @1;
+}
+
+struct PublicKey {
+    type @0 : KeyType;
+    key @1 : KeyType;
 }
 
 struct Recipient {
@@ -35,26 +35,20 @@ struct Ring {
         salt @1 : Data;
         cryptedKey @2 : Data;
     }
-
 }
 
 struct Block {
-    keys @0 : List(BlockKey);
-    cryptedContent @1 : Data;
+    headers @0 : List(Header);
+    content @1 : Data;
 
-    struct BlockKey {
-        type @0 : BlockKeyType;
-        salt @1 : Data;
-        cryptedKey @2: Data;
+    struct Header {
+        type @0 : KeyType;
+        commonKey @1 : Data;
+        recipients @2 : List(RecipientKey);
     }
 
-    struct Recipient {
+    struct RecipientKey {
         id @0 : Data;
-        publicBlockKeys @1 : List(PublicKey);
-    }
-
-    enum BlockKeyType {
-        aesGcm @0;
-        chacha20Poly1305 @1;
+        cryptedKey @1: Data;
     }
 }
