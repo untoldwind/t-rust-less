@@ -1,11 +1,26 @@
+use std::ptr::NonNull;
 
-#[cfg(target_os = "linux")]
-mod linux;
-#[cfg(target_os = "linux")]
-pub use self::linux::*;
+mod alloc;
+mod memory;
 
+pub struct SecretBytes {
+    ptr: NonNull<u8>,
+}
 
-#[cfg(not(target_os = "linux"))]
-mod fallback;
-#[cfg(not(target_os = "linux"))]
-pub use self::fallback::*;
+impl SecretBytes {
+    pub fn new(size: usize) -> SecretBytes {
+        unsafe {
+            SecretBytes {
+                ptr: alloc::malloc(size),
+            }
+        }
+    }
+}
+
+impl Drop for SecretBytes {
+    fn drop(&mut self) {
+        unsafe {
+            alloc::free(self.ptr)
+        }
+    }
+}
