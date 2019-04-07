@@ -1,8 +1,8 @@
 use super::{Change, ChangeLog, Operation, Store, StoreError, StoreResult};
 use data_encoding::HEXLOWER;
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::sync::RwLock;
-use sha2::{Sha256, Digest};
 
 pub struct Memory {
   ring: RwLock<Option<Vec<u8>>>,

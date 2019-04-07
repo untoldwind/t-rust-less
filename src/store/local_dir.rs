@@ -1,11 +1,11 @@
 use super::{Change, ChangeLog, Operation, Store, StoreError, StoreResult};
 use data_encoding::HEXLOWER;
+use sha2::{Digest, Sha256};
 use std::fs::{read_dir, DirBuilder, File, OpenOptions};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
-use sha2::{Sha256, Digest};
 
 #[derive(Debug)]
 pub struct LocalDir {
