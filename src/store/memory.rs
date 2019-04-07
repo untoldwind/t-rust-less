@@ -1,8 +1,8 @@
 use super::{Change, ChangeLog, Operation, Store, StoreError, StoreResult};
 use data_encoding::HEXLOWER;
-use ring::digest;
 use std::collections::HashMap;
 use std::sync::RwLock;
+use sha2::{Sha256, Digest};
 
 pub struct Memory {
   ring: RwLock<Option<Vec<u8>>>,
@@ -24,9 +24,11 @@ impl Memory {
   }
 
   fn generate_id(data: &[u8]) -> String {
-    let sha256 = digest::digest(&digest::SHA256, data);
+    let mut hasher = Sha256::new();
 
-    HEXLOWER.encode(sha256.as_ref())
+    hasher.input(data);
+
+    HEXLOWER.encode(&hasher.result())
   }
 }
 

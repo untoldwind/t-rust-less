@@ -1,14 +1,16 @@
 use super::SecretStoreResult;
 use crate::secret_store_capnp::{block, recipient};
-use secrets::{Secret, SecretVec};
+use crate::memguard::SecretBytes;
+
+type PublicKey = Vec<u8>;
+type PrivateKey = SecretBytes;
+type PublicData = Vec<u8>;
+type PrivateData = SecretBytes;
 
 pub trait Cipher {
-  type PrivateKey;
-  type PublicKey;
+  fn generate_key_pair() -> SecretStoreResult<(PublicKey, PrivateKey)>;
 
-  fn generate_key_pair() -> SecretStoreResult<(Self::PublicKey, Self::PrivateKey)>;
+  fn encrypt(recipients: &[(&str, &PublicKey)], data: &PrivateData) -> SecretStoreResult<(block::header::Owned, PublicData)>;
 
-  fn encrypt(recipients: &[(&str, &Self::PublicKey)], data: &SecretVec<u8>) -> SecretStoreResult<(block::header::Owned, Vec<u8>)>;
-
-  fn decrypt(user: (&str, &Self::PrivateKey), header: block::header::Reader, crypted: &[u8]) -> SecretStoreResult<SecretVec<u8>>;
+  fn decrypt(user: (&str, &PrivateKey), header: block::header::Reader, crypted: PublicData) -> SecretStoreResult<PrivateData>;
 }

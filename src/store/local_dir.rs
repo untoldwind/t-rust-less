@@ -1,11 +1,11 @@
 use super::{Change, ChangeLog, Operation, Store, StoreError, StoreResult};
 use data_encoding::HEXLOWER;
-use ring::digest;
 use std::fs::{read_dir, DirBuilder, File, OpenOptions};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
+use sha2::{Sha256, Digest};
 
 #[derive(Debug)]
 pub struct LocalDir {
@@ -51,9 +51,11 @@ impl LocalDir {
   }
 
   fn generate_id(data: &[u8]) -> String {
-    let sha256 = digest::digest(&digest::SHA256, data);
+    let mut hasher = Sha256::new();
 
-    HEXLOWER.encode(sha256.as_ref())
+    hasher.input(data);
+
+    HEXLOWER.encode(&hasher.result())
   }
 
   fn block_file(base_dir: &PathBuf, block_id: &str) -> StoreResult<PathBuf> {

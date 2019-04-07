@@ -17,8 +17,9 @@ url = "1"
 circular = "0"
 num-derive = "0"
 num-traits = "0"
-ring = "0"
-secrets = "0"
+sha2 = "0"
+x25519-dalek = "0"
+chacha20-poly1305-aead = "0"
 argon2rs = "0"
 clap = { version = "2", default-features = false, features = ["suggestions", "color"]}
 capnp = "0"
@@ -30,6 +31,7 @@ rand = "0"
 
 [target.x86_64-unknown-linux-gnu.dependencies]
 x11 = "2"
+secrets = "0"
 
 [build-dependencies]
 clap = { version = "2", default-features = false, features = ["suggestions", "color"]}
