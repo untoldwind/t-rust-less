@@ -1,3 +1,4 @@
+use std::convert::{AsMut, AsRef};
 use std::ops::{Deref, DerefMut};
 use std::ptr::{copy_nonoverlapping, NonNull};
 use std::slice;
@@ -32,11 +33,17 @@ impl SecretBytes {
   }
 
   pub fn borrow<'a>(&'a self) -> Ref<'a> {
+    self.lock_read();
     Ref { bytes: self }
   }
 
   pub fn borrow_mut<'a>(&'a mut self) -> RefMut<'a> {
+    self.lock_write();
     RefMut { bytes: self }
+  }
+
+  pub fn locks(&self) -> isize {
+    self.locks.load(Ordering::Relaxed)
   }
 
   fn lock_read(&self) {
@@ -52,7 +59,7 @@ impl SecretBytes {
   }
 
   fn unlock_read(&self) {
-    let locks = self.locks.fetch_add(1, Ordering::Relaxed);
+    let locks = self.locks.fetch_sub(1, Ordering::Relaxed);
 
     assert!(locks > 0);
 
@@ -74,7 +81,7 @@ impl SecretBytes {
   }
 
   fn unlock_write(&mut self) {
-    let locks = self.locks.fetch_sub(1, Ordering::Relaxed);
+    let locks = self.locks.fetch_add(1, Ordering::Relaxed);
 
     assert!(locks == -1);
 
@@ -125,6 +132,12 @@ impl<'a> Deref for Ref<'a> {
   }
 }
 
+impl<'a> AsRef<[u8]> for Ref<'a> {
+  fn as_ref(&self) -> &[u8] {
+    unsafe { slice::from_raw_parts(self.bytes.ptr.as_ptr(), self.bytes.size) }
+  }
+}
+
 struct RefMut<'a> {
   bytes: &'a mut SecretBytes,
 }
@@ -149,19 +162,59 @@ impl<'a> DerefMut for RefMut<'a> {
   }
 }
 
+impl<'a> AsRef<[u8]> for RefMut<'a> {
+  fn as_ref(&self) -> &[u8] {
+    unsafe { slice::from_raw_parts(self.bytes.ptr.as_ptr(), self.bytes.size) }
+  }
+}
+
+impl<'a> AsMut<[u8]> for RefMut<'a> {
+  fn as_mut(&mut self) -> &mut [u8] {
+    unsafe { slice::from_raw_parts_mut(self.bytes.ptr.as_ptr(), self.bytes.size) }
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
-    use rand::{thread_rng, Rng, ThreadRng};
-    use spectral::prelude::*;
+  use core::borrow::Borrow;
+  use rand::{thread_rng, Rng, ThreadRng};
+  use spectral::prelude::*;
 
-    #[test]
-    fn test_borrow_read_only() {
-        let mut rng = thread_rng();
-        let mut source = rng.gen_iter::<u8>().take(200).collect::<Vec<u8>>();
-        let expected = source.clone();
+  fn assert_slices_equal(actual: &[u8], expected: &[u8]) {
+    assert!(actual == expected)
+  }
 
-        let guarded = SecretBytes::from(source.as_mut_slice());
+  #[test]
+  fn test_borrow_read_only() {
+    let mut rng = thread_rng();
+    let mut source = rng.gen_iter::<u8>().filter(|b| *b != 0).take(200).collect::<Vec<u8>>();
+    let expected = source.clone();
 
+    for b in source.iter() {
+      assert_that(b).is_not_equal_to(0);
     }
+
+    let guarded = SecretBytes::from(source.as_mut_slice());
+
+    for b in source.iter() {
+      assert_that(b).is_equal_to(0);
+    }
+
+    assert_that(&guarded.locks()).is_equal_to(0);
+    assert_slices_equal(&guarded.borrow(), &expected);
+    assert_that(&guarded.locks()).is_equal_to(0);
+
+    {
+      let ref1 = guarded.borrow();
+      let ref2 = guarded.borrow();
+      let ref3 = guarded.borrow();
+
+      assert_that(&guarded.locks()).is_equal_to(3);
+      assert_slices_equal(&ref1, &expected);
+      assert_slices_equal(&ref2, &expected);
+      assert_slices_equal(&ref3, &expected);
+    }
+    assert_that(&guarded.locks()).is_equal_to(0);
+  }
 }
