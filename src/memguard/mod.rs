@@ -28,7 +28,9 @@ impl SecretBytes {
     }
   }
 
-  pub fn len(&self) -> usize { self.size };
+  pub fn len(&self) -> usize {
+    self.size
+  }
 
   pub fn capacity(&self) -> usize {
     unsafe { alloc::capacity(self.ptr) }

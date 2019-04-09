@@ -3,6 +3,7 @@ use crate::memguard::SecretBytes;
 use crate::secret_store::SecretStoreResult;
 use crate::secret_store_capnp::{block, recipient};
 use openssl::rsa::Rsa;
+use openssl::symm;
 
 const RSA_KEY_BITS: u32 = 4096;
 
@@ -19,15 +20,26 @@ impl Cipher for OpenSslRsaAesGcmCipher {
   }
 
   fn seal_key_length() -> usize {
-    unimplemented!()
+    32
   }
 
   fn seal_min_nonce_length() -> usize {
-    unimplemented!()
+    12
   }
 
   fn seal_private_key(seal_key: &SealKey, nonce: &[u8], private_key: &PrivateKey) -> SecretStoreResult<PublicData> {
-    unimplemented!()
+    let mut tag = [0u8; 16];
+    let mut result = symm::encrypt_aead(
+      symm::Cipher::aes_256_gcm(),
+      &seal_key.borrow(),
+      Some(&nonce[0..12]),
+      &[],
+      &private_key.borrow(),
+      &mut tag[..],
+    )?;
+    result.extend_from_slice(&tag[..]);
+
+    Ok(result)
   }
 
   fn open_private_key(seal_key: &SealKey, nonce: &[u8], crypted_key: &PublicData) -> SecretStoreResult<PrivateKey> {

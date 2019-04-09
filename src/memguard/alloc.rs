@@ -1,5 +1,5 @@
 use super::memory;
-use rand::{OsRng, Rng};
+use rand::{OsRng, RngCore};
 use std::mem;
 use std::ptr::{self, NonNull};
 use std::sync::Once;

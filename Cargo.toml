@@ -22,7 +22,7 @@ x25519-dalek = "0"
 chacha20-poly1305-aead = "0"
 clap = { version = "2", default-features = false, features = ["suggestions", "color"]}
 capnp = "0"
-rand = "0"
+rand = "0.5"
 rust-argon2 = "0"
 
 [dev-dependencies]
