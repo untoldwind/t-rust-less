@@ -80,6 +80,7 @@ pub unsafe fn free_aligned(memptr: *mut u8, _size: usize) {
 /// Prot enum.
 #[cfg(unix)]
 #[allow(non_snake_case, non_upper_case_globals)]
+#[allow(dead_code)]
 pub mod Prot {
   pub use libc::c_int as Ty;
 
@@ -96,6 +97,7 @@ pub mod Prot {
 /// Prot enum.
 #[cfg(windows)]
 #[allow(non_snake_case, non_upper_case_globals)]
+#[allow(dead_code)]
 pub mod Prot {
   pub use winapi::shared::minwindef::DWORD as Ty;
 

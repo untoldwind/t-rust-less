@@ -28,6 +28,8 @@ impl SecretBytes {
     }
   }
 
+  pub fn len(&self) -> usize { self.size };
+
   pub fn capacity(&self) -> usize {
     unsafe { alloc::capacity(self.ptr) }
   }
@@ -114,7 +116,7 @@ impl From<&mut [u8]> for SecretBytes {
   }
 }
 
-struct Ref<'a> {
+pub struct Ref<'a> {
   bytes: &'a SecretBytes,
 }
 
@@ -138,7 +140,7 @@ impl<'a> AsRef<[u8]> for Ref<'a> {
   }
 }
 
-struct RefMut<'a> {
+pub struct RefMut<'a> {
   bytes: &'a mut SecretBytes,
 }
 
@@ -216,5 +218,32 @@ mod tests {
       assert_slices_equal(&ref3, &expected);
     }
     assert_that(&guarded.locks()).is_equal_to(0);
+  }
+
+  #[test]
+  fn test_borrow_read_write() {
+    let mut rng = thread_rng();
+    let mut source = rng.gen_iter::<u8>().filter(|b| *b != 0).take(200).collect::<Vec<u8>>();
+    let mut source2 = rng.gen_iter::<u8>().filter(|b| *b != 0).take(200).collect::<Vec<u8>>();
+    let expected = source.clone();
+    let expected2 = source2.clone();
+
+    for b in source.iter() {
+      assert_that(b).is_not_equal_to(0);
+    }
+
+    let mut guarded = SecretBytes::from(source.as_mut_slice());
+
+    for b in source.iter() {
+      assert_that(b).is_equal_to(0);
+    }
+
+    assert_that(&guarded.locks()).is_equal_to(0);
+    assert_slices_equal(&guarded.borrow(), &expected);
+
+    guarded.borrow_mut().as_mut().copy_from_slice(&source2);
+
+    assert_that(&guarded.locks()).is_equal_to(0);
+    assert_slices_equal(&guarded.borrow(), &expected2);
   }
 }

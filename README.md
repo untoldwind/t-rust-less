@@ -16,3 +16,19 @@ ar = "/usr/x86_64-w64-mingw32/bin/ar"
 ```
 cargo build --target=x86_64-pc-windows-gnu
 ```
+
+## Test
+
+`cargo test` works but is pretty slow as there is no optimization.
+
+For development:
+
+```
+cargo test --features fast_tests 
+```
+
+Regression:
+
+```
+cargo test --release
+```
