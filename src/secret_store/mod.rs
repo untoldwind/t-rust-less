@@ -5,7 +5,7 @@ use crate::api::{
 mod cipher;
 mod error;
 
-pub use self::error::SecretStoreResult;
+pub use self::error::{SecretStoreError, SecretStoreResult};
 
 pub trait Secrets {
   fn status() -> SecretStoreResult<Status>;

@@ -28,12 +28,18 @@ impl From<argon2::Error> for SecretStoreError {
 
 impl From<openssl::error::ErrorStack> for SecretStoreError {
   fn from(error: openssl::error::ErrorStack) -> Self {
-    SecretStoreError::KeyDerivation(format!("{}", error))
+    SecretStoreError::Cipher(format!("{}", error))
   }
 }
 
 impl From<std::io::Error> for SecretStoreError {
   fn from(error: std::io::Error) -> Self {
     SecretStoreError::IO(format!("{}", error))
+  }
+}
+
+impl From<chacha20_poly1305_aead::DecryptError> for SecretStoreError {
+  fn from(error: chacha20_poly1305_aead::DecryptError) -> Self {
+    SecretStoreError::Cipher(format!("{}", error))
   }
 }

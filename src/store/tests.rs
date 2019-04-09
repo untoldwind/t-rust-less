@@ -1,5 +1,5 @@
 use super::{open_store, Store, StoreError};
-use rand::{thread_rng, Rng, ThreadRng};
+use rand::{distributions, thread_rng, Rng, ThreadRng};
 use spectral::prelude::*;
 use tempdir::TempDir;
 
@@ -11,8 +11,8 @@ fn common_store_tests(store: &mut Store) {
 }
 
 fn common_test_ring(store: &mut Store, rng: &mut ThreadRng) {
-  let ring1 = rng.gen_iter::<u8>().take(200).collect::<Vec<u8>>();
-  let ring2 = rng.gen_iter::<u8>().take(300).collect::<Vec<u8>>();
+  let ring1 = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
+  let ring2 = rng.sample_iter(&distributions::Standard).take(300).collect::<Vec<u8>>();
 
   assert_that(&store.get_ring()).is_ok_containing(None);
   assert_that(&store.store_ring(&ring1)).is_ok();
@@ -22,12 +22,18 @@ fn common_test_ring(store: &mut Store, rng: &mut ThreadRng) {
 }
 
 fn common_test_index(store: &mut Store, rng: &mut ThreadRng) {
-  let node1 = rng.gen_ascii_chars().take(40).collect::<String>();
-  let node1_index1 = rng.gen_iter::<u8>().take(200).collect::<Vec<u8>>();
-  let node1_index2 = rng.gen_iter::<u8>().take(200).collect::<Vec<u8>>();
-  let node2 = rng.gen_ascii_chars().take(40).collect::<String>();
-  let node2_index1 = rng.gen_iter::<u8>().take(200).collect::<Vec<u8>>();
-  let node2_index2 = rng.gen_iter::<u8>().take(200).collect::<Vec<u8>>();
+  let node1 = rng
+    .sample_iter(&distributions::Alphanumeric)
+    .take(40)
+    .collect::<String>();
+  let node1_index1 = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
+  let node1_index2 = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
+  let node2 = rng
+    .sample_iter(&distributions::Alphanumeric)
+    .take(40)
+    .collect::<String>();
+  let node2_index1 = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
+  let node2_index2 = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
 
   assert_that(&store.get_index(&node1)).is_ok_containing(None);
   assert_that(&store.store_index(&node1, &node1_index1)).is_ok();
@@ -44,9 +50,9 @@ fn common_test_index(store: &mut Store, rng: &mut ThreadRng) {
 fn common_test_blocks(store: &mut Store, rng: &mut ThreadRng) {
   assert_that(&store.get_block("00000000000")).is_err_containing(StoreError::InvalidBlock("00000000000".to_string()));
 
-  let block1 = rng.gen_iter::<u8>().take(200).collect::<Vec<u8>>();
-  let block2 = rng.gen_iter::<u8>().take(200).collect::<Vec<u8>>();
-  let block3 = rng.gen_iter::<u8>().take(200).collect::<Vec<u8>>();
+  let block1 = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
+  let block2 = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
+  let block3 = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
 
   let block1_id = store.add_block(&block1).unwrap();
   let block2_id = store.add_block(&block2).unwrap();

@@ -1,4 +1,5 @@
 use std::convert::{AsMut, AsRef};
+use std::io;
 use std::ops::{Deref, DerefMut};
 use std::ptr::{copy_nonoverlapping, NonNull};
 use std::slice;
@@ -178,11 +179,33 @@ impl<'a> AsMut<[u8]> for RefMut<'a> {
   }
 }
 
+impl<'a> io::Write for RefMut<'a> {
+  fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+    let available = self.bytes.capacity() - self.bytes.size;
+
+    if available == 0 {
+      return Err(io::ErrorKind::WriteZero.into());
+    }
+    let transfer = available.min(buf.len());
+
+    self.bytes.size += transfer;
+    unsafe {
+      copy_nonoverlapping(buf.as_ptr(), self.bytes.ptr.as_ptr(), transfer);
+    }
+
+    Ok(transfer)
+  }
+
+  fn flush(&mut self) -> io::Result<()> {
+    Ok(())
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
   use core::borrow::Borrow;
-  use rand::{thread_rng, Rng, ThreadRng};
+  use rand::{distributions, thread_rng, Rng, ThreadRng};
   use spectral::prelude::*;
 
   fn assert_slices_equal(actual: &[u8], expected: &[u8]) {
@@ -192,7 +215,11 @@ mod tests {
   #[test]
   fn test_borrow_read_only() {
     let mut rng = thread_rng();
-    let mut source = rng.gen_iter::<u8>().filter(|b| *b != 0).take(200).collect::<Vec<u8>>();
+    let mut source = rng
+      .sample_iter(&distributions::Standard)
+      .filter(|b| *b != 0)
+      .take(200)
+      .collect::<Vec<u8>>();
     let expected = source.clone();
 
     for b in source.iter() {
@@ -225,8 +252,16 @@ mod tests {
   #[test]
   fn test_borrow_read_write() {
     let mut rng = thread_rng();
-    let mut source = rng.gen_iter::<u8>().filter(|b| *b != 0).take(200).collect::<Vec<u8>>();
-    let mut source2 = rng.gen_iter::<u8>().filter(|b| *b != 0).take(200).collect::<Vec<u8>>();
+    let mut source = rng
+      .sample_iter(&distributions::Standard)
+      .filter(|b| *b != 0)
+      .take(200)
+      .collect::<Vec<u8>>();
+    let source2 = rng
+      .sample_iter(&distributions::Standard)
+      .filter(|b| *b != 0)
+      .take(200)
+      .collect::<Vec<u8>>();
     let expected = source.clone();
     let expected2 = source2.clone();
 

@@ -1,13 +1,15 @@
 use super::{Cipher, PrivateData, PrivateKey, PublicData, PublicKey, SealKey};
-use crate::secret_store::SecretStoreResult;
-use crate::secret_store_capnp::{block, recipient};
-use x25519_dalek::StaticSecret;
-use rand::{OsRng, RngCore};
 use crate::memguard::SecretBytes;
-use chacha20_poly1305_aead::encrypt_read;
+use crate::secret_store::{SecretStoreError, SecretStoreResult};
+use crate::secret_store_capnp::{block, recipient};
+use chacha20_poly1305_aead::{decrypt, encrypt};
+use rand::{OsRng, RngCore};
 use std::io::Cursor;
+use x25519_dalek::StaticSecret;
 
 pub struct RustX25519ChaCha20Poly1305Cipher;
+
+const TAG_LENGTH: usize = 16;
 
 impl Cipher for RustX25519ChaCha20Poly1305Cipher {
   fn generate_key_pair() -> SecretStoreResult<(PublicKey, PrivateKey)> {
@@ -29,22 +31,28 @@ impl Cipher for RustX25519ChaCha20Poly1305Cipher {
 
   fn seal_private_key(seal_key: &SealKey, nonce: &[u8], private_key: &PrivateKey) -> SecretStoreResult<PublicData> {
     let mut result = Vec::with_capacity(private_key.len());
-    let private_borrow = private_key.borrow();
-    let mut private_read = Cursor::new(private_borrow.as_ref());
-    let tag = encrypt_read(
-      &seal_key.borrow(),
-      nonce,
-      &[],
-      &mut private_read,
-      &mut result,
-    )?;
+    let tag = encrypt(&seal_key.borrow(), nonce, &[], &private_key.borrow(), &mut result)?;
     result.extend_from_slice(&tag[..]);
 
     Ok(result)
   }
 
   fn open_private_key(seal_key: &SealKey, nonce: &[u8], crypted_key: &PublicData) -> SecretStoreResult<PrivateKey> {
-    unimplemented!()
+    if crypted_key.len() < TAG_LENGTH {
+      return Err(SecretStoreError::Cipher("Data too short".to_string()));
+    }
+    let tag_offset = crypted_key.len() - TAG_LENGTH;
+    let mut result = SecretBytes::with_capacity(crypted_key.len() - TAG_LENGTH);
+    decrypt(
+      &seal_key.borrow(),
+      nonce,
+      &[],
+      &crypted_key[0..tag_offset],
+      &crypted_key[tag_offset..],
+      &mut result.borrow_mut(),
+    )?;
+
+    Ok(result)
   }
 
   fn encrypt(

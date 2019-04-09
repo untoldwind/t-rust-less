@@ -1,11 +1,13 @@
 use super::{Cipher, PrivateData, PrivateKey, PublicData, PublicKey, SealKey};
 use crate::memguard::SecretBytes;
-use crate::secret_store::SecretStoreResult;
+use crate::secret_store::{SecretStoreError, SecretStoreResult};
 use crate::secret_store_capnp::{block, recipient};
 use openssl::rsa::Rsa;
 use openssl::symm;
 
 const RSA_KEY_BITS: u32 = 4096;
+
+const TAG_LENGTH: usize = 16;
 
 pub struct OpenSslRsaAesGcmCipher;
 
@@ -28,7 +30,7 @@ impl Cipher for OpenSslRsaAesGcmCipher {
   }
 
   fn seal_private_key(seal_key: &SealKey, nonce: &[u8], private_key: &PrivateKey) -> SecretStoreResult<PublicData> {
-    let mut tag = [0u8; 16];
+    let mut tag = [0u8; TAG_LENGTH];
     let mut result = symm::encrypt_aead(
       symm::Cipher::aes_256_gcm(),
       &seal_key.borrow(),
@@ -43,7 +45,20 @@ impl Cipher for OpenSslRsaAesGcmCipher {
   }
 
   fn open_private_key(seal_key: &SealKey, nonce: &[u8], crypted_key: &PublicData) -> SecretStoreResult<PrivateKey> {
-    unimplemented!()
+    if crypted_key.len() < TAG_LENGTH {
+      return Err(SecretStoreError::Cipher("Data too short".to_string()));
+    }
+    let tag_offset = crypted_key.len() - TAG_LENGTH;
+    let mut decrypted = symm::decrypt_aead(
+      symm::Cipher::aes_256_gcm(),
+      &seal_key.borrow(),
+      Some(&nonce[0..12]),
+      &[],
+      &crypted_key[0..tag_offset],
+      &crypted_key[tag_offset..],
+    )?;
+
+    Ok(SecretBytes::from(decrypted.as_mut()))
   }
 
   fn encrypt(
