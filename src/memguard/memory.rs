@@ -94,7 +94,7 @@ pub unsafe fn mlock(addr: *mut u8, len: usize) -> bool {
   #[cfg(freebsdlike)]
   libc::madvise(addr as *mut ::libc::c_void, len, ::libc::MADV_NOCORE);
 
-  ::libc::mlock(addr as *mut ::libc::c_void, len) == 0
+  libc::mlock(addr as *mut ::libc::c_void, len) == 0
 }
 
 /// Windows `VirtualLock`.

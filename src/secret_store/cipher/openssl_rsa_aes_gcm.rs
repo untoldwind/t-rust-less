@@ -1,7 +1,7 @@
 use super::{Cipher, PrivateData, PrivateKey, PublicData, PublicKey, SealKey};
 use crate::memguard::SecretBytes;
 use crate::secret_store::{SecretStoreError, SecretStoreResult};
-use crate::secret_store_capnp::{block, recipient, KeyType};
+use crate::secret_store_capnp::{block, KeyType};
 use capnp::data;
 use openssl::rsa::{Padding, Rsa};
 use openssl::symm;
@@ -39,9 +39,9 @@ impl Cipher for OpenSslRsaAesGcmCipher {
       Some(&nonce[0..12]),
       &[],
       &private_key.borrow(),
-      &mut tag[..],
+      &mut tag,
     )?;
-    result.extend_from_slice(&tag[..]);
+    result.extend_from_slice(&tag);
 
     Ok(result)
   }
@@ -83,7 +83,7 @@ impl Cipher for OpenSslRsaAesGcmCipher {
       &data.borrow(),
       &mut tag[..],
     )?;
-    public_data.extend_from_slice(&tag[..]);
+    public_data.extend_from_slice(&tag);
 
     header_builder.set_type(KeyType::RsaAesGcm);
     header_builder
