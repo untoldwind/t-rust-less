@@ -1,3 +1,4 @@
+use rand::{CryptoRng, RngCore};
 use std::convert::{AsMut, AsRef};
 use std::io;
 use std::ops::{Deref, DerefMut};
@@ -24,6 +25,24 @@ impl SecretBytes {
       SecretBytes {
         ptr,
         size: 0,
+        locks: AtomicIsize::new(0),
+      }
+    }
+  }
+
+  pub fn random<T>(rng: &mut T, size: usize) -> SecretBytes
+  where
+    T: RngCore + CryptoRng,
+  {
+    unsafe {
+      let ptr = alloc::malloc(size);
+
+      rng.fill_bytes(slice::from_raw_parts_mut(ptr.as_ptr(), size));
+      alloc::mprotect(ptr, alloc::Prot::NoAccess);
+
+      SecretBytes {
+        ptr,
+        size,
         locks: AtomicIsize::new(0),
       }
     }
@@ -109,6 +128,7 @@ impl From<&mut [u8]> for SecretBytes {
 
       copy_nonoverlapping(bytes.as_ptr(), ptr.as_ptr(), bytes.len());
       memory::memzero(bytes.as_mut_ptr(), bytes.len());
+      alloc::mprotect(ptr, alloc::Prot::NoAccess);
 
       SecretBytes {
         ptr,
@@ -205,7 +225,7 @@ impl<'a> io::Write for RefMut<'a> {
 mod tests {
   use super::*;
   use core::borrow::Borrow;
-  use rand::{distributions, thread_rng, Rng, ThreadRng};
+  use rand::{distributions, thread_rng, Rng, RngCore, ThreadRng};
   use spectral::prelude::*;
 
   fn assert_slices_equal(actual: &[u8], expected: &[u8]) {
@@ -227,6 +247,9 @@ mod tests {
     }
 
     let guarded = SecretBytes::from(source.as_mut_slice());
+
+    assert_that(&guarded.len()).is_equal_to(source.len());
+    assert_that(&guarded.borrow().as_ref().len()).is_equal_to(source.len());
 
     for b in source.iter() {
       assert_that(b).is_equal_to(0);
@@ -282,5 +305,14 @@ mod tests {
 
     assert_that(&guarded.locks()).is_equal_to(0);
     assert_slices_equal(&guarded.borrow(), &expected2);
+  }
+
+  #[test]
+  fn test_init_strong_random() {
+    let mut rng = thread_rng();
+    let random = SecretBytes::random(&mut rng, 32);
+
+    assert_that(&random.len()).is_equal_to(32);
+    assert_that(&random.borrow().as_ref().len()).is_equal_to(32);
   }
 }

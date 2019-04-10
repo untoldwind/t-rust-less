@@ -11,7 +11,7 @@ struct PublicKey {
 }
 
 struct Recipient {
-    id @0 : Data;
+    id @0 : Text;
     name @1 : Text;
     email @2 : Text;
     publicKeys @3 : List(PublicKey);
@@ -26,7 +26,7 @@ struct Ring {
     recipients @0 : List(User);
 
     struct User {
-        id @0 : Data;
+        id @0 : Text;
         privateKeys @1 : List(PrivateKey);
     }
 
@@ -48,7 +48,7 @@ struct Block {
     }
 
     struct RecipientKey {
-        id @0 : Data;
+        id @0 : Text;
         cryptedKey @1: Data;
     }
 }

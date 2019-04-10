@@ -29,7 +29,8 @@ pub trait Cipher {
   fn encrypt(
     recipients: &[(&str, &PublicKey)],
     data: &PrivateData,
-  ) -> SecretStoreResult<(block::header::Owned, PublicData)>;
+    header_builder: block::header::Builder,
+  ) -> SecretStoreResult<PublicData>;
 
   fn decrypt(
     user: (&str, &PrivateKey),

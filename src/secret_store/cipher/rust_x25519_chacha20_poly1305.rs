@@ -3,7 +3,7 @@ use crate::memguard::SecretBytes;
 use crate::secret_store::{SecretStoreError, SecretStoreResult};
 use crate::secret_store_capnp::{block, recipient};
 use chacha20_poly1305_aead::{decrypt, encrypt};
-use rand::{OsRng, RngCore};
+use rand::{thread_rng, OsRng, RngCore};
 use std::io::Cursor;
 use x25519_dalek::StaticSecret;
 
@@ -13,7 +13,7 @@ const TAG_LENGTH: usize = 16;
 
 impl Cipher for RustX25519ChaCha20Poly1305Cipher {
   fn generate_key_pair() -> SecretStoreResult<(PublicKey, PrivateKey)> {
-    let mut rng = OsRng::new().unwrap();
+    let mut rng = thread_rng();
     let private = StaticSecret::new(&mut rng);
     let public = x25519_dalek::PublicKey::from(&private);
     let mut private_raw = private.to_bytes();
@@ -58,7 +58,8 @@ impl Cipher for RustX25519ChaCha20Poly1305Cipher {
   fn encrypt(
     recipients: &[(&str, &PublicKey)],
     data: &PrivateData,
-  ) -> SecretStoreResult<(block::header::Owned, PublicData)> {
+    header_builder: block::header::Builder,
+  ) -> SecretStoreResult<PublicData> {
     unimplemented!()
   }
 
