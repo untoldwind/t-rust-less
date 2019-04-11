@@ -1,8 +1,9 @@
 use super::{Cipher, PrivateData, PrivateKey, PublicData, PublicKey, SealKey};
-use crate::memguard::SecretBytes;
+use crate::memguard::{memory, SecretBytes};
 use crate::secret_store::{SecretStoreError, SecretStoreResult};
-use crate::secret_store_capnp::{block,KeyType};
+use crate::secret_store_capnp::{block, KeyType};
 use chacha20_poly1305_aead::{decrypt, encrypt};
+use core::borrow::Borrow;
 use rand::{thread_rng, OsRng, RngCore};
 use std::io::Cursor;
 
@@ -10,9 +11,33 @@ pub struct RustX25519ChaCha20Poly1305Cipher;
 
 const TAG_LENGTH: usize = 16;
 
-fn xorbytes(src1 : &[u8], src2 : &[u8], tgt: &mut [u8]) {
-  for ((s1, s2), t) in src1.iter().zip(src2).zip(tgt){
+fn xorbytes(src1: &[u8], src2: &[u8], tgt: &mut [u8]) {
+  for ((s1, s2), t) in src1.iter().zip(src2).zip(tgt) {
     *t = *s1 ^ *s2
+  }
+}
+
+impl RustX25519ChaCha20Poly1305Cipher {
+  fn unpack_public(key: &[u8]) -> x25519_dalek::PublicKey {
+    let mut raw = [0u8; 32];
+
+    raw.copy_from_slice(&key.borrow());
+
+    x25519_dalek::PublicKey::from(raw)
+  }
+
+  fn unpack_private(key: &PrivateKey) -> x25519_dalek::StaticSecret {
+    let mut raw = [0u8; 32];
+    let ptr = raw.as_mut_ptr();
+
+    raw.copy_from_slice(&key.borrow());
+
+    let private = x25519_dalek::StaticSecret::from(raw);
+
+    unsafe {
+      memory::memzero(ptr, 32);
+    }
+    private
   }
 }
 
@@ -42,7 +67,7 @@ impl Cipher for RustX25519ChaCha20Poly1305Cipher {
     Ok(result)
   }
 
-  fn open_private_key(seal_key: &SealKey, nonce: &[u8], crypted_key: &PublicData) -> SecretStoreResult<PrivateKey> {
+  fn open_private_key(seal_key: &SealKey, nonce: &[u8], crypted_key: &[u8]) -> SecretStoreResult<PrivateKey> {
     if crypted_key.len() < TAG_LENGTH {
       return Err(SecretStoreError::Cipher("Data too short".to_string()));
     }
@@ -83,9 +108,7 @@ impl Cipher for RustX25519ChaCha20Poly1305Cipher {
     for (idx, (recipient_id, recipient_public_key)) in recipients.iter().enumerate() {
       let ephemeral_private = x25519_dalek::EphemeralSecret::new(&mut rng);
       let ephemeral_public = x25519_dalek::PublicKey::from(&ephemeral_private);
-      let mut recipient_public_raw = [0u8; 32] ;
-      recipient_public_raw.copy_from_slice(recipient_public_key);
-      let recipient_public = x25519_dalek::PublicKey::from(recipient_public_raw);
+      let recipient_public = Self::unpack_public(recipient_public_key);
       let shared_secret = ephemeral_private.diffie_hellman(&recipient_public);
 
       let mut recipient_key = recipient_keys.reborrow().get(idx as u32);
@@ -102,8 +125,53 @@ impl Cipher for RustX25519ChaCha20Poly1305Cipher {
   fn decrypt(
     user: (&str, &PrivateKey),
     header: block::header::Reader,
-    crypted: PublicData,
+    crypted: &[u8],
   ) -> SecretStoreResult<PrivateData> {
-    unimplemented!()
+    if crypted.len() < TAG_LENGTH {
+      return Err(SecretStoreError::Cipher("Data too short".to_string()));
+    }
+    let nonce = header.get_common_key()?;
+
+    if nonce.len() != 12 {
+      return Err(SecretStoreError::Cipher("Invalid nonce".to_string()));
+    }
+
+    for recipient in header.get_recipients()?.iter() {
+      if user.0 != recipient.get_id()? {
+        continue;
+      }
+      let crypted_key = recipient.get_crypted_key()?;
+
+      if crypted_key.len() != 64 {
+        return Err(SecretStoreError::Cipher("Invalid crypted key".to_string()));
+      }
+      let mut ephemeral_public_raw = [0u8; 32];
+      ephemeral_public_raw.copy_from_slice(&crypted_key[0..32]);
+      let ephemeral_public = x25519_dalek::PublicKey::from(ephemeral_public_raw);
+      let recipient_private = Self::unpack_private(&user.1);
+      let shared_secret = recipient_private.diffie_hellman(&ephemeral_public);
+      let mut seal_key = SecretBytes::zeroed(32);
+
+      xorbytes(
+        shared_secret.as_bytes(),
+        &crypted_key[32..64],
+        seal_key.borrow_mut().as_mut(),
+      );
+
+      let tag_offset = crypted.len() - TAG_LENGTH;
+      let mut decrypted = SecretBytes::with_capacity(crypted.len() - TAG_LENGTH);
+
+      decrypt(
+        &seal_key.borrow(),
+        nonce,
+        &[],
+        &crypted[0..tag_offset],
+        &crypted[tag_offset..],
+        &mut decrypted.borrow_mut(),
+      )?;
+
+      return Ok(decrypted);
+    }
+    Err(SecretStoreError::NoRecipient)
   }
 }

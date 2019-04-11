@@ -42,7 +42,6 @@ mod tests {
   fn test_derive_regression() {
     assert_that(&RustArgon2i::min_nonce_len()).is_greater_than_or_equal_to(8);
 
-    let nonce = b"12345678";
     let mut passphrase_raw: Vec<u8> = Vec::from(&b"The password"[..]);
     let passphrase = SecretBytes::from(passphrase_raw.as_mut());
 

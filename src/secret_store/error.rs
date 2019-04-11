@@ -5,6 +5,7 @@ pub enum SecretStoreError {
   KeyDerivation(String),
   Cipher(String),
   IO(String),
+  NoRecipient,
 }
 
 impl fmt::Display for SecretStoreError {
@@ -13,6 +14,7 @@ impl fmt::Display for SecretStoreError {
       SecretStoreError::KeyDerivation(error) => write!(f, "Key derivation error: {}", error)?,
       SecretStoreError::Cipher(error) => write!(f, "Cipher error: {}", error)?,
       SecretStoreError::IO(error) => write!(f, "IO: {}", error)?,
+      SecretStoreError::NoRecipient => write!(f, "User is not a recipient of this message")?,
     }
     Ok(())
   }
@@ -41,5 +43,11 @@ impl From<std::io::Error> for SecretStoreError {
 impl From<chacha20_poly1305_aead::DecryptError> for SecretStoreError {
   fn from(error: chacha20_poly1305_aead::DecryptError) -> Self {
     SecretStoreError::Cipher(format!("{}", error))
+  }
+}
+
+impl From<capnp::Error> for SecretStoreError {
+  fn from(error: capnp::Error) -> Self {
+    SecretStoreError::IO(format!("{}", error))
   }
 }

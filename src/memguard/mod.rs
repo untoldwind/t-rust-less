@@ -7,7 +7,7 @@ use std::slice;
 use std::sync::atomic::{AtomicIsize, Ordering};
 
 mod alloc;
-mod memory;
+pub mod memory;
 
 pub struct SecretBytes {
   ptr: NonNull<u8>,
@@ -25,6 +25,21 @@ impl SecretBytes {
       SecretBytes {
         ptr,
         size: 0,
+        locks: AtomicIsize::new(0),
+      }
+    }
+  }
+
+  pub fn zeroed(size: usize) -> SecretBytes {
+    unsafe {
+      let ptr = alloc::malloc(size);
+
+      memory::memzero(ptr.as_ptr(), size);
+      alloc::mprotect(ptr, alloc::Prot::NoAccess);
+
+      SecretBytes {
+        ptr,
+        size,
         locks: AtomicIsize::new(0),
       }
     }
@@ -208,10 +223,14 @@ impl<'a> io::Write for RefMut<'a> {
     }
     let transfer = available.min(buf.len());
 
-    self.bytes.size += transfer;
     unsafe {
-      copy_nonoverlapping(buf.as_ptr(), self.bytes.ptr.as_ptr(), transfer);
+      copy_nonoverlapping(
+        buf.as_ptr(),
+        self.bytes.ptr.as_ptr().offset(self.bytes.size as isize),
+        transfer,
+      );
     }
+    self.bytes.size += transfer;
 
     Ok(transfer)
   }

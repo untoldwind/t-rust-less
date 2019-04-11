@@ -46,7 +46,7 @@ impl Cipher for OpenSslRsaAesGcmCipher {
     Ok(result)
   }
 
-  fn open_private_key(seal_key: &SealKey, nonce: &[u8], crypted_key: &PublicData) -> SecretStoreResult<PrivateKey> {
+  fn open_private_key(seal_key: &SealKey, nonce: &[u8], crypted_key: &[u8]) -> SecretStoreResult<PrivateKey> {
     if crypted_key.len() < TAG_LENGTH {
       return Err(SecretStoreError::Cipher("Data too short".to_string()));
     }
@@ -113,8 +113,42 @@ impl Cipher for OpenSslRsaAesGcmCipher {
   fn decrypt(
     user: (&str, &PrivateKey),
     header: block::header::Reader,
-    crypted: PublicData,
+    crypted: &[u8],
   ) -> SecretStoreResult<PrivateData> {
-    unimplemented!()
+    if crypted.len() < TAG_LENGTH {
+      return Err(SecretStoreError::Cipher("Data too short".to_string()));
+    }
+    let nonce = header.get_common_key()?;
+
+    if nonce.len() != 12 {
+      return Err(SecretStoreError::Cipher("Invalid nonce".to_string()));
+    }
+
+    for recipient in header.get_recipients()?.iter() {
+      if user.0 != recipient.get_id()? {
+        continue;
+      }
+      let crypted_key = recipient.get_crypted_key()?;
+      let private_key = Rsa::private_key_from_der(&user.1.borrow())?;
+      let mut seal_key = SecretBytes::zeroed(crypted_key.len());
+      let seal_key_len =
+        private_key.private_decrypt(&crypted_key, seal_key.borrow_mut().as_mut(), Padding::PKCS1_OAEP)?;
+
+      if seal_key_len != 32 {
+        return Err(SecretStoreError::Cipher("Decrypt seal key failed".to_string()));
+      }
+
+      let tag_offset = crypted.len() - TAG_LENGTH;
+      let mut decrypted = symm::decrypt_aead(
+        symm::Cipher::aes_256_gcm(),
+        &seal_key.borrow()[..32],
+        Some(nonce),
+        &[],
+        &crypted[0..tag_offset],
+        &crypted[tag_offset..],
+      )?;
+      return Ok(SecretBytes::from(decrypted.as_mut()));
+    }
+    Err(SecretStoreError::NoRecipient)
   }
 }

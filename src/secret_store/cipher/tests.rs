@@ -2,9 +2,10 @@ use super::openssl_rsa_aes_gcm::OpenSslRsaAesGcmCipher;
 use super::rust_x25519_chacha20_poly1305::RustX25519ChaCha20Poly1305Cipher;
 use super::Cipher;
 use crate::memguard::SecretBytes;
+use crate::secret_store_capnp::{block, KeyType};
+use chacha20_poly1305_aead::decrypt;
 use rand::{distributions, thread_rng, Rng, ThreadRng};
 use spectral::prelude::*;
-use crate::secret_store_capnp::{block, KeyType};
 
 fn assert_slices_equal(actual: &[u8], expected: &[u8]) {
   assert!(actual == expected)
@@ -19,8 +20,8 @@ where
 }
 
 fn common_private_seal_open<T>()
-  where
-    T: Cipher,
+where
+  T: Cipher,
 {
   let (public_key, private_key) = T::generate_key_pair().unwrap();
 
@@ -44,8 +45,8 @@ fn common_private_seal_open<T>()
 }
 
 fn common_data_encrypt_decrypt<T>()
-  where
-    T: Cipher,
+where
+  T: Cipher,
 {
   let mut rng = thread_rng();
   let private_data = SecretBytes::random(&mut rng, 1234);
@@ -60,8 +61,42 @@ fn common_data_encrypt_decrypt<T>()
   let mut block = message.init_root::<block::Builder>();
   let headers = block.reborrow().init_headers(1);
 
-  let crypted_data = T::encrypt(&[(id1, &public_key1), (id2, &public_key2)], &private_data, headers.get(0)).unwrap();
-  block.init_content(crypted_data.len() as u32).copy_from_slice(&crypted_data);
+  let crypted_data = T::encrypt(
+    &[(id1, &public_key1), (id2, &public_key2)],
+    &private_data,
+    headers.get(0),
+  )
+  .unwrap();
+  block
+    .init_content(crypted_data.len() as u32)
+    .copy_from_slice(&crypted_data);
+
+  let message_payload = capnp::serialize::write_message_to_words(&message);
+
+  let message_reader =
+    capnp::serialize::read_message_from_words(&message_payload, capnp::message::ReaderOptions::new()).unwrap();
+  let block_reader = message_reader.get_root::<block::Reader>().unwrap();
+  let cryped_content = block_reader.get_content().unwrap();
+
+  assert_slices_equal(cryped_content, &crypted_data);
+
+  let decrypted1 = T::decrypt(
+    (id1, &private_key1),
+    block_reader.get_headers().unwrap().get(0),
+    cryped_content,
+  )
+  .unwrap();
+
+  assert_slices_equal(&decrypted1.borrow(), &private_data.borrow());
+
+  let decrypted2 = T::decrypt(
+    (id2, &private_key2),
+    block_reader.get_headers().unwrap().get(0),
+    cryped_content,
+  )
+  .unwrap();
+
+  assert_slices_equal(&decrypted2.borrow(), &private_data.borrow());
 }
 
 #[test]

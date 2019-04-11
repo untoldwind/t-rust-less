@@ -24,7 +24,7 @@ pub trait Cipher {
 
   fn seal_private_key(seal_key: &SealKey, nonce: &[u8], private_key: &PrivateKey) -> SecretStoreResult<PublicData>;
 
-  fn open_private_key(seal_key: &SealKey, nonce: &[u8], crypted_key: &PublicData) -> SecretStoreResult<PrivateKey>;
+  fn open_private_key(seal_key: &SealKey, nonce: &[u8], crypted_key: &[u8]) -> SecretStoreResult<PrivateKey>;
 
   fn encrypt(
     recipients: &[(&str, &PublicKey)],
@@ -35,7 +35,7 @@ pub trait Cipher {
   fn decrypt(
     user: (&str, &PrivateKey),
     header: block::header::Reader,
-    crypted: PublicData,
+    crypted: &[u8],
   ) -> SecretStoreResult<PrivateData>;
 }
 
