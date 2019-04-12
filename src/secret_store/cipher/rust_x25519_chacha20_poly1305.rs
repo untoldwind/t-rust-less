@@ -27,17 +27,11 @@ impl RustX25519ChaCha20Poly1305Cipher {
   }
 
   fn unpack_private(key: &PrivateKey) -> x25519_dalek::StaticSecret {
-    let mut raw = [0u8; 32];
-    let ptr = raw.as_mut_ptr();
+    let mut raw = [0u8; 32]; // StaticSecrets takes ownership of this an clears it on drop
 
     raw.copy_from_slice(&key.borrow());
 
-    let private = x25519_dalek::StaticSecret::from(raw);
-
-    unsafe {
-      memory::memzero(ptr, 32);
-    }
-    private
+    x25519_dalek::StaticSecret::from(raw)
   }
 }
 
