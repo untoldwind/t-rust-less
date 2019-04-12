@@ -1,4 +1,4 @@
-use super::{Change, ChangeLog, Operation, Store, StoreError, StoreResult};
+use super::{BlockStore, Change, ChangeLog, Operation, StoreError, StoreResult};
 use data_encoding::HEXLOWER;
 use sha2::{Digest, Sha256};
 use std::fs::{read_dir, DirBuilder, File, OpenOptions};
@@ -7,14 +7,19 @@ use std::io::{self, BufReader};
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 
+/// Block store implementation based on a directory of the local file-system.
+///
+/// This file-layout is structured so that the directory may be shared between multiple clients
+/// via rsync, dropbox or similiar tools/services.
+///
 #[derive(Debug)]
-pub struct LocalDir {
+pub struct LocalDirBlockStore {
   base_dir: RwLock<PathBuf>,
 }
 
-impl LocalDir {
-  pub fn new<P: Into<PathBuf>>(base_dir: P) -> LocalDir {
-    LocalDir {
+impl LocalDirBlockStore {
+  pub fn new<P: Into<PathBuf>>(base_dir: P) -> LocalDirBlockStore {
+    LocalDirBlockStore {
       base_dir: RwLock::new(base_dir.into()),
     }
   }
@@ -66,7 +71,7 @@ impl LocalDir {
   }
 }
 
-impl Store for LocalDir {
+impl BlockStore for LocalDirBlockStore {
   fn get_ring(&self) -> StoreResult<Option<Vec<u8>>> {
     let base_dir = self.base_dir.read()?;
     Self::read_optional_file(base_dir.join("ring"))

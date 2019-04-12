@@ -26,7 +26,7 @@ pub use self::error::{StoreError, StoreResult};
 /// As a rule a block store is supposed to be distributed among multiple clients, each able
 /// to asynchronously create additions to it.
 ///
-pub trait Store {
+pub trait BlockStore {
   /// Get/read the (private) ring block.
   ///
   /// Every store has zero or one (private) ring containing all the relevant
@@ -93,12 +93,12 @@ pub trait Store {
   fn commit(&mut self, node: &str, changes: &[Change]) -> StoreResult<()>;
 }
 
-fn open_store(url: &str) -> StoreResult<Box<Store>> {
+fn open_store(url: &str) -> StoreResult<Box<BlockStore>> {
   let store_url = Url::parse(url)?;
 
   match store_url.scheme() {
-    "file" => Ok(Box::new(local_dir::LocalDir::new(store_url.path()))),
-    "memory" => Ok(Box::new(memory::Memory::new())),
+    "file" => Ok(Box::new(local_dir::LocalDirBlockStore::new(store_url.path()))),
+    "memory" => Ok(Box::new(memory::MemoryBlockStore::new())),
     _ => Err(StoreError::InvalidStoreUrl(url.to_string())),
   }
 }

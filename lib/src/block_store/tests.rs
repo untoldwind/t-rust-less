@@ -1,16 +1,16 @@
-use super::{open_store, Store, StoreError};
+use super::{open_store, BlockStore, StoreError};
 use rand::{distributions, thread_rng, Rng, ThreadRng};
 use spectral::prelude::*;
 use tempdir::TempDir;
 
-fn common_store_tests(store: &mut Store) {
+fn common_store_tests(store: &mut BlockStore) {
   let mut rng = thread_rng();
   common_test_ring(store, &mut rng);
   common_test_index(store, &mut rng);
   common_test_blocks(store, &mut rng);
 }
 
-fn common_test_ring(store: &mut Store, rng: &mut ThreadRng) {
+fn common_test_ring(store: &mut BlockStore, rng: &mut ThreadRng) {
   let ring1 = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
   let ring2 = rng.sample_iter(&distributions::Standard).take(300).collect::<Vec<u8>>();
 
@@ -21,7 +21,7 @@ fn common_test_ring(store: &mut Store, rng: &mut ThreadRng) {
   assert_that(&store.get_ring()).is_ok_containing(Some(ring2));
 }
 
-fn common_test_index(store: &mut Store, rng: &mut ThreadRng) {
+fn common_test_index(store: &mut BlockStore, rng: &mut ThreadRng) {
   let node1 = rng
     .sample_iter(&distributions::Alphanumeric)
     .take(40)
@@ -47,7 +47,7 @@ fn common_test_index(store: &mut Store, rng: &mut ThreadRng) {
   assert_that(&store.get_index(&node2)).is_ok_containing(Some(node2_index2));
 }
 
-fn common_test_blocks(store: &mut Store, rng: &mut ThreadRng) {
+fn common_test_blocks(store: &mut BlockStore, rng: &mut ThreadRng) {
   assert_that(&store.get_block("00000000000")).is_err_containing(StoreError::InvalidBlock("00000000000".to_string()));
 
   let block1 = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();

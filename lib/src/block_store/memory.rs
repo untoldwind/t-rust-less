@@ -1,10 +1,15 @@
-use super::{Change, ChangeLog, Operation, Store, StoreError, StoreResult};
+use super::{BlockStore, Change, ChangeLog, Operation, StoreError, StoreResult};
 use data_encoding::HEXLOWER;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::sync::RwLock;
 
-pub struct Memory {
+/// Memory based reference implementation of a block store.
+///
+/// This is mostly useful for unit-testing, but might have some other usa-cases in
+/// the future.
+///
+pub struct MemoryBlockStore {
   ring: RwLock<Option<Vec<u8>>>,
   pub_ring: RwLock<Option<Vec<u8>>>,
   indexes: RwLock<HashMap<String, Vec<u8>>>,
@@ -12,9 +17,9 @@ pub struct Memory {
   changes: RwLock<HashMap<String, Vec<Change>>>,
 }
 
-impl Memory {
-  pub fn new() -> Memory {
-    Memory {
+impl MemoryBlockStore {
+  pub fn new() -> MemoryBlockStore {
+    MemoryBlockStore {
       ring: RwLock::new(None),
       pub_ring: RwLock::new(None),
       indexes: RwLock::new(HashMap::new()),
@@ -32,7 +37,7 @@ impl Memory {
   }
 }
 
-impl Store for Memory {
+impl BlockStore for MemoryBlockStore {
   fn get_ring(&self) -> StoreResult<Option<Vec<u8>>> {
     let ring = self.ring.read()?;
 
