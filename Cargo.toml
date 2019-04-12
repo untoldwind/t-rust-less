@@ -1,48 +1,5 @@
-[package]
-name = "t-rust-less"
-version = "0.1.0"
-authors = ["Untoldwind <landru@untoldwind.net>"]
-build = "build.rs"
-edition = "2018"
-
-[dependencies]
-serde = "1"
-serde_derive = "1"
-serde_json = "1"
-data-encoding = "2"
-openssl = { version = "0", features = ["vendored"] }
-byteorder = "1.2.4"
-chrono = { version = "0", features = ["serde"] }
-url = "1"
-circular = "0"
-num-derive = "0"
-num-traits = "0"
-sha2 = "0"
-x25519-dalek = "0"
-chacha20-poly1305-aead = "0"
-clap = { version = "2", default-features = false, features = ["suggestions", "color"]}
-capnp = "0"
-rand = "0.5"
-rust-argon2 = "0"
-# zxcvbn = "1"
-
-[dev-dependencies]
-tempdir = "0"
-spectral = "0"
-
-[target.'cfg(unix)'.dependencies]
-xcb = { version = "0.8", features = [ "thread", "xfixes" ] }
-libc = "0"
-
-[target.'cfg(windows)'.dependencies]
-winapi = "0"
-
-[target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
-mach_o_sys = "0"
-
-[build-dependencies]
-clap = { version = "2", default-features = false, features = ["suggestions", "color"]}
-capnpc = "0"
-
-[patch.crates-io]
-x25519-dalek = { git = "https://github.com/untoldwind/x25519-dalek.git"}
+[workspace]
+members = [
+"lib",
+"cli"
+]

@@ -1,15 +1,6 @@
-use crate::clipboard::SelectionProvider;
+use t_rust_less_lib::clipboard::SelectionProvider;
 
-mod api;
 mod cli;
-mod secrets_store;
-#[allow(dead_code)]
-mod secrets_store_capnp {
-  include!(concat!(env!("OUT_DIR"), "/src/secrets_store/secrets_store_capnp.rs"));
-}
-mod clipboard;
-mod memguard;
-mod store;
 
 pub struct TestSel {
   counter: u32,

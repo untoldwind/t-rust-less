@@ -22,10 +22,4 @@ fn main() {
   app.gen_completions("t-rust-less", Shell::Fish, &outdir);
   app.gen_completions("t-rust-less", Shell::Zsh, &outdir);
   app.gen_completions("t-rust-less", Shell::PowerShell, &outdir);
-
-  capnpc::CompilerCommand::new()
-    .file("src/secrets_store/secrets_store.capnp")
-    .edition(capnpc::RustEdition::Rust2018)
-    .run()
-    .expect("compiling schema");
 }
