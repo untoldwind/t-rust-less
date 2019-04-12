@@ -38,6 +38,10 @@ impl RustX25519ChaCha20Poly1305Cipher {
 }
 
 impl Cipher for RustX25519ChaCha20Poly1305Cipher {
+  fn key_type(&self) -> KeyType {
+    KeyType::Ed25519Chacha20Poly1305
+  }
+
   fn generate_key_pair(&self) -> SecretStoreResult<(PublicKey, PrivateKey)> {
     let mut rng = thread_rng();
     let private = x25519_dalek::StaticSecret::new(&mut rng);
@@ -102,7 +106,7 @@ impl Cipher for RustX25519ChaCha20Poly1305Cipher {
     let tag = encrypt(&seal_key.borrow(), &nonce, &[], &data.borrow(), &mut public_data)?;
     public_data.extend_from_slice(&tag);
 
-    header_builder.set_type(KeyType::Ed25519Chacha20Poly1305);
+    header_builder.set_type(self.key_type());
     header_builder.reborrow().init_common_key(12).copy_from_slice(&nonce);
 
     let mut recipient_keys = header_builder.init_recipients(recipients.len() as u32);
@@ -130,6 +134,9 @@ impl Cipher for RustX25519ChaCha20Poly1305Cipher {
     header: block::header::Reader,
     crypted: &[u8],
   ) -> SecretStoreResult<PrivateData> {
+    if header.get_type()? != self.key_type() {
+      return Err(SecretStoreError::Cipher("Invalid block header".to_string()));
+    }
     if crypted.len() < TAG_LENGTH {
       return Err(SecretStoreError::Cipher("Data too short".to_string()));
     }

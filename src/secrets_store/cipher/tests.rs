@@ -3,8 +3,7 @@ use rand::{distributions, thread_rng, Rng, ThreadRng};
 use spectral::prelude::*;
 
 use crate::memguard::SecretBytes;
-use crate::secrets_store::cipher::openssl_rsa_aes_gcm::OPEN_SSL_RSA_AES_GCM;
-use crate::secrets_store::cipher::rust_x25519_chacha20_poly1305::RUST_X25519CHA_CHA20POLY1305;
+use crate::secrets_store::cipher::{OPEN_SSL_RSA_AES_GCM, RUST_X25519CHA_CHA20POLY1305};
 use crate::secrets_store_capnp::{block, KeyType};
 
 use super::openssl_rsa_aes_gcm::OpenSslRsaAesGcmCipher;

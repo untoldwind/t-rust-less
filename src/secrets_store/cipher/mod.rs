@@ -1,21 +1,30 @@
-use super::SecretStoreResult;
+use std::collections::HashMap;
+
 use crate::memguard::SecretBytes;
-use crate::secrets_store_capnp::{block, recipient};
+use crate::secrets_store_capnp::{block, recipient, KeyType};
+
+use super::SecretStoreResult;
 
 mod openssl_rsa_aes_gcm;
-mod rust_argon2i;
+mod rust_argon2id;
 mod rust_x25519_chacha20_poly1305;
+
+pub use self::openssl_rsa_aes_gcm::OPEN_SSL_RSA_AES_GCM;
+pub use self::rust_argon2id::RUST_ARGON2_ID;
+pub use self::rust_x25519_chacha20_poly1305::RUST_X25519CHA_CHA20POLY1305;
 
 #[cfg(test)]
 mod tests;
 
-type PublicKey = Vec<u8>;
-type PrivateKey = SecretBytes;
+pub type PublicKey = Vec<u8>;
+pub type PrivateKey = SecretBytes;
 type PublicData = Vec<u8>;
 type PrivateData = SecretBytes;
 type SealKey = SecretBytes;
 
-pub trait Cipher {
+pub trait Cipher: Send + Sync {
+  fn key_type(&self) -> KeyType;
+
   fn generate_key_pair(&self) -> SecretStoreResult<(PublicKey, PrivateKey)>;
 
   fn seal_key_length(&self) -> usize;

@@ -3,8 +3,8 @@ use crate::api::{
 };
 
 mod cipher;
-mod dual_lane;
 mod error;
+mod multi_lane;
 mod padding;
 
 pub use self::error::{SecretStoreError, SecretStoreResult};

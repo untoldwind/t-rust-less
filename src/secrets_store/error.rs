@@ -53,3 +53,9 @@ impl From<capnp::Error> for SecretStoreError {
     SecretStoreError::IO(format!("{}", error))
   }
 }
+
+impl From<capnp::NotInSchema> for SecretStoreError {
+  fn from(error: capnp::NotInSchema) -> Self {
+    SecretStoreError::IO(format!("{}", error))
+  }
+}

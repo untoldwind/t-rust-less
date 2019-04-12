@@ -15,6 +15,10 @@ pub static OPEN_SSL_RSA_AES_GCM: OpenSslRsaAesGcmCipher = OpenSslRsaAesGcmCipher
 pub struct OpenSslRsaAesGcmCipher();
 
 impl Cipher for OpenSslRsaAesGcmCipher {
+  fn key_type(&self) -> KeyType {
+    KeyType::RsaAesGcm
+  }
+
   fn generate_key_pair(&self) -> SecretStoreResult<(PublicKey, PrivateKey)> {
     let private = Rsa::generate(RSA_KEY_BITS)?;
     let mut private_der_raw = private.private_key_to_der()?;
@@ -92,7 +96,7 @@ impl Cipher for OpenSslRsaAesGcmCipher {
     )?;
     public_data.extend_from_slice(&tag);
 
-    header_builder.set_type(KeyType::RsaAesGcm);
+    header_builder.set_type(self.key_type());
     header_builder
       .reborrow()
       .init_common_key(12)
@@ -123,6 +127,9 @@ impl Cipher for OpenSslRsaAesGcmCipher {
     header: block::header::Reader,
     crypted: &[u8],
   ) -> SecretStoreResult<PrivateData> {
+    if header.get_type()? != self.key_type() {
+      return Err(SecretStoreError::Cipher("Invalid block header".to_string()));
+    }
     if crypted.len() < TAG_LENGTH {
       return Err(SecretStoreError::Cipher("Data too short".to_string()));
     }
