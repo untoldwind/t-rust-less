@@ -1,7 +1,7 @@
 use super::{KeyDerivation, SealKey};
 use crate::memguard::SecretBytes;
-use crate::secret_store::SecretStoreResult;
-use crate::secret_store_capnp::{block, recipient};
+use crate::secrets_store::SecretStoreResult;
+use crate::secrets_store_capnp::{block, recipient};
 use argon2::{self, Config, ThreadMode, Variant, Version};
 
 pub struct RustArgon2i;

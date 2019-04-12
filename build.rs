@@ -24,7 +24,7 @@ fn main() {
   app.gen_completions("t-rust-less", Shell::PowerShell, &outdir);
 
   capnpc::CompilerCommand::new()
-    .file("src/secret_store/secret_store.capnp")
+    .file("src/secrets_store/secrets_store.capnp")
     .edition(capnpc::RustEdition::Rust2018)
     .run()
     .expect("compiling schema");

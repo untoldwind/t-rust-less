@@ -1,6 +1,6 @@
 use super::SecretStoreResult;
 use crate::memguard::SecretBytes;
-use crate::secret_store_capnp::{block, recipient};
+use crate::secrets_store_capnp::{block, recipient};
 
 mod openssl_rsa_aes_gcm;
 mod rust_argon2i;

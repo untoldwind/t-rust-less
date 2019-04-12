@@ -1,7 +1,7 @@
-use super::{Padding, NonZeroPadding};
+use super::{NonZeroPadding, Padding};
 use crate::memguard::SecretBytes;
-use rand::{thread_rng, RngCore, CryptoRng, ThreadRng};
 use core::borrow::BorrowMut;
+use rand::{thread_rng, CryptoRng, RngCore, ThreadRng};
 
 fn assert_slices_equal(actual: &[u8], expected: &[u8]) {
   assert!(actual == expected)
@@ -9,7 +9,8 @@ fn assert_slices_equal(actual: &[u8], expected: &[u8]) {
 
 fn common_padding_tests<T>(data: SecretBytes)
 where
-  T: Padding {
+  T: Padding,
+{
   let mut rng = thread_rng();
 
   for pad_align in &[100, 128, 200, 256, 1000, 1024] {
@@ -43,4 +44,3 @@ fn test_non_zero_padding() {
   common_padding_tests::<NonZeroPadding>(clean_zero_bytes(SecretBytes::random(&mut rng, 12345)));
   common_padding_tests::<NonZeroPadding>(clean_zero_bytes(SecretBytes::random(&mut rng, 123456)));
 }
-

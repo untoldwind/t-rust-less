@@ -107,7 +107,7 @@ impl Clipboard {
     self
       .handle
       .join()
-      .map_err(|_| ClipboardError("wait timeout".to_string()));
+      .map_err(|_| ClipboardError("wait timeout".to_string()))?;
     Ok(())
   }
 }

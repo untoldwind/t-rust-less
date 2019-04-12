@@ -1,7 +1,7 @@
 use super::{Cipher, PrivateData, PrivateKey, PublicData, PublicKey, SealKey};
 use crate::memguard::{memory, SecretBytes};
-use crate::secret_store::{SecretStoreError, SecretStoreResult};
-use crate::secret_store_capnp::{block, KeyType};
+use crate::secrets_store::{SecretStoreError, SecretStoreResult};
+use crate::secrets_store_capnp::{block, KeyType};
 use chacha20_poly1305_aead::{decrypt, encrypt};
 use core::borrow::Borrow;
 use rand::{thread_rng, OsRng, RngCore};

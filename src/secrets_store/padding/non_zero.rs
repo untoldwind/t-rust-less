@@ -1,6 +1,6 @@
 use super::Padding;
 use crate::memguard::SecretBytes;
-use crate::secret_store::{SecretStoreError, SecretStoreResult};
+use crate::secrets_store::{SecretStoreError, SecretStoreResult};
 use rand::{CryptoRng, RngCore};
 use std::io::Write;
 
@@ -35,9 +35,9 @@ impl Padding for NonZeroPadding {
     {
       let mut padded_writer = padded_data.borrow_mut();
 
-        padded_writer.write_all(&pad_bytes[..first_zero + 1])?;
-        padded_writer.write_all(&data.borrow())?;
-        padded_writer.write_all(&pad_bytes[first_zero..])?;
+      padded_writer.write_all(&pad_bytes[..first_zero + 1])?;
+      padded_writer.write_all(&data.borrow())?;
+      padded_writer.write_all(&pad_bytes[first_zero..])?;
     }
 
     Ok(padded_data)
