@@ -1,7 +1,9 @@
-use super::{ClipboardError, ClipboardResult, SelectionProvider};
 use std::sync::Arc;
 use std::thread;
+
 use xcb::{Atom, Connection, Window};
+
+use super::{ClipboardError, ClipboardResult, SelectionProvider};
 
 macro_rules! try_continue {
   ( $expr:expr ) => {

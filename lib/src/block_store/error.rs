@@ -1,6 +1,5 @@
 use std::convert::From;
 use std::fmt;
-use std::sync::PoisonError;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum StoreError {

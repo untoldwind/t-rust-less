@@ -47,7 +47,7 @@ impl ZeroingString {
 impl Drop for ZeroingString {
   fn drop(&mut self) {
     unsafe {
-      let mut bytes = self.0.as_bytes_mut();
+      let bytes = self.0.as_bytes_mut();
 
       ptr::write_bytes(bytes.as_mut_ptr(), 0, bytes.len());
     }
@@ -81,7 +81,7 @@ mod tests {
       assert!(zeroing.as_slice() == &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
     }
     {
-      let mut zeroing = ZeroingString::wrap("0123456789".to_string());
+      let zeroing = ZeroingString::wrap("0123456789".to_string());
 
       assert!(zeroing.as_str() == "0123456789")
     }

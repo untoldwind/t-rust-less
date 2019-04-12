@@ -1,5 +1,3 @@
-use crate::clipboard::SelectionProvider;
-
 pub mod api;
 pub mod block_store;
 pub mod clipboard;

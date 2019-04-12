@@ -197,8 +197,8 @@ impl BlockStore for LocalDirBlockStore {
 
     for change in changes {
       match change.op {
-        Operation::Add => write!(log_file, "A {}\n", change.block)?,
-        Operation::Delete => write!(log_file, "D {}\n", change.block)?,
+        Operation::Add => writeln!(log_file, "A {}", change.block)?,
+        Operation::Delete => writeln!(log_file, "D {}", change.block)?,
       }
     }
     log_file.flush()?;

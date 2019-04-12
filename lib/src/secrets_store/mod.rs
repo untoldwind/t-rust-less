@@ -11,16 +11,16 @@ pub use self::error::{SecretStoreError, SecretStoreResult};
 use crate::memguard::SecretBytes;
 
 pub trait SecretsStore {
-  fn status() -> SecretStoreResult<Status>;
+  fn status(&self) -> SecretStoreResult<Status>;
 
-  fn lock() -> SecretStoreResult<()>;
-  fn unlock(identity: &Identity, passphrase: SecretBytes) -> SecretStoreResult<()>;
+  fn lock(&mut self) -> SecretStoreResult<()>;
+  fn unlock(&mut self, identity: &Identity, passphrase: SecretBytes) -> SecretStoreResult<()>;
 
-  fn identities() -> SecretStoreResult<Vec<Identity>>;
-  fn add_identity(identity: Identity, passphrase: SecretBytes) -> SecretStoreResult<()>;
+  fn identities(&self) -> SecretStoreResult<Vec<Identity>>;
+  fn add_identity(&mut self, identity: Identity, passphrase: SecretBytes) -> SecretStoreResult<()>;
 
-  fn list(filter: &SecretListFilter) -> SecretStoreResult<SecretList>;
+  fn list(&self, filter: &SecretListFilter) -> SecretStoreResult<SecretList>;
 
-  fn add(id: &str, secret_type: SecretType, secret_version: SecretVersion) -> SecretStoreResult<()>;
-  fn get(id: &str) -> SecretStoreResult<Secret>;
+  fn add(&mut self, id: &str, secret_type: SecretType, secret_version: SecretVersion) -> SecretStoreResult<()>;
+  fn get(&self, id: &str) -> SecretStoreResult<Secret>;
 }

@@ -1,5 +1,6 @@
 use super::memory;
 use rand::{OsRng, RngCore};
+use std::alloc::{alloc, dealloc, Layout};
 use std::mem;
 use std::ptr::{self, NonNull};
 use std::sync::Once;
@@ -33,48 +34,16 @@ unsafe fn alloc_init() {
   OsRng::new().unwrap().fill_bytes(&mut CANARY);
 }
 
-#[cfg(unix)]
 #[inline]
 pub unsafe fn alloc_aligned(size: usize) -> NonNull<u8> {
-  let mut memptr = mem::uninitialized();
-
-  if libc::posix_memalign(&mut memptr, PAGE_SIZE, size) == 0 {
-    NonNull::new_unchecked(memptr as *mut u8)
-  } else {
-    panic!("alloc_aligned failed")
-  }
+  let layout = Layout::from_size_align_unchecked(size, PAGE_SIZE);
+  NonNull::new_unchecked(alloc(layout))
 }
 
-#[cfg(windows)]
 #[inline]
-pub unsafe fn alloc_aligned(size: usize) -> NonNull<u8> {
-  let memptr = winapi::um::memoryapi::VirtualAlloc(
-    ptr::null_mut(),
-    size as winapi::shared::basetsd::SIZE_T,
-    winapi::um::winnt::MEM_COMMIT | ::winapi::um::winnt::MEM_RESERVE,
-    winapi::um::winnt::PAGE_READWRITE,
-  );
-
-  match NonNull::new(memptr as *mut u8) {
-    Some(ptr) => ptr,
-    _ => panic!("alloc_aligned failed"),
-  }
-}
-
-#[cfg(unix)]
-#[inline]
-pub unsafe fn free_aligned(memptr: *mut u8, _size: usize) {
-  libc::free(memptr as *mut libc::c_void);
-}
-
-#[cfg(windows)]
-#[inline]
-pub unsafe fn free_aligned(memptr: *mut u8, _size: usize) {
-  winapi::um::memoryapi::VirtualFree(
-    memptr as winapi::shared::minwindef::LPVOID,
-    0,
-    winapi::um::winnt::MEM_RELEASE,
-  );
+pub unsafe fn free_aligned(memptr: *mut u8, size: usize) {
+  let layout = Layout::from_size_align_unchecked(size, PAGE_SIZE);
+  dealloc(memptr, layout);
 }
 
 /// Prot enum.

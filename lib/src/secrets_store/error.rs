@@ -1,3 +1,4 @@
+use crate::block_store::StoreError;
 use std::fmt;
 
 #[derive(Debug)]
@@ -7,6 +8,8 @@ pub enum SecretStoreError {
   IO(String),
   NoRecipient,
   Padding,
+  Mutex(String),
+  BlockStore(StoreError),
 }
 
 impl fmt::Display for SecretStoreError {
@@ -17,6 +20,8 @@ impl fmt::Display for SecretStoreError {
       SecretStoreError::IO(error) => write!(f, "IO: {}", error)?,
       SecretStoreError::NoRecipient => write!(f, "User is not a recipient of this message")?,
       SecretStoreError::Padding => write!(f, "Invalid data padding")?,
+      SecretStoreError::Mutex(error) => write!(f, "Mutex: {}", error)?,
+      SecretStoreError::BlockStore(error) => write!(f, "BlockStore: {}", error)?,
     }
     Ok(())
   }
@@ -57,5 +62,11 @@ impl From<capnp::Error> for SecretStoreError {
 impl From<capnp::NotInSchema> for SecretStoreError {
   fn from(error: capnp::NotInSchema) -> Self {
     SecretStoreError::IO(format!("{}", error))
+  }
+}
+
+impl<T> From<std::sync::PoisonError<T>> for SecretStoreError {
+  fn from(error: std::sync::PoisonError<T>) -> Self {
+    SecretStoreError::Mutex(format!("{}", error))
   }
 }
