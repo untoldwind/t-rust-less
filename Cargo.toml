@@ -30,7 +30,7 @@ tempdir = "0"
 spectral = "0"
 
 [target.'cfg(unix)'.dependencies]
-x11 = "2"
+xcb = { version = "0.8", features = [ "thread", "xfixes" ] }
 libc = "0"
 
 [target.'cfg(windows)'.dependencies]
