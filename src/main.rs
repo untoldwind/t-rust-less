@@ -1,4 +1,4 @@
-use crate::clipboard::{SelectionProvider, Clipboard};
+use crate::clipboard::SelectionProvider;
 
 mod api;
 mod cli;
@@ -28,11 +28,12 @@ impl SelectionProvider for TestSel {
 }
 
 fn main() {
-
+  /*
   let clip = Clipboard::new(TestSel { counter: 0}).unwrap();
 
   dbg!("Waiting for order");
   clip.wait().unwrap();
+  */
 
   cli::cli_run()
 }

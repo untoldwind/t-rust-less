@@ -19,15 +19,8 @@ cargo build --target=x86_64-pc-windows-gnu
 
 ## Test
 
-`cargo test` works but is pretty slow as there is no optimization.
-
-For development:
-
-```
-cargo test --features fast_tests 
-```
-
-Regression:
+Some tests are pretty slow and will be ignored during a regular development cycle with
+`cargo test`. To run the full suit for regression:
 
 ```
 cargo test --release

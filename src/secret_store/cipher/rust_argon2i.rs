@@ -38,7 +38,7 @@ mod tests {
   use spectral::prelude::*;
 
   #[test]
-  #[cfg_attr(feature = "fast_tests", ignore)]
+  #[cfg_attr(debug_assertions, ignore)]
   fn test_derive_regression() {
     assert_that(&RustArgon2i::min_nonce_len()).is_greater_than_or_equal_to(8);
 

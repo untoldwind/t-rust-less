@@ -148,15 +148,6 @@ pub unsafe fn mprotect<T>(memptr: NonNull<T>, prot: Prot::Ty) -> bool {
   _mprotect(unprotected_ptr, unprotected_size, prot)
 }
 
-#[cfg(any(unix, windows))]
-pub unsafe fn capacity<T>(memptr: NonNull<T>) -> usize {
-  let memptr = memptr.as_ptr() as *mut u8;
-
-  let unprotected_ptr = unprotected_ptr_from_user_ptr(memptr);
-  let base_ptr = unprotected_ptr.offset(-(PAGE_SIZE as isize * 2));
-  ptr::read(base_ptr as *const usize)
-}
-
 #[inline]
 unsafe fn page_round(size: usize) -> usize {
   (size + PAGE_MASK) & !PAGE_MASK
@@ -240,8 +231,6 @@ mod tests {
       let ptr = malloc(137 * 97);
 
       memory::memzero(ptr.as_ptr(), 137 * 97);
-
-      assert_that(&capacity(ptr)).is_greater_than_or_equal_to(137 * 97);
 
       let as_slice = std::slice::from_raw_parts(ptr.as_ptr(), 137 * 97);
 

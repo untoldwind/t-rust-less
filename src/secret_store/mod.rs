@@ -4,6 +4,7 @@ use crate::api::{
 
 mod cipher;
 mod error;
+mod padding;
 
 pub use self::error::{SecretStoreError, SecretStoreResult};
 

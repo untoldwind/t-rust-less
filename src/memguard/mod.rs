@@ -12,6 +12,7 @@ pub mod memory;
 pub struct SecretBytes {
   ptr: NonNull<u8>,
   size: usize,
+  capacity: usize,
   locks: AtomicIsize,
 }
 
@@ -25,6 +26,7 @@ impl SecretBytes {
       SecretBytes {
         ptr,
         size: 0,
+        capacity,
         locks: AtomicIsize::new(0),
       }
     }
@@ -40,6 +42,7 @@ impl SecretBytes {
       SecretBytes {
         ptr,
         size,
+        capacity: size,
         locks: AtomicIsize::new(0),
       }
     }
@@ -58,6 +61,7 @@ impl SecretBytes {
       SecretBytes {
         ptr,
         size,
+        capacity: size,
         locks: AtomicIsize::new(0),
       }
     }
@@ -68,7 +72,7 @@ impl SecretBytes {
   }
 
   pub fn capacity(&self) -> usize {
-    unsafe { alloc::capacity(self.ptr) }
+    self.capacity
   }
 
   pub fn borrow<'a>(&'a self) -> Ref<'a> {
@@ -136,6 +140,24 @@ impl Drop for SecretBytes {
   }
 }
 
+impl Clone for SecretBytes {
+  fn clone(&self) -> Self {
+    unsafe {
+      let ptr = alloc::malloc(self.capacity);
+
+      copy_nonoverlapping(self.borrow().as_ref().as_ptr(), ptr.as_ptr(), self.capacity);
+      alloc::mprotect(ptr, alloc::Prot::NoAccess);
+
+      SecretBytes {
+        ptr,
+        size: self.size,
+        capacity: self.capacity,
+        locks: AtomicIsize::new(0),
+      }
+    }
+  }
+}
+
 impl From<&mut [u8]> for SecretBytes {
   fn from(bytes: &mut [u8]) -> Self {
     unsafe {
@@ -148,6 +170,7 @@ impl From<&mut [u8]> for SecretBytes {
       SecretBytes {
         ptr,
         size: bytes.len(),
+        capacity: bytes.len(),
         locks: AtomicIsize::new(0),
       }
     }

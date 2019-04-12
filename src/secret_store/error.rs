@@ -6,6 +6,7 @@ pub enum SecretStoreError {
   Cipher(String),
   IO(String),
   NoRecipient,
+  Padding,
 }
 
 impl fmt::Display for SecretStoreError {
@@ -15,6 +16,7 @@ impl fmt::Display for SecretStoreError {
       SecretStoreError::Cipher(error) => write!(f, "Cipher error: {}", error)?,
       SecretStoreError::IO(error) => write!(f, "IO: {}", error)?,
       SecretStoreError::NoRecipient => write!(f, "User is not a recipient of this message")?,
+      SecretStoreError::Padding => write!(f, "Invalid data padding")?,
     }
     Ok(())
   }

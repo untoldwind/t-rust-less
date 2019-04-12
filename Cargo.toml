@@ -43,8 +43,5 @@ mach_o_sys = "0"
 clap = { version = "2", default-features = false, features = ["suggestions", "color"]}
 capnpc = "0"
 
-[features]
-fast_tests = []
-
 [patch.crates-io]
 x25519-dalek = { git = "https://github.com/untoldwind/x25519-dalek.git"}

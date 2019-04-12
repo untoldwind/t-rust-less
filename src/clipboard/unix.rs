@@ -1,7 +1,7 @@
 use super::{ClipboardError, ClipboardResult, SelectionProvider};
-use xcb::{Atom, Connection, Window};
-use std::thread;
 use std::sync::Arc;
+use std::thread;
+use xcb::{Atom, Connection, Window};
 
 macro_rules! try_continue {
   ( $expr:expr ) => {
@@ -85,42 +85,47 @@ impl Context {
       .map(|reply| reply.atom())
       .map_err(Into::into)
   }
-
 }
 
-pub struct Clipboard{
-  handle: thread::JoinHandle<()>
+pub struct Clipboard {
+  handle: thread::JoinHandle<()>,
 }
 
-impl Clipboard
-{
+impl Clipboard {
   pub fn new<T>(selection_provider: T) -> ClipboardResult<Clipboard>
-    where T: SelectionProvider + 'static,
+  where
+    T: SelectionProvider + 'static,
   {
     let context = Context::new(None)?;
 
     let handle = thread::spawn(move || run(context, selection_provider));
 
-    Ok(Clipboard {
-      handle,
-    })
+    Ok(Clipboard { handle })
   }
 
   pub fn wait(self) -> ClipboardResult<()> {
-    self.handle.join().map_err(|_| ClipboardError("wait timeout".to_string()));
+    self
+      .handle
+      .join()
+      .map_err(|_| ClipboardError("wait timeout".to_string()));
     Ok(())
   }
 }
 
 fn run<T>(context: Context, mut selection_provider: T)
-where T: SelectionProvider,
+where
+  T: SelectionProvider,
 {
   if !xcb::set_selection_owner_checked(
     &context.connection,
-    context.window, context.atoms.clipboard,
-    xcb::CURRENT_TIME
-  ).request_check().is_ok() {
-    return
+    context.window,
+    context.atoms.clipboard,
+    xcb::CURRENT_TIME,
+  )
+  .request_check()
+  .is_ok()
+  {
+    return;
   }
 
   context.connection.flush();
@@ -136,29 +141,42 @@ where T: SelectionProvider,
 
         if target == context.atoms.targets {
           xcb::change_property(
-            &context.connection, xcb::PROP_MODE_REPLACE as u8,
-            event.requestor(), property, xcb::ATOM_ATOM, 32,
-            &[context.atoms.targets, context.atoms.utf8_string]
+            &context.connection,
+            xcb::PROP_MODE_REPLACE as u8,
+            event.requestor(),
+            property,
+            xcb::ATOM_ATOM,
+            32,
+            &[context.atoms.targets, context.atoms.utf8_string],
           );
-        } else if target == context.atoms.string || target == context.atoms.utf8_string || target == context.atoms.text_plain || target == context.atoms.text_plain_utf8 {
+        } else if target == context.atoms.string
+          || target == context.atoms.utf8_string
+          || target == context.atoms.text_plain
+          || target == context.atoms.text_plain_utf8
+        {
           match selection_provider.get_selection() {
             Some(value) => {
               xcb::change_property(
-                &context.connection, xcb::PROP_MODE_REPLACE as u8,
-                event.requestor(), property, context.atoms.utf8_string, 8,
-                value.as_bytes()
+                &context.connection,
+                xcb::PROP_MODE_REPLACE as u8,
+                event.requestor(),
+                property,
+                context.atoms.utf8_string,
+                8,
+                value.as_bytes(),
               );
             }
             None => {
               xcb::set_selection_owner(
                 &context.connection,
-                xcb::NONE, context.atoms.clipboard,
-                xcb::CURRENT_TIME
+                xcb::NONE,
+                context.atoms.clipboard,
+                xcb::CURRENT_TIME,
               );
 
               context.connection.flush();
 
-              break
+              break;
             }
           }
         } else {
@@ -167,14 +185,11 @@ where T: SelectionProvider,
         }
 
         xcb::send_event(
-          &context.connection, false, event.requestor(), 0,
-          &xcb::SelectionNotifyEvent::new(
-            event.time(),
-            event.requestor(),
-            event.selection(),
-            target,
-            property
-          )
+          &context.connection,
+          false,
+          event.requestor(),
+          0,
+          &xcb::SelectionNotifyEvent::new(event.time(), event.requestor(), event.selection(), target, property),
         );
 
         context.connection.flush();
@@ -182,8 +197,8 @@ where T: SelectionProvider,
       xcb::SELECTION_CLEAR => {
         dbg!("Clear");
 
-        break
-      },
+        break;
+      }
       _ => (),
     }
   }
