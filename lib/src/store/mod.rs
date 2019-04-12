@@ -1,3 +1,4 @@
+
 pub use self::model::*;
 use url::Url;
 
@@ -11,7 +12,25 @@ mod tests;
 
 pub use self::error::{StoreError, StoreResult};
 
+/// Common interface of all block stores
+///
+/// In terms of persistence t-rust-less thinks in collections of blocks. Whereas a
+/// block is just a chunk of bytes (i.e. Vec<u8>) stored on some sort of medium that
+/// may or may not be available to the public (!!!).
+///
+/// To put it even more bluntly: All data inside a block has to be protected in a way
+/// that the underlying medium might as well be twitter or facebook (not that I actually
+/// suggest or plan to write an implementation of that sort). The blcok store in itself
+/// is not responsible providing this sort of protection ... is just stores and organizes
+/// blocks.
+///
 pub trait Store {
+  /// Get/read the (private) ring block.
+  ///
+  /// Every store has zero or one (private) ring containing all the relevant
+  /// key material to decrypt all the other blocks.
+  ///
+  /// This block should be protected by some sort of passphrase/key-derivation
   fn get_ring(&self) -> StoreResult<Option<Vec<u8>>>;
   fn store_ring(&mut self, raw: &[u8]) -> StoreResult<()>;
 
