@@ -1,3 +1,5 @@
+use crate::clipboard::{SelectionProvider, Clipboard};
+
 mod api;
 mod cli;
 mod secret_store;
@@ -9,6 +11,28 @@ mod clipboard;
 mod memguard;
 mod store;
 
+pub struct TestSel {
+  counter: u32,
+}
+
+impl SelectionProvider for TestSel {
+  fn get_selection(&mut self) -> Option<String> {
+    self.counter += 1;
+
+    if self.counter < 10 {
+      Some(format!("blabla {}\n", self.counter))
+    } else {
+      None
+    }
+  }
+}
+
 fn main() {
+
+  let clip = Clipboard::new(TestSel { counter: 0}).unwrap();
+
+  dbg!("Waiting for order");
+  clip.wait().unwrap();
+
   cli::cli_run()
 }
