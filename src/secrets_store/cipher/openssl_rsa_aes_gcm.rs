@@ -11,10 +11,11 @@ const RSA_KEY_BITS: u32 = 4096;
 
 const TAG_LENGTH: usize = 16;
 
-pub struct OpenSslRsaAesGcmCipher;
+pub static OPEN_SSL_RSA_AES_GCM: OpenSslRsaAesGcmCipher = OpenSslRsaAesGcmCipher();
+pub struct OpenSslRsaAesGcmCipher();
 
 impl Cipher for OpenSslRsaAesGcmCipher {
-  fn generate_key_pair() -> SecretStoreResult<(PublicKey, PrivateKey)> {
+  fn generate_key_pair(&self) -> SecretStoreResult<(PublicKey, PrivateKey)> {
     let private = Rsa::generate(RSA_KEY_BITS)?;
     let mut private_der_raw = private.private_key_to_der()?;
     let private_der = SecretBytes::from(private_der_raw.as_mut());
@@ -23,15 +24,20 @@ impl Cipher for OpenSslRsaAesGcmCipher {
     Ok((public_der, private_der))
   }
 
-  fn seal_key_length() -> usize {
+  fn seal_key_length(&self) -> usize {
     32
   }
 
-  fn seal_min_nonce_length() -> usize {
+  fn seal_min_nonce_length(&self) -> usize {
     12
   }
 
-  fn seal_private_key(seal_key: &SealKey, nonce: &[u8], private_key: &PrivateKey) -> SecretStoreResult<PublicData> {
+  fn seal_private_key(
+    &self,
+    seal_key: &SealKey,
+    nonce: &[u8],
+    private_key: &PrivateKey,
+  ) -> SecretStoreResult<PublicData> {
     let mut tag = [0u8; TAG_LENGTH];
     let mut result = symm::encrypt_aead(
       symm::Cipher::aes_256_gcm(),
@@ -46,7 +52,7 @@ impl Cipher for OpenSslRsaAesGcmCipher {
     Ok(result)
   }
 
-  fn open_private_key(seal_key: &SealKey, nonce: &[u8], crypted_key: &[u8]) -> SecretStoreResult<PrivateKey> {
+  fn open_private_key(&self, seal_key: &SealKey, nonce: &[u8], crypted_key: &[u8]) -> SecretStoreResult<PrivateKey> {
     if crypted_key.len() < TAG_LENGTH {
       return Err(SecretStoreError::Cipher("Data too short".to_string()));
     }
@@ -64,6 +70,7 @@ impl Cipher for OpenSslRsaAesGcmCipher {
   }
 
   fn encrypt(
+    &self,
     recipients: &[(&str, &PublicKey)],
     data: &PrivateData,
     mut header_builder: block::header::Builder,
@@ -111,6 +118,7 @@ impl Cipher for OpenSslRsaAesGcmCipher {
   }
 
   fn decrypt(
+    &self,
     user: (&str, &PrivateKey),
     header: block::header::Reader,
     crypted: &[u8],

@@ -7,7 +7,9 @@ use core::borrow::Borrow;
 use rand::{thread_rng, OsRng, RngCore};
 use std::io::Cursor;
 
-pub struct RustX25519ChaCha20Poly1305Cipher;
+pub static RUST_X25519CHA_CHA20POLY1305: RustX25519ChaCha20Poly1305Cipher = RustX25519ChaCha20Poly1305Cipher();
+
+pub struct RustX25519ChaCha20Poly1305Cipher();
 
 const TAG_LENGTH: usize = 16;
 
@@ -36,7 +38,7 @@ impl RustX25519ChaCha20Poly1305Cipher {
 }
 
 impl Cipher for RustX25519ChaCha20Poly1305Cipher {
-  fn generate_key_pair() -> SecretStoreResult<(PublicKey, PrivateKey)> {
+  fn generate_key_pair(&self) -> SecretStoreResult<(PublicKey, PrivateKey)> {
     let mut rng = thread_rng();
     let private = x25519_dalek::StaticSecret::new(&mut rng);
     let public = x25519_dalek::PublicKey::from(&private);
@@ -45,15 +47,20 @@ impl Cipher for RustX25519ChaCha20Poly1305Cipher {
     Ok((public.as_bytes().to_vec(), SecretBytes::from(&mut private_raw[..])))
   }
 
-  fn seal_key_length() -> usize {
+  fn seal_key_length(&self) -> usize {
     32
   }
 
-  fn seal_min_nonce_length() -> usize {
+  fn seal_min_nonce_length(&self) -> usize {
     12
   }
 
-  fn seal_private_key(seal_key: &SealKey, nonce: &[u8], private_key: &PrivateKey) -> SecretStoreResult<PublicData> {
+  fn seal_private_key(
+    &self,
+    seal_key: &SealKey,
+    nonce: &[u8],
+    private_key: &PrivateKey,
+  ) -> SecretStoreResult<PublicData> {
     let mut result = Vec::with_capacity(private_key.len());
     let tag = encrypt(&seal_key.borrow(), nonce, &[], &private_key.borrow(), &mut result)?;
     result.extend_from_slice(&tag);
@@ -61,7 +68,7 @@ impl Cipher for RustX25519ChaCha20Poly1305Cipher {
     Ok(result)
   }
 
-  fn open_private_key(seal_key: &SealKey, nonce: &[u8], crypted_key: &[u8]) -> SecretStoreResult<PrivateKey> {
+  fn open_private_key(&self, seal_key: &SealKey, nonce: &[u8], crypted_key: &[u8]) -> SecretStoreResult<PrivateKey> {
     if crypted_key.len() < TAG_LENGTH {
       return Err(SecretStoreError::Cipher("Data too short".to_string()));
     }
@@ -80,6 +87,7 @@ impl Cipher for RustX25519ChaCha20Poly1305Cipher {
   }
 
   fn encrypt(
+    &self,
     recipients: &[(&str, &PublicKey)],
     data: &PrivateData,
     mut header_builder: block::header::Builder,
@@ -117,6 +125,7 @@ impl Cipher for RustX25519ChaCha20Poly1305Cipher {
   }
 
   fn decrypt(
+    &self,
     user: (&str, &PrivateKey),
     header: block::header::Reader,
     crypted: &[u8],

@@ -16,23 +16,30 @@ type PrivateData = SecretBytes;
 type SealKey = SecretBytes;
 
 pub trait Cipher {
-  fn generate_key_pair() -> SecretStoreResult<(PublicKey, PrivateKey)>;
+  fn generate_key_pair(&self) -> SecretStoreResult<(PublicKey, PrivateKey)>;
 
-  fn seal_key_length() -> usize;
+  fn seal_key_length(&self) -> usize;
 
-  fn seal_min_nonce_length() -> usize;
+  fn seal_min_nonce_length(&self) -> usize;
 
-  fn seal_private_key(seal_key: &SealKey, nonce: &[u8], private_key: &PrivateKey) -> SecretStoreResult<PublicData>;
+  fn seal_private_key(
+    &self,
+    seal_key: &SealKey,
+    nonce: &[u8],
+    private_key: &PrivateKey,
+  ) -> SecretStoreResult<PublicData>;
 
-  fn open_private_key(seal_key: &SealKey, nonce: &[u8], crypted_key: &[u8]) -> SecretStoreResult<PrivateKey>;
+  fn open_private_key(&self, seal_key: &SealKey, nonce: &[u8], crypted_key: &[u8]) -> SecretStoreResult<PrivateKey>;
 
   fn encrypt(
+    &self,
     recipients: &[(&str, &PublicKey)],
     data: &PrivateData,
     header_builder: block::header::Builder,
   ) -> SecretStoreResult<PublicData>;
 
   fn decrypt(
+    &self,
     user: (&str, &PrivateKey),
     header: block::header::Reader,
     crypted: &[u8],
@@ -40,7 +47,7 @@ pub trait Cipher {
 }
 
 pub trait KeyDerivation {
-  fn min_nonce_len() -> usize;
+  fn min_nonce_len(&self) -> usize;
 
-  fn derive(passphrase: &SecretBytes, nonce: &[u8], key_length: usize) -> SecretStoreResult<SealKey>;
+  fn derive(&self, passphrase: &SecretBytes, nonce: &[u8], key_length: usize) -> SecretStoreResult<SealKey>;
 }

@@ -1,50 +1,54 @@
-use super::openssl_rsa_aes_gcm::OpenSslRsaAesGcmCipher;
-use super::rust_x25519_chacha20_poly1305::RustX25519ChaCha20Poly1305Cipher;
-use super::Cipher;
-use crate::memguard::SecretBytes;
-use crate::secrets_store_capnp::{block, KeyType};
 use chacha20_poly1305_aead::decrypt;
 use rand::{distributions, thread_rng, Rng, ThreadRng};
 use spectral::prelude::*;
+
+use crate::memguard::SecretBytes;
+use crate::secrets_store::cipher::openssl_rsa_aes_gcm::OPEN_SSL_RSA_AES_GCM;
+use crate::secrets_store::cipher::rust_x25519_chacha20_poly1305::RUST_X25519CHA_CHA20POLY1305;
+use crate::secrets_store_capnp::{block, KeyType};
+
+use super::openssl_rsa_aes_gcm::OpenSslRsaAesGcmCipher;
+use super::rust_x25519_chacha20_poly1305::RustX25519ChaCha20Poly1305Cipher;
+use super::Cipher;
 
 fn assert_slices_equal(actual: &[u8], expected: &[u8]) {
   assert!(actual == expected)
 }
 
-fn common_chiper_tests<T>()
+fn common_chiper_tests<T>(cipher: &T)
 where
   T: Cipher,
 {
-  common_private_seal_open::<T>();
-  common_data_encrypt_decrypt::<T>();
+  common_private_seal_open(cipher);
+  common_data_encrypt_decrypt(cipher);
 }
 
-fn common_private_seal_open<T>()
+fn common_private_seal_open<T>(cipher: &T)
 where
   T: Cipher,
 {
-  let (public_key, private_key) = T::generate_key_pair().unwrap();
+  let (public_key, private_key) = cipher.generate_key_pair().unwrap();
 
   assert_that(&public_key.len()).is_greater_than_or_equal_to(30);
 
   let mut rng = thread_rng();
   let mut seal_key_raw = rng
     .sample_iter(&distributions::Standard)
-    .take(T::seal_key_length())
+    .take(cipher.seal_key_length())
     .collect::<Vec<u8>>();
   let nonce = rng
     .sample_iter(&distributions::Standard)
-    .take(T::seal_min_nonce_length())
+    .take(cipher.seal_min_nonce_length())
     .collect::<Vec<u8>>();
   let seal_key = SecretBytes::from(seal_key_raw.as_mut());
 
-  let crypted_private = T::seal_private_key(&seal_key, &nonce, &private_key).unwrap();
-  let decrypted_private = T::open_private_key(&seal_key, &nonce, &crypted_private).unwrap();
+  let crypted_private = cipher.seal_private_key(&seal_key, &nonce, &private_key).unwrap();
+  let decrypted_private = cipher.open_private_key(&seal_key, &nonce, &crypted_private).unwrap();
 
   assert_slices_equal(&decrypted_private.borrow(), &private_key.borrow());
 }
 
-fn common_data_encrypt_decrypt<T>()
+fn common_data_encrypt_decrypt<T>(cipher: &T)
 where
   T: Cipher,
 {
@@ -53,20 +57,21 @@ where
 
   let id1 = "recipient1";
   let id2 = "recipient2";
-  let (public_key1, private_key1) = T::generate_key_pair().unwrap();
-  let (public_key2, private_key2) = T::generate_key_pair().unwrap();
+  let (public_key1, private_key1) = cipher.generate_key_pair().unwrap();
+  let (public_key2, private_key2) = cipher.generate_key_pair().unwrap();
 
   let mut message = capnp::message::Builder::new_default();
 
   let mut block = message.init_root::<block::Builder>();
   let headers = block.reborrow().init_headers(1);
 
-  let crypted_data = T::encrypt(
-    &[(id1, &public_key1), (id2, &public_key2)],
-    &private_data,
-    headers.get(0),
-  )
-  .unwrap();
+  let crypted_data = cipher
+    .encrypt(
+      &[(id1, &public_key1), (id2, &public_key2)],
+      &private_data,
+      headers.get(0),
+    )
+    .unwrap();
   block
     .init_content(crypted_data.len() as u32)
     .copy_from_slice(&crypted_data);
@@ -80,31 +85,33 @@ where
 
   assert_slices_equal(cryped_content, &crypted_data);
 
-  let decrypted1 = T::decrypt(
-    (id1, &private_key1),
-    block_reader.get_headers().unwrap().get(0),
-    cryped_content,
-  )
-  .unwrap();
+  let decrypted1 = cipher
+    .decrypt(
+      (id1, &private_key1),
+      block_reader.get_headers().unwrap().get(0),
+      cryped_content,
+    )
+    .unwrap();
 
   assert_slices_equal(&decrypted1.borrow(), &private_data.borrow());
 
-  let decrypted2 = T::decrypt(
-    (id2, &private_key2),
-    block_reader.get_headers().unwrap().get(0),
-    cryped_content,
-  )
-  .unwrap();
+  let decrypted2 = cipher
+    .decrypt(
+      (id2, &private_key2),
+      block_reader.get_headers().unwrap().get(0),
+      cryped_content,
+    )
+    .unwrap();
 
   assert_slices_equal(&decrypted2.borrow(), &private_data.borrow());
 }
 
 #[test]
 fn test_openssl_rsa_aes_gcm_test() {
-  common_chiper_tests::<OpenSslRsaAesGcmCipher>();
+  common_chiper_tests(&OPEN_SSL_RSA_AES_GCM);
 }
 
 #[test]
 fn test_rust_x25519_chacha20_poly1305() {
-  common_chiper_tests::<RustX25519ChaCha20Poly1305Cipher>();
+  common_chiper_tests(&RUST_X25519CHA_CHA20POLY1305);
 }

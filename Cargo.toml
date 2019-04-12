@@ -24,6 +24,7 @@ clap = { version = "2", default-features = false, features = ["suggestions", "co
 capnp = "0"
 rand = "0.5"
 rust-argon2 = "0"
+# zxcvbn = "1"
 
 [dev-dependencies]
 tempdir = "0"
