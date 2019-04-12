@@ -912,8 +912,9 @@ dependencies = [
  "tempdir 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 1.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "x25519-dalek 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "x25519-dalek 0.5.2 (git+https://github.com/untoldwind/x25519-dalek.git)",
  "xcb 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "zxcvbn 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1044,7 +1045,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "x25519-dalek"
 version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/untoldwind/x25519-dalek.git#0f187b467054463d673e7ea91e503cab66983937"
 dependencies = [
  "clear_on_drop 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "curve25519-dalek 1.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1203,6 +1204,6 @@ dependencies = [
 "checksum winapi 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)" = "f10e386af2b13e47c89e7236a7a14a086791a2b88ebad6df9bf42040195cf770"
 "checksum winapi-i686-pc-windows-gnu 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
 "checksum winapi-x86_64-pc-windows-gnu 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
-"checksum x25519-dalek 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7ee1585dc1484373cbc1cee7aafda26634665cf449436fd6e24bfd1fad230538"
+"checksum x25519-dalek 0.5.2 (git+https://github.com/untoldwind/x25519-dalek.git)" = "<none>"
 "checksum xcb 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)" = "5e917a3f24142e9ff8be2414e36c649d47d6cc2ba81f16201cdef96e533e02de"
 "checksum zxcvbn 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "487b0578c3941a953b2fcad6a1fbee09b80746776783d6a8b556ff9c628f07f8"

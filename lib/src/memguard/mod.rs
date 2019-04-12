@@ -8,6 +8,7 @@ use std::sync::atomic::{AtomicIsize, Ordering};
 
 mod alloc;
 pub mod memory;
+mod weak;
 
 pub struct SecretBytes {
   ptr: NonNull<u8>,

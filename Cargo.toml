@@ -1,5 +1,8 @@
 [workspace]
 members = [
-"lib",
-"cli"
+    "lib",
+    "cli"
 ]
+
+[patch.crates-io]
+x25519-dalek = { git = "https://github.com/untoldwind/x25519-dalek.git"}

@@ -23,7 +23,7 @@ chacha20-poly1305-aead = "0"
 capnp = "0"
 rand = "0.5"
 rust-argon2 = "0"
-# zxcvbn = "1"
+zxcvbn = "1"
 
 [dev-dependencies]
 tempdir = "0"
@@ -42,6 +42,3 @@ mach_o_sys = "0"
 [build-dependencies]
 clap = { version = "2", default-features = false, features = ["suggestions", "color"]}
 capnpc = "0"
-
-[patch.crates-io]
-x25519-dalek = { git = "https://github.com/untoldwind/x25519-dalek.git"}
