@@ -11,5 +11,16 @@ pub fn app() -> App<'static, 'static> {
         .help("Enable debug logs"),
     )
     .subcommand(SubCommand::with_name("init").about("Initialize configuration and store (if necessary"))
+    .subcommand(
+      SubCommand::with_name("identities")
+        .about("Control identities of a store")
+        .subcommand(SubCommand::with_name("list").alias("ls").about("List identities"))
+        .subcommand(SubCommand::with_name("add").about("Add a new identity")),
+    )
     .subcommand(SubCommand::with_name("status").about("Show current status of the password store"))
+    .subcommand(SubCommand::with_name("import").about("Import secrets entries"))
+    .subcommand(SubCommand::with_name("export").about("Export an entire store"))
+    .subcommand(SubCommand::with_name("lock").about("Lock the store"))
+    .subcommand(SubCommand::with_name("unlock").about("Unlock the store"))
+    .subcommand(SubCommand::with_name("daemon").about("Start background daemon"))
 }

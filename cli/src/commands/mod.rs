@@ -1,6 +1,20 @@
+mod add_identity;
+mod daemon;
+mod export;
+mod import;
 mod init;
+mod list_identities;
+mod lock;
 mod status;
 pub mod tui;
+mod unlock;
 
+pub use self::add_identity::*;
+pub use self::daemon::*;
+pub use self::export::*;
+pub use self::import::*;
 pub use self::init::*;
+pub use self::list_identities::*;
+pub use self::lock::*;
 pub use self::status::*;
+pub use self::unlock::*;
