@@ -4,7 +4,7 @@ use std::process;
 
 use clap::Shell;
 
-#[path = "src/cli/mod.rs"]
+#[path = "src/cli.rs"]
 mod cli;
 
 fn main() {

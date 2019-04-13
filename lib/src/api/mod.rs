@@ -7,7 +7,6 @@ use serde_derive::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Status {
-  pub initialized: bool,
   pub locked: bool,
   pub autolock_at: Option<DateTime<Utc>>,
   pub version: String,

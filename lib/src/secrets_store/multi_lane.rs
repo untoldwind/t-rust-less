@@ -42,10 +42,8 @@ impl MultiLaneSecretsStore {
 impl SecretsStore for MultiLaneSecretsStore {
   fn status(&self) -> SecretStoreResult<Status> {
     let unlocked_user = self.unlocked_user.read()?;
-    let identities = self.identities()?;
 
     Ok(Status {
-      initialized: !identities.is_empty(),
       locked: unlocked_user.is_none(),
       autolock_at: unlocked_user.as_ref().map(|u| DateTime::from(u.autolock_at)),
       version: env!("CARGO_PKG_VERSION").to_string(),

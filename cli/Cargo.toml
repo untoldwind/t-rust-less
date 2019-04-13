@@ -6,28 +6,23 @@ build = "build.rs"
 edition = "2018"
 
 [dependencies]
+log = "0"
+env_logger = "0"
 clap = { version = "2", default-features = false, features = ["suggestions", "color"]}
-tui="0.4"
+cursive = { version = "0", features = ["termion-backend"]}
 termion="1"
 atty = "0.2"
 t-rust-less-lib = { path = "../lib" }
 zxcvbn = "1"
+serde = "1"
+serde_derive = "1"
+rand = "0.5"
+dirs = "1"
+toml = "0"
 
 [dev-dependencies]
 tempdir = "0"
 spectral = "0"
 
-[target.'cfg(unix)'.dependencies]
-xcb = { version = "0.8", features = [ "thread", "xfixes" ] }
-libc = "0"
-
-[target.'cfg(windows)'.dependencies]
-winapi = "0"
-
-[target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
-mach_o_sys = "0"
-
 [build-dependencies]
 clap = { version = "2", default-features = false, features = ["suggestions", "color"]}
-capnpc = "0"
-
