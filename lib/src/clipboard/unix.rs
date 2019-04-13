@@ -1,18 +1,8 @@
-use std::sync::Arc;
 use std::thread;
 
 use xcb::{Atom, Connection, Window};
 
 use super::{ClipboardError, ClipboardResult, SelectionProvider};
-
-macro_rules! try_continue {
-  ( $expr:expr ) => {
-    match $expr {
-      Some(val) => val,
-      None => continue,
-    }
-  };
-}
 
 #[derive(Clone, Debug)]
 pub struct Atoms {
@@ -34,7 +24,7 @@ pub struct Context {
 
 impl Context {
   pub fn new(displayname: Option<&str>) -> ClipboardResult<Self> {
-    let (connection, screen) = Connection::connect(None)?;
+    let (connection, screen) = Connection::connect(displayname)?;
     let window = connection.generate_id();
 
     {

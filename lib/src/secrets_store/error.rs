@@ -70,3 +70,9 @@ impl<T> From<std::sync::PoisonError<T>> for SecretStoreError {
     SecretStoreError::Mutex(format!("{}", error))
   }
 }
+
+impl From<StoreError> for SecretStoreError {
+  fn from(error: StoreError) -> Self {
+    SecretStoreError::BlockStore(error)
+  }
+}

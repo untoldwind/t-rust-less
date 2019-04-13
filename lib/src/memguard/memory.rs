@@ -133,10 +133,12 @@ pub unsafe fn munlock(addr: *mut u8, len: usize) -> bool {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use quickcheck::quickcheck;
   use std::cmp;
   use std::mem;
+
+  use quickcheck::quickcheck;
+
+  use super::*;
 
   #[test]
   fn memzero_test() {

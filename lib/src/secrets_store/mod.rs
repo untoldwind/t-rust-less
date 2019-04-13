@@ -1,6 +1,4 @@
-use crate::api::{
-  Identity, PasswordEstimate, PasswordStrength, Secret, SecretList, SecretListFilter, SecretType, SecretVersion, Status,
-};
+use crate::api::{Identity, Secret, SecretList, SecretListFilter, SecretType, SecretVersion, Status};
 
 mod cipher;
 mod error;

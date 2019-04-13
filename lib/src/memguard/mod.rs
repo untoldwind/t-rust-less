@@ -1,4 +1,3 @@
-use rand::{CryptoRng, RngCore};
 use std::convert::{AsMut, AsRef};
 use std::io;
 use std::ops::{Deref, DerefMut};
@@ -6,10 +5,28 @@ use std::ptr::{copy_nonoverlapping, NonNull};
 use std::slice;
 use std::sync::atomic::{AtomicIsize, Ordering};
 
+use rand::{CryptoRng, RngCore};
+
 mod alloc;
 pub mod memory;
-mod weak;
+pub mod weak;
 
+/// Strictly memory protected bytes contain sensitive data.
+///
+/// This implementation borrows a lot of code and ideas from:
+/// * https://crates.io/crates/memsec
+/// * https://crates.io/crates/secrets
+/// * https://download.libsodium.org/doc/memory_management
+///
+/// `secrets` is not good enough because it relies on libsodium which breaks the desired
+/// portability of this library (at least at the time of this writing).
+///
+/// `memsec` is not
+/// good enough because it focuses on protecting a generic type `T` which size is known at
+/// compile-time. In this library we are dealing with dynamic amounts of sensitive data and
+/// there is no point in securing a `Vec<u8>` via `memsec` ... all we would achieve is protecting
+/// the pointer to sensitive data in unsecured space.
+///
 pub struct SecretBytes {
   ptr: NonNull<u8>,
   size: usize,
@@ -266,10 +283,12 @@ impl<'a> io::Write for RefMut<'a> {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
   use core::borrow::Borrow;
-  use rand::{distributions, thread_rng, Rng, RngCore, ThreadRng};
+
+  use rand::{distributions, thread_rng, Rng};
   use spectral::prelude::*;
+
+  use super::*;
 
   fn assert_slices_equal(actual: &[u8], expected: &[u8]) {
     assert!(actual == expected)

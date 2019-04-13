@@ -1,13 +1,10 @@
-use chacha20_poly1305_aead::decrypt;
 use rand::{distributions, thread_rng, Rng, ThreadRng};
 use spectral::prelude::*;
 
 use crate::memguard::SecretBytes;
 use crate::secrets_store::cipher::{OPEN_SSL_RSA_AES_GCM, RUST_X25519CHA_CHA20POLY1305};
-use crate::secrets_store_capnp::{block, KeyType};
+use crate::secrets_store_capnp::block;
 
-use super::openssl_rsa_aes_gcm::OpenSslRsaAesGcmCipher;
-use super::rust_x25519_chacha20_poly1305::RustX25519ChaCha20Poly1305Cipher;
 use super::Cipher;
 
 fn assert_slices_equal(actual: &[u8], expected: &[u8]) {

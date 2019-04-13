@@ -1,7 +1,5 @@
-use std::collections::HashMap;
-
 use crate::memguard::SecretBytes;
-use crate::secrets_store_capnp::{block, recipient, KeyType};
+use crate::secrets_store_capnp::{block, KeyType};
 
 use super::SecretStoreResult;
 

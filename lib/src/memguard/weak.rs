@@ -1,8 +1,19 @@
-use chrono::format::Pad::Zero;
-use std::mem;
+//! # Zeroing wrappers
+//!
+//! These are weak variants of SecretBytes. Basically they are just wrappers around Vec<u8> and
+//! String with an addition Drop zeroing their contents. These are mostly used inside the API
+//! structs and do not provide a 100% guaranty that no sensitive data remains in memory.
+//!
+//! After all though: Data send and received via the API is processed by different clients and
+//! most likely copy-pasted by to displayed to the user ... so there is no 100% guaranty anyway
+//! and it would be a waste of effort providing a super-tight security.
+//!
+use serde_derive::{Deserialize, Serialize};
 use std::ops::{Deref, DerefMut};
 use std::ptr;
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct ZeroingBytes(Vec<u8>);
 
 impl ZeroingBytes {
@@ -36,6 +47,8 @@ impl DerefMut for ZeroingBytes {
   }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct ZeroingString(String);
 
 impl ZeroingString {

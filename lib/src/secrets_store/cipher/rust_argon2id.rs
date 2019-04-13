@@ -1,7 +1,6 @@
 use super::{KeyDerivation, SealKey};
 use crate::memguard::SecretBytes;
 use crate::secrets_store::SecretStoreResult;
-use crate::secrets_store_capnp::{block, recipient};
 use argon2::{self, Config, ThreadMode, Variant, Version};
 
 pub static RUST_ARGON2_ID: RustArgon2id = RustArgon2id();

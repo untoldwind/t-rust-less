@@ -2,7 +2,6 @@ use super::{Cipher, PrivateData, PrivateKey, PublicData, PublicKey, SealKey};
 use crate::memguard::SecretBytes;
 use crate::secrets_store::{SecretStoreError, SecretStoreResult};
 use crate::secrets_store_capnp::{block, KeyType};
-use capnp::data;
 use openssl::rsa::{Padding, Rsa};
 use openssl::symm;
 use rand::{thread_rng, RngCore};

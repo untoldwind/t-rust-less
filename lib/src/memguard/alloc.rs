@@ -1,9 +1,11 @@
-use super::memory;
-use rand::{OsRng, RngCore};
 use std::alloc::{alloc, dealloc, Layout};
 use std::mem;
 use std::ptr::{self, NonNull};
 use std::sync::Once;
+
+use rand::{OsRng, RngCore};
+
+use super::memory;
 
 const CANARY_SIZE: usize = 16;
 static ALLOC_INIT: Once = Once::new();
@@ -190,9 +192,10 @@ pub unsafe fn free<T>(memptr: NonNull<T>) {
 
 #[cfg(test)]
 mod tests {
+  use spectral::prelude::*;
+
   use super::super::memory;
   use super::*;
-  use spectral::prelude::*;
 
   #[test]
   fn test_alloc_free() {

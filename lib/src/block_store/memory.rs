@@ -4,7 +4,7 @@ use std::sync::RwLock;
 use data_encoding::HEXLOWER;
 use sha2::{Digest, Sha256};
 
-use super::{BlockStore, Change, ChangeLog, Operation, StoreError, StoreResult};
+use super::{BlockStore, Change, ChangeLog, StoreError, StoreResult};
 
 /// Memory based reference implementation of a block store.
 ///

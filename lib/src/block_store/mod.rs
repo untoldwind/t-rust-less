@@ -93,7 +93,7 @@ pub trait BlockStore {
   fn commit(&mut self, node: &str, changes: &[Change]) -> StoreResult<()>;
 }
 
-fn open_store(url: &str) -> StoreResult<Box<BlockStore>> {
+pub fn open_store(url: &str) -> StoreResult<Box<BlockStore>> {
   let store_url = Url::parse(url)?;
 
   match store_url.scheme() {
