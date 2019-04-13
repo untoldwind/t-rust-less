@@ -19,6 +19,7 @@ serde_derive = "1"
 rand = "0.5"
 dirs = "1"
 toml = "0"
+url = "1"
 
 [dev-dependencies]
 tempdir = "0"

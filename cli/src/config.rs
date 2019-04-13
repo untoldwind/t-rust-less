@@ -3,15 +3,18 @@ use serde_derive::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::PathBuf;
+use std::time::Duration;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
-  store_url: String,
-  client_id: String,
+  pub store_url: String,
+  pub client_id: String,
+  pub autolock_timeout: Duration,
 }
 
 pub fn default_store_dir() -> PathBuf {
   let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+  dbg!(dirs::document_dir());
   dirs::document_dir().unwrap_or(home_dir).join("t-rust-less-store")
 }
 
