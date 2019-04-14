@@ -6,6 +6,7 @@ mod multi_lane;
 mod padding;
 
 pub use self::error::{SecretStoreError, SecretStoreResult};
+use crate::block_store::open_block_store;
 use crate::memguard::SecretBytes;
 
 pub trait SecretsStore {
@@ -21,4 +22,18 @@ pub trait SecretsStore {
 
   fn add(&mut self, id: &str, secret_type: SecretType, secret_version: SecretVersion) -> SecretStoreResult<()>;
   fn get(&self, id: &str) -> SecretStoreResult<Secret>;
+}
+
+pub fn open_secrets_store(url: &str) -> SecretStoreResult<Box<SecretsStore>> {
+  let (scheme, block_store_url) = match url.find('+') {
+    Some(idx) => (&url[..idx], &url[idx + 1..]),
+    _ => return Err(SecretStoreError::InvalidStoreUrl(url.to_string())),
+  };
+
+  let block_store = open_block_store(block_store_url)?;
+
+  match scheme {
+    "multilane" => Ok(Box::new(multi_lane::MultiLaneSecretsStore::new(block_store))),
+    _ => Err(SecretStoreError::InvalidStoreUrl(url.to_string())),
+  }
 }

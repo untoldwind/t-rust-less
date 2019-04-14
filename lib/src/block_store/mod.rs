@@ -93,11 +93,11 @@ pub trait BlockStore {
   fn commit(&mut self, node: &str, changes: &[Change]) -> StoreResult<()>;
 }
 
-pub fn open_store(url: &str) -> StoreResult<Box<BlockStore>> {
+pub fn open_block_store(url: &str) -> StoreResult<Box<BlockStore>> {
   let store_url = Url::parse(url)?;
 
   match store_url.scheme() {
-    "file" => Ok(Box::new(local_dir::LocalDirBlockStore::new(store_url.path()))),
+    "file" => Ok(Box::new(local_dir::LocalDirBlockStore::new(store_url.path())?)),
     "memory" => Ok(Box::new(memory::MemoryBlockStore::new())),
     _ => Err(StoreError::InvalidStoreUrl(url.to_string())),
   }

@@ -1,4 +1,5 @@
 use cursive::{theme, Cursive};
+use log::error;
 
 const THEME: &str = r##"
 shadow = false
@@ -29,7 +30,7 @@ pub fn create_tui() -> Cursive {
       siv.set_theme(theme);
     }
     Err(error) => {
-      println!("{:?}", error);
+      error!("{:?}", error);
     }
   }
 

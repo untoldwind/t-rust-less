@@ -54,7 +54,10 @@ pub trait Cipher: Send + Sync {
 }
 
 pub trait KeyDerivation {
+  fn default_preset(&self) -> u8;
+
   fn min_nonce_len(&self) -> usize;
 
-  fn derive(&self, passphrase: &SecretBytes, nonce: &[u8], key_length: usize) -> SecretStoreResult<SealKey>;
+  fn derive(&self, passphrase: &SecretBytes, preset: u8, nonce: &[u8], key_length: usize)
+    -> SecretStoreResult<SealKey>;
 }

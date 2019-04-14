@@ -32,8 +32,9 @@ struct Ring {
 
     struct PrivateKey {
         type @0 : KeyType;
-        salt @1 : Data;
-        cryptedKey @2 : Data;
+        preset @1 : UInt8;
+        salt @2 : Data;
+        cryptedKey @3 : Data;
     }
 }
 

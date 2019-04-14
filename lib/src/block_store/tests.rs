@@ -1,4 +1,4 @@
-use super::{open_store, BlockStore, StoreError};
+use super::{open_block_store, BlockStore, StoreError};
 use rand::{distributions, thread_rng, Rng, ThreadRng};
 use spectral::prelude::*;
 use tempdir::TempDir;
@@ -72,14 +72,14 @@ fn test_local_dir_store() {
   let tempdir = TempDir::new("t-rust-less-test").unwrap();
   let url = format!("file://{}", tempdir.path().to_string_lossy());
 
-  let mut store = open_store(&url).unwrap();
+  let mut store = open_block_store(&url).unwrap();
 
   common_store_tests(store.as_mut());
 }
 
 #[test]
 fn test_memory_store() {
-  let mut store = open_store("memory://").unwrap();
+  let mut store = open_block_store("memory://").unwrap();
 
   common_store_tests(store.as_mut());
 }

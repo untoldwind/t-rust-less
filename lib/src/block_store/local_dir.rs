@@ -1,7 +1,7 @@
 use super::{BlockStore, Change, ChangeLog, Operation, StoreError, StoreResult};
 use data_encoding::HEXLOWER;
 use sha2::{Digest, Sha256};
-use std::fs::{read_dir, DirBuilder, File, OpenOptions};
+use std::fs::{metadata, read_dir, DirBuilder, File, OpenOptions};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::path::{Path, PathBuf};
@@ -18,9 +18,15 @@ pub struct LocalDirBlockStore {
 }
 
 impl LocalDirBlockStore {
-  pub fn new<P: Into<PathBuf>>(base_dir: P) -> LocalDirBlockStore {
-    LocalDirBlockStore {
-      base_dir: RwLock::new(base_dir.into()),
+  pub fn new(base_dir: &str) -> StoreResult<LocalDirBlockStore> {
+    let md = metadata(base_dir)?;
+
+    if !md.is_dir() {
+      Err(StoreError::InvalidStoreUrl(format!("{} is not a directory", base_dir)))
+    } else {
+      Ok(LocalDirBlockStore {
+        base_dir: RwLock::new(base_dir.into()),
+      })
     }
   }
 

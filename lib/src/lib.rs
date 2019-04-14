@@ -1,3 +1,6 @@
+#[macro_use]
+pub mod macros;
+
 pub mod api;
 pub mod block_store;
 pub mod clipboard;

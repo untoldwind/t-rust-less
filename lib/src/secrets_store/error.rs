@@ -10,6 +10,7 @@ pub enum SecretStoreError {
   Padding,
   Mutex(String),
   BlockStore(StoreError),
+  InvalidStoreUrl(String),
 }
 
 impl fmt::Display for SecretStoreError {
@@ -22,6 +23,7 @@ impl fmt::Display for SecretStoreError {
       SecretStoreError::Padding => write!(f, "Invalid data padding")?,
       SecretStoreError::Mutex(error) => write!(f, "Mutex: {}", error)?,
       SecretStoreError::BlockStore(error) => write!(f, "BlockStore: {}", error)?,
+      SecretStoreError::InvalidStoreUrl(error) => write!(f, "Invalid store url: {}", error)?,
     }
     Ok(())
   }
@@ -29,50 +31,16 @@ impl fmt::Display for SecretStoreError {
 
 pub type SecretStoreResult<T> = Result<T, SecretStoreError>;
 
-impl From<argon2::Error> for SecretStoreError {
-  fn from(error: argon2::Error) -> Self {
-    SecretStoreError::KeyDerivation(format!("{}", error))
-  }
-}
-
-impl From<openssl::error::ErrorStack> for SecretStoreError {
-  fn from(error: openssl::error::ErrorStack) -> Self {
-    SecretStoreError::Cipher(format!("{}", error))
-  }
-}
-
-impl From<std::io::Error> for SecretStoreError {
-  fn from(error: std::io::Error) -> Self {
-    SecretStoreError::IO(format!("{}", error))
-  }
-}
-
-impl From<chacha20_poly1305_aead::DecryptError> for SecretStoreError {
-  fn from(error: chacha20_poly1305_aead::DecryptError) -> Self {
-    SecretStoreError::Cipher(format!("{}", error))
-  }
-}
-
-impl From<capnp::Error> for SecretStoreError {
-  fn from(error: capnp::Error) -> Self {
-    SecretStoreError::IO(format!("{}", error))
-  }
-}
-
-impl From<capnp::NotInSchema> for SecretStoreError {
-  fn from(error: capnp::NotInSchema) -> Self {
-    SecretStoreError::IO(format!("{}", error))
-  }
-}
+error_convert_from!(argon2::Error, SecretStoreError, Cipher(display));
+error_convert_from!(openssl::error::ErrorStack, SecretStoreError, Cipher(display));
+error_convert_from!(std::io::Error, SecretStoreError, IO(display));
+error_convert_from!(chacha20_poly1305_aead::DecryptError, SecretStoreError, Cipher(display));
+error_convert_from!(capnp::Error, SecretStoreError, IO(display));
+error_convert_from!(capnp::NotInSchema, SecretStoreError, IO(display));
+error_convert_from!(StoreError, SecretStoreError, BlockStore(direct));
 
 impl<T> From<std::sync::PoisonError<T>> for SecretStoreError {
   fn from(error: std::sync::PoisonError<T>) -> Self {
     SecretStoreError::Mutex(format!("{}", error))
-  }
-}
-
-impl From<StoreError> for SecretStoreError {
-  fn from(error: StoreError) -> Self {
-    SecretStoreError::BlockStore(error)
   }
 }

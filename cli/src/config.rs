@@ -1,7 +1,7 @@
 use crate::error::{exit_with_error, ExtResult};
 use serde_derive::{Deserialize, Serialize};
-use std::fs::File;
-use std::io::{self, Read};
+use std::fs::{self, File};
+use std::io::{self, Read, Write};
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -14,8 +14,12 @@ pub struct Config {
 
 pub fn default_store_dir() -> PathBuf {
   let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-  dbg!(dirs::document_dir());
+
   dirs::document_dir().unwrap_or(home_dir).join("t-rust-less-store")
+}
+
+pub fn default_autolock_timeout() -> Duration {
+  Duration::from_secs(300)
 }
 
 pub fn config_file() -> PathBuf {
@@ -43,4 +47,17 @@ pub fn read_config() -> Option<Config> {
       unreachable!()
     }
   }
+}
+
+pub fn write_config(config: &Config) -> io::Result<()> {
+  let content = toml::to_string_pretty(config).unwrap();
+  let config_file = config_file();
+
+  fs::create_dir_all(&config_file.parent().unwrap())?;
+
+  let mut file = File::create(&config_file)?;
+
+  file.write_all(content.as_bytes())?;
+
+  Ok(())
 }

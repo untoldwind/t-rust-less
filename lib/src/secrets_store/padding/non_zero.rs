@@ -6,12 +6,28 @@ use std::io::Write;
 
 pub struct NonZeroPadding;
 
+/// Padding scheme that requires the padded data to contain no zero byte.
+///
+/// This come handy when storing plain ascii or json data.
+///
+/// The data is head and tail padded with random bytes, i.e. there is some junk in at
+/// the start and some junk at the end so that an attacker cannot make assumptions about
+/// the encrypted data (e.g. that a json always starts with a `{"` and ends with a `}`.
+///
+/// The outcome of the padding should look like this:
+/// ```plain
+///   <junk without \0> \0 <content> \0 <just junk with or without \0>
+/// ```
+/// The exact head and tail size is choosen at random depending on the size of the content.
+///
 impl Padding for NonZeroPadding {
   fn pad_secret_data<T: RngCore + CryptoRng>(
     rng: &mut T,
     data: SecretBytes,
     align: usize,
   ) -> SecretStoreResult<SecretBytes> {
+    assert!(data.borrow().iter().find(|b| **b == 0).is_none());
+
     let over_align = data.len() % align;
 
     if over_align == 0 {
