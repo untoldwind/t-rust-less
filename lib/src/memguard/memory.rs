@@ -155,7 +155,7 @@ mod tests {
 
   #[test]
   fn memeq_test() {
-    #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
+    #[allow(clippy::needless_pass_by_value)]
     fn check_memeq(x: Vec<u8>, y: Vec<u8>) -> bool {
       unsafe {
         let memsec_output = memeq(x.as_ptr(), y.as_ptr(), cmp::min(x.len(), y.len()));
@@ -172,7 +172,7 @@ mod tests {
 
   #[test]
   fn memcmp_test() {
-    #[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
+    #[allow(clippy::needless_pass_by_value)]
     fn check_memcmp(x: Vec<u8>, y: Vec<u8>) -> bool {
       unsafe {
         let memsec_output = memcmp(x.as_ptr(), y.as_ptr(), cmp::min(x.len(), y.len()));

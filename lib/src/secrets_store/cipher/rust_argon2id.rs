@@ -16,7 +16,7 @@ struct Preset {
 const PRESETS: &[Preset] = &[Preset {
   lanes: 4,
   mem_cost: 64 * 1024,
-  time_cost: 5,
+  time_cost: 4,
   version: Version::Version13,
   variant: Variant::Argon2id,
 }];
@@ -75,7 +75,7 @@ mod tests {
     let mut passphrase_raw: Vec<u8> = Vec::from(&b"The password"[..]);
     let passphrase = SecretBytes::from(passphrase_raw.as_mut());
 
-    // Regression: echo -n "The password" | argon2 12345678 -id -t 5 -m 16 -p 4 -v 13 -l 32
+    // Regression: echo -n "The password" | argon2 12345678 -id -t 4 -m 16 -p 4 -v 13 -l 32
     assert_that!(HEXLOWER
       .encode(
         &RUST_ARGON2_ID
@@ -84,9 +84,9 @@ mod tests {
           .borrow()
       )
       .as_str())
-    .is_equal_to("1179eb7e9e244e66010b245ca18da1191c00eaf45b724cd34b95c67219c01cc2");
+    .is_equal_to("45942b82c50c93f9656369030480dfb83475f22663371dfd523f4893d062b493");
 
-    // Regression: echo -n "The password" | argon2 1234567812345678 -id -t 5 -m 16 -p 4 -v 13 -l 32
+    // Regression: echo -n "The password" | argon2 1234567812345678 -id -t 4 -m 16 -p 4 -v 13 -l 32
     assert_that!(HEXLOWER
       .encode(
         &RUST_ARGON2_ID
@@ -95,6 +95,6 @@ mod tests {
           .borrow()
       )
       .as_str())
-    .is_equal_to("cb537c1db49e0b24a302ddb7509dfa992071f5ba71099f41d71d0bdf1330a7e5");
+    .is_equal_to("51b1dff59e6bece75db4a2f668622fb110098841820dfded0f724d42cb7dbdd2");
   }
 }

@@ -8,11 +8,12 @@ use serde_derive::{Deserialize, Serialize};
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Status {
   pub locked: bool,
+  pub unlocked_by: Option<Identity>,
   pub autolock_at: Option<DateTime<Utc>>,
   pub version: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Identity {
   pub id: String,
   pub name: String,

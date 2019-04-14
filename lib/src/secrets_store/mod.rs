@@ -16,7 +16,7 @@ pub trait SecretsStore {
   fn status(&self) -> SecretStoreResult<Status>;
 
   fn lock(&mut self) -> SecretStoreResult<()>;
-  fn unlock(&mut self, identity: &Identity, passphrase: SecretBytes) -> SecretStoreResult<()>;
+  fn unlock(&mut self, identity_id: &str, passphrase: SecretBytes) -> SecretStoreResult<()>;
 
   fn identities(&self) -> SecretStoreResult<Vec<Identity>>;
   fn add_identity(&mut self, identity: Identity, passphrase: SecretBytes) -> SecretStoreResult<()>;

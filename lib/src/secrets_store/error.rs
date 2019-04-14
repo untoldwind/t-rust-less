@@ -4,6 +4,9 @@ use std::fmt;
 #[derive(Debug)]
 pub enum SecretStoreError {
   Locked,
+  Forbidden,
+  InvalidPassphrase,
+  AlreadUnlocked,
   KeyDerivation(String),
   Cipher(String),
   IO(String),
@@ -18,6 +21,9 @@ impl fmt::Display for SecretStoreError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
       SecretStoreError::Locked => write!(f, "Store is locked")?,
+      SecretStoreError::Forbidden => write!(f, "Forbidden user")?,
+      SecretStoreError::InvalidPassphrase => write!(f, "Invalid passphrase")?,
+      SecretStoreError::AlreadUnlocked => write!(f, "Already unlocked")?,
       SecretStoreError::KeyDerivation(error) => write!(f, "Key derivation error: {}", error)?,
       SecretStoreError::Cipher(error) => write!(f, "Cipher error: {}", error)?,
       SecretStoreError::IO(error) => write!(f, "IO: {}", error)?,

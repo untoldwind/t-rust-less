@@ -5,6 +5,7 @@ use cursive::traits::{Boxable, Identifiable};
 use cursive::views::{Dialog, DummyView, EditView, LinearLayout, TextView};
 use cursive::Cursive;
 
+use crate::commands::add_identity::add_identity_dialog;
 use crate::commands::tui::create_tui;
 use crate::config::{default_autolock_timeout, default_store_dir, write_config, Config};
 use cursive::event::Key;
@@ -118,7 +119,11 @@ fn store_config(s: &mut Cursive) {
 
   try_with_dialog!(write_config(&config), s, "Failed to store config:\n{}");
 
-  s.pop_layer();
+  if identities.is_empty() {
+    s.pop_layer();
+
+    add_identity_dialog(s, secrets_store, "Create initial identity");
+  }
 
   s.quit();
 }

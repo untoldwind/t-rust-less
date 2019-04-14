@@ -18,14 +18,26 @@ fn common_secrets_store_tests(secrets_store: &mut SecretsStore) {
     name: "Name1".to_string(),
     email: "Email1".to_string(),
   };
-  let mut passphrase1 = b"Passphrase1".to_vec();
-  secrets_store
-    .add_identity(id1, SecretBytes::from(passphrase1.as_mut()))
-    .unwrap();
+  let mut passphrase1_raw = b"Passphrase1".to_vec();
+  let passphrase1 = SecretBytes::from(passphrase1_raw.as_mut());
+  secrets_store.add_identity(id1.clone(), passphrase1.clone()).unwrap();
+
+  let id2 = Identity {
+    id: "identity2".to_string(),
+    name: "Name2".to_string(),
+    email: "Email2".to_string(),
+  };
+  let mut passphrase2_raw = b"Passphrase2".to_vec();
+  let passphrase2 = SecretBytes::from(passphrase2_raw.as_mut());
+  secrets_store.add_identity(id2.clone(), passphrase2.clone()).unwrap();
 
   let identities = secrets_store.identities().unwrap();
 
-  assert_that(&identities).has_length(1);
+  assert_that(&identities).has_length(2);
+  assert_that(identities.get(0).unwrap()).is_equal_to(id1);
+  assert_that(identities.get(1).unwrap()).is_equal_to(id2);
+
+  secrets_store.unlock("identity1", passphrase1).unwrap();
 }
 
 #[test]

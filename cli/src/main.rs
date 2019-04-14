@@ -51,7 +51,7 @@ fn main() {
     match maybe_config {
       Some(config) => {
         if let Some(_) = matches.subcommand_matches("status") {
-          commands::status();
+          commands::status(config);
         }
       }
       None => uninitialized(),
