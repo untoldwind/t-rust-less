@@ -14,6 +14,7 @@ pub struct Status {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Identity {
+  pub id: String,
   pub name: String,
   pub email: String,
 }

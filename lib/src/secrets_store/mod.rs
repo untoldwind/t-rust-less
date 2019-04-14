@@ -5,6 +5,9 @@ mod error;
 mod multi_lane;
 mod padding;
 
+#[cfg(test)]
+mod tests;
+
 pub use self::error::{SecretStoreError, SecretStoreResult};
 use crate::block_store::open_block_store;
 use crate::memguard::SecretBytes;
@@ -17,6 +20,7 @@ pub trait SecretsStore {
 
   fn identities(&self) -> SecretStoreResult<Vec<Identity>>;
   fn add_identity(&mut self, identity: Identity, passphrase: SecretBytes) -> SecretStoreResult<()>;
+  fn change_passphrase(&mut self, passphrase: SecretBytes) -> SecretStoreResult<()>;
 
   fn list(&self, filter: &SecretListFilter) -> SecretStoreResult<SecretList>;
 

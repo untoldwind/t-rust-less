@@ -283,8 +283,6 @@ impl<'a> io::Write for RefMut<'a> {
 
 #[cfg(test)]
 mod tests {
-  use core::borrow::Borrow;
-
   use rand::{distributions, thread_rng, Rng};
   use spectral::prelude::*;
 

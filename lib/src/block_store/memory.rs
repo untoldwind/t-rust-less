@@ -54,7 +54,7 @@ impl BlockStore for MemoryBlockStore {
   }
 
   fn get_public_ring(&self) -> StoreResult<Option<Vec<u8>>> {
-    let pub_ring = self.ring.read()?;
+    let pub_ring = self.pub_ring.read()?;
 
     Ok(pub_ring.clone())
   }

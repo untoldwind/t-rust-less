@@ -1,7 +1,6 @@
 use super::{NonZeroPadding, Padding};
 use crate::memguard::SecretBytes;
-use core::borrow::BorrowMut;
-use rand::{thread_rng, CryptoRng, RngCore, ThreadRng};
+use rand::thread_rng;
 
 fn assert_slices_equal(actual: &[u8], expected: &[u8]) {
   assert!(actual == expected)

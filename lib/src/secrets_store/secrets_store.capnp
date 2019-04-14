@@ -7,7 +7,7 @@ enum KeyType {
 
 struct PublicKey {
     type @0 : KeyType;
-    key @1 : KeyType;
+    key @1 : Data;
 }
 
 struct Recipient {
@@ -23,17 +23,17 @@ struct PublicRing {
 }
 
 struct Ring {
-    recipients @0 : List(User);
+    users @0 : List(User);
 
     struct User {
-        id @0 : Text;
+        recipient @0 : Recipient;
         privateKeys @1 : List(PrivateKey);
     }
 
     struct PrivateKey {
         type @0 : KeyType;
         preset @1 : UInt8;
-        salt @2 : Data;
+        nonce @2 : Data;
         cryptedKey @3 : Data;
     }
 }

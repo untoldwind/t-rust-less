@@ -1,4 +1,4 @@
-use rand::{distributions, thread_rng, Rng, ThreadRng};
+use rand::{distributions, thread_rng, Rng};
 use spectral::prelude::*;
 
 use crate::memguard::SecretBytes;

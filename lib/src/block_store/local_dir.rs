@@ -182,6 +182,7 @@ impl BlockStore for LocalDirBlockStore {
 
     block_file.write_all(raw)?;
     block_file.flush()?;
+    block_file.sync_all()?;
 
     Ok(block_id)
   }
@@ -208,6 +209,7 @@ impl BlockStore for LocalDirBlockStore {
       }
     }
     log_file.flush()?;
+    log_file.sync_all()?;
 
     Ok(())
   }

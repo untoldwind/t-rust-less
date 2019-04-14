@@ -3,6 +3,7 @@ use std::fmt;
 
 #[derive(Debug)]
 pub enum SecretStoreError {
+  Locked,
   KeyDerivation(String),
   Cipher(String),
   IO(String),
@@ -16,6 +17,7 @@ pub enum SecretStoreError {
 impl fmt::Display for SecretStoreError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
+      SecretStoreError::Locked => write!(f, "Store is locked")?,
       SecretStoreError::KeyDerivation(error) => write!(f, "Key derivation error: {}", error)?,
       SecretStoreError::Cipher(error) => write!(f, "Cipher error: {}", error)?,
       SecretStoreError::IO(error) => write!(f, "IO: {}", error)?,
