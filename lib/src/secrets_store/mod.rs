@@ -1,5 +1,6 @@
 use crate::api::{Identity, Secret, SecretList, SecretListFilter, SecretType, SecretVersion, Status};
 
+mod auto_locker;
 mod cipher;
 mod error;
 mod multi_lane;

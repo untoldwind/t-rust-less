@@ -1,12 +1,13 @@
 use crate::block_store::StoreError;
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum SecretStoreError {
   Locked,
   Forbidden,
   InvalidPassphrase,
   AlreadUnlocked,
+  Conflict,
   KeyDerivation(String),
   Cipher(String),
   IO(String),
@@ -24,6 +25,7 @@ impl fmt::Display for SecretStoreError {
       SecretStoreError::Forbidden => write!(f, "Forbidden user")?,
       SecretStoreError::InvalidPassphrase => write!(f, "Invalid passphrase")?,
       SecretStoreError::AlreadUnlocked => write!(f, "Already unlocked")?,
+      SecretStoreError::Conflict => write!(f, "Conflicting ids/id already taken")?,
       SecretStoreError::KeyDerivation(error) => write!(f, "Key derivation error: {}", error)?,
       SecretStoreError::Cipher(error) => write!(f, "Cipher error: {}", error)?,
       SecretStoreError::IO(error) => write!(f, "IO: {}", error)?,

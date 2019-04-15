@@ -141,6 +141,9 @@ impl SecretsStore for MultiLaneSecretsStore {
         let users = new_ring.init_users(existing_users.len() + 1);
 
         for (idx, user) in existing_users.into_iter().enumerate() {
+          if user.get_recipient()?.get_id()? == &identity.id {
+            return Err(SecretStoreError::Conflict);
+          }
           users.set_with_caveats(idx as u32, user)?;
         }
 
