@@ -68,101 +68,73 @@ impl SecretsStore for MultiLaneSecretsStore {
       return Err(SecretStoreError::AlreadUnlocked);
     }
 
-    match self.block_store.get_ring()? {
-      Some(raw) => {
-        let mut cursor = Cursor::new(&raw);
-        let reader = serialize::read_message(&mut cursor, message::ReaderOptions::new())?;
-        let ring = reader.get_root::<ring::Reader>()?;
-        let user = Self::find_user(ring, identity_id)?.ok_or(SecretStoreError::Forbidden)?;
-        let mut private_keys = Vec::with_capacity(self.ciphers.len());
-        let mut public_keys = Vec::with_capacity(self.ciphers.len());
+    let raw = self.block_store.get_ring(identity_id)?;
+    let mut cursor = Cursor::new(&raw);
+    let reader = serialize::read_message(&mut cursor, message::ReaderOptions::new())?;
+    let ring = reader.get_root::<ring::Reader>()?;
+    let mut private_keys = Vec::with_capacity(self.ciphers.len());
+    let mut public_keys = Vec::with_capacity(self.ciphers.len());
 
-        for user_private_key in user.get_private_keys()? {
-          if let Some(cipher) = self.find_cipher(user_private_key.get_type()?) {
-            let nonce = user_private_key.get_nonce()?;
-            let seal_key = self.key_derivation.derive(
-              &passphrase,
-              user_private_key.get_preset(),
-              nonce,
-              cipher.seal_key_length(),
-            )?;
-            let private_key = cipher
-              .open_private_key(&seal_key, nonce, user_private_key.get_crypted_key()?)
-              .map_err(|_| SecretStoreError::InvalidPassphrase)?;
+    for user_private_key in ring.get_private_keys()? {
+      if let Some(cipher) = self.find_cipher(user_private_key.get_type()?) {
+        let nonce = user_private_key.get_nonce()?;
+        let seal_key = self.key_derivation.derive(
+          &passphrase,
+          user_private_key.get_preset(),
+          nonce,
+          cipher.seal_key_length(),
+        )?;
+        let private_key = cipher
+          .open_private_key(&seal_key, nonce, user_private_key.get_crypted_key()?)
+          .map_err(|_| SecretStoreError::InvalidPassphrase)?;
 
-            private_keys.push((cipher.key_type(), private_key));
-          }
-        }
-        for user_public_key in user.get_public_keys()? {
-          if let Some(cipher) = self.find_cipher(user_public_key.get_type()?) {
-            public_keys.push((cipher.key_type(), user_public_key.get_key()?.to_vec()));
-          }
-        }
-        unlocked_user.replace(User {
-          identity: Self::identity_from_user(user)?,
-          private_keys,
-          public_keys,
-          autolock_at: SystemTime::now() + self.autolock_timeout,
-        });
-
-        Ok(())
+        private_keys.push((cipher.key_type(), private_key));
       }
-      _ => Err(SecretStoreError::Forbidden),
     }
+    for user_public_key in ring.get_public_keys()? {
+      if let Some(cipher) = self.find_cipher(user_public_key.get_type()?) {
+        public_keys.push((cipher.key_type(), user_public_key.get_key()?.to_vec()));
+      }
+    }
+    unlocked_user.replace(User {
+      identity: Self::identity_from_ring(ring)?,
+      private_keys,
+      public_keys,
+      autolock_at: SystemTime::now() + self.autolock_timeout,
+    });
+
+    Ok(())
   }
 
   fn identities(&self) -> SecretStoreResult<Vec<Identity>> {
-    match self.block_store.get_ring()? {
-      Some(raw) => {
-        let mut cursor = Cursor::new(&raw);
-        let reader = serialize::read_message(&mut cursor, message::ReaderOptions::new())?;
-        let public_ring = reader.get_root::<ring::Reader>()?;
-        let users = public_ring.get_users()?;
-        let mut identities = Vec::with_capacity(users.len() as usize);
+    let ring_ids = self.block_store.list_ring_ids()?;
+    let mut identities = Vec::with_capacity(ring_ids.len());
 
-        for user in users {
-          identities.push(Self::identity_from_user(user)?)
-        }
+    for ring_id in ring_ids {
+      let raw = self.block_store.get_ring(&ring_id)?;
+      let mut cursor = Cursor::new(&raw);
+      let reader = serialize::read_message(&mut cursor, message::ReaderOptions::new())?;
+      let ring = reader.get_root::<ring::Reader>()?;
 
-        Ok(identities)
-      }
-      None => Ok(vec![]),
+      identities.push(Self::identity_from_ring(ring)?)
     }
+
+    Ok(identities)
   }
 
   fn add_identity(&self, identity: Identity, passphrase: SecretBytes) -> SecretStoreResult<()> {
+    if self.block_store.list_ring_ids()?.iter().any(|id| id == &identity.id) {
+      return Err(SecretStoreError::Conflict);
+    }
     let mut ring_message = message::Builder::new_default();
-    let new_ring = ring_message.init_root::<ring::Builder>();
+    let mut new_ring = ring_message.init_root::<ring::Builder>();
 
-    let mut user = match self.block_store.get_ring()? {
-      Some(raw) => {
-        let mut cursor = Cursor::new(&raw);
-        let reader = serialize::read_message(&mut cursor, message::ReaderOptions::new())?;
-        let existing_ring = reader.get_root::<ring::Reader>()?;
-        let existing_users = existing_ring.get_users()?;
-        let users = new_ring.init_users(existing_users.len() + 1);
+    new_ring.set_id(&identity.id);
+    new_ring.set_name(&identity.name);
+    new_ring.set_email(&identity.email);
 
-        for (idx, user) in existing_users.into_iter().enumerate() {
-          if user.get_id()? == &identity.id {
-            return Err(SecretStoreError::Conflict);
-          }
-          users.set_with_caveats(idx as u32, user)?;
-        }
-
-        users.get(existing_users.len())
-      }
-      None => {
-        let users = new_ring.init_users(1);
-
-        users.get(0)
-      }
-    };
-    user.set_id(&identity.id);
-    user.set_name(&identity.name);
-    user.set_email(&identity.email);
-
-    user.reborrow().init_public_keys(self.ciphers.len() as u32);
-    user.reborrow().init_private_keys(self.ciphers.len() as u32);
+    new_ring.reborrow().init_public_keys(self.ciphers.len() as u32);
+    new_ring.reborrow().init_private_keys(self.ciphers.len() as u32);
 
     for (idx, cipher) in self.ciphers.iter().enumerate() {
       let (public_key, private_key) = cipher.generate_key_pair()?;
@@ -176,25 +148,25 @@ impl SecretsStore for MultiLaneSecretsStore {
       let crypted_key = cipher.seal_private_key(&seal_key, &nonce, &private_key)?;
 
       {
-        let mut recipient_key = user.reborrow().get_public_keys()?.get(idx as u32);
+        let mut user_public_key = new_ring.reborrow().get_public_keys()?.get(idx as u32);
 
-        recipient_key.set_type(cipher.key_type());
-        recipient_key.set_key(&public_key);
+        user_public_key.set_type(cipher.key_type());
+        user_public_key.set_key(&public_key);
       }
       {
-        let mut user_key = user.reborrow().get_private_keys()?.get(idx as u32);
+        let mut user_private_key = new_ring.reborrow().get_private_keys()?.get(idx as u32);
 
-        user_key.set_type(cipher.key_type());
-        user_key.set_preset(self.key_derivation.default_preset());
-        user_key.set_nonce(&nonce);
-        user_key.set_crypted_key(&crypted_key);
+        user_private_key.set_type(cipher.key_type());
+        user_private_key.set_preset(self.key_derivation.default_preset());
+        user_private_key.set_nonce(&nonce);
+        user_private_key.set_crypted_key(&crypted_key);
       }
     }
     let new_ring_raw = serialize::write_message_to_words(&ring_message);
 
     self
       .block_store
-      .store_ring(capnp::Word::words_to_bytes(&new_ring_raw))?;
+      .store_ring(&identity.id, capnp::Word::words_to_bytes(&new_ring_raw))?;
 
     Ok(())
   }
@@ -202,60 +174,51 @@ impl SecretsStore for MultiLaneSecretsStore {
   fn change_passphrase(&self, passphrase: SecretBytes) -> SecretStoreResult<()> {
     let maybe_unlocked_user = self.unlocked_user.read()?;
     let unlocked_user = maybe_unlocked_user.as_ref().ok_or(SecretStoreError::Locked)?;
-    let raw_ring = self
-      .block_store
-      .get_ring()?
-      .unwrap_or_else(|| panic!("Invalid state: Unlocked store without ring"));
+
     let mut ring_message = message::Builder::new_default();
-    let new_ring = ring_message.init_root::<ring::Builder>();
-    let reader = serialize::read_message(&mut Cursor::new(&raw_ring), message::ReaderOptions::new())?;
-    let existing_ring = reader.get_root::<ring::Reader>()?;
-    let existing_users = existing_ring.get_users()?;
-    let mut users = new_ring.init_users(existing_users.len());
-    let mut changed = false;
+    let mut new_ring = ring_message.init_root::<ring::Builder>();
 
-    for (idx, user) in existing_users.into_iter().enumerate() {
-      if user.get_id()? == &unlocked_user.identity.id {
-        let mut new_user = users.reborrow().get(idx as u32);
+    new_ring.set_id(&unlocked_user.identity.id);
+    new_ring.set_name(&unlocked_user.identity.name);
+    new_ring.set_email(&unlocked_user.identity.email);
 
-        new_user.set_id(user.get_id()?);
-        new_user.set_name(user.get_name()?);
-        new_user.set_email(user.get_email()?);
-        new_user.set_public_keys(user.get_public_keys()?)?;
-        let mut user_private_keys = new_user.init_private_keys(unlocked_user.private_keys.len() as u32);
+    {
+      let mut user_public_keys = new_ring.reborrow().init_public_keys(self.ciphers.len() as u32);
+      for (idx, (key_type, public_key)) in unlocked_user.public_keys.iter().enumerate() {
+        let mut user_public_key = user_public_keys.reborrow().get(idx as u32);
 
-        for (idx, (key_type, private_key)) in unlocked_user.private_keys.iter().enumerate() {
-          let cipher = self
-            .find_cipher(*key_type)
-            .unwrap_or_else(|| panic!("Unlocked user with unknown cipher"));
-          let nonce = Self::generate_nonce(cipher.seal_min_nonce_length().max(self.key_derivation.min_nonce_len()));
-          let seal_key = self.key_derivation.derive(
-            &passphrase,
-            self.key_derivation.default_preset(),
-            &nonce,
-            cipher.seal_key_length(),
-          )?;
-          let crypted_key = cipher.seal_private_key(&seal_key, &nonce, &private_key)?;
-          let mut user_key = user_private_keys.reborrow().get(idx as u32);
-
-          user_key.set_type(cipher.key_type());
-          user_key.set_preset(self.key_derivation.default_preset());
-          user_key.set_nonce(&nonce);
-          user_key.set_crypted_key(&crypted_key);
-        }
-        changed = true;
-      } else {
-        users.set_with_caveats(idx as u32, user)?;
+        user_public_key.set_type(*key_type);
+        user_public_key.set_key(&public_key);
       }
     }
-    if !changed {
-      panic!("Invalid state: Unlocked store by use not in ring")
+
+    let mut user_private_keys = new_ring.init_private_keys(self.ciphers.len() as u32);
+
+    for (idx, (key_type, private_key)) in unlocked_user.private_keys.iter().enumerate() {
+      let cipher = self
+        .find_cipher(*key_type)
+        .unwrap_or_else(|| panic!("Unlocked user with unknown cipher"));
+      let nonce = Self::generate_nonce(cipher.seal_min_nonce_length().max(self.key_derivation.min_nonce_len()));
+      let seal_key = self.key_derivation.derive(
+        &passphrase,
+        self.key_derivation.default_preset(),
+        &nonce,
+        cipher.seal_key_length(),
+      )?;
+      let crypted_key = cipher.seal_private_key(&seal_key, &nonce, &private_key)?;
+      let mut user_private_key = user_private_keys.reborrow().get(idx as u32);
+
+      user_private_key.set_type(cipher.key_type());
+      user_private_key.set_preset(self.key_derivation.default_preset());
+      user_private_key.set_nonce(&nonce);
+      user_private_key.set_crypted_key(&crypted_key);
     }
+
     let new_ring_raw = serialize::write_message_to_words(&ring_message);
 
     self
       .block_store
-      .store_ring(capnp::Word::words_to_bytes(&new_ring_raw))?;
+      .store_ring(&unlocked_user.identity.id, capnp::Word::words_to_bytes(&new_ring_raw))?;
 
     Ok(())
   }
@@ -292,15 +255,6 @@ impl MultiLaneSecretsStore {
     nonce
   }
 
-  fn find_user<'a>(ring: ring::Reader<'a>, id: &str) -> SecretStoreResult<Option<ring::user::Reader<'a>>> {
-    for user in ring.get_users()? {
-      if user.get_id()? == id {
-        return Ok(Some(user));
-      }
-    }
-    Ok(None)
-  }
-
   fn find_cipher(&self, key_type: KeyType) -> Option<&'static Cipher> {
     for cipher in self.ciphers.iter() {
       if cipher.key_type() == key_type {
@@ -310,11 +264,11 @@ impl MultiLaneSecretsStore {
     None
   }
 
-  fn identity_from_user(user: ring::user::Reader) -> SecretStoreResult<Identity> {
+  fn identity_from_ring(ring: ring::Reader) -> SecretStoreResult<Identity> {
     Ok(Identity {
-      id: user.get_id()?.to_string(),
-      name: user.get_name()?.to_string(),
-      email: user.get_email()?.to_string(),
+      id: ring.get_id()?.to_string(),
+      name: ring.get_name()?.to_string(),
+      email: ring.get_email()?.to_string(),
     })
   }
 }

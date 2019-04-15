@@ -18,11 +18,10 @@ fn common_secrets_store_tests(secrets_store: Arc<SecretsStore>) {
   let id1 = add_identity(secrets_store.as_ref(), "identity1", "Name1", "Email1", "Passphrase1").unwrap();
   let id2 = add_identity(secrets_store.as_ref(), "identity2", "Name2", "Email2", "Passphrase2").unwrap();
 
-  let identities = secrets_store.identities().unwrap();
+  let mut identities = secrets_store.identities().unwrap();
+  identities.sort_by(|i1, i2| i1.id.cmp(&i2.id));
 
-  assert_that(&identities).has_length(2);
-  assert_that(identities.get(0).unwrap()).is_equal_to(id1.clone());
-  assert_that(identities.get(1).unwrap()).is_equal_to(id2);
+  assert_that(&identities).is_equal_to(vec![id1.clone(), id2]);
 
   assert_that(&add_identity(
     secrets_store.as_ref(),

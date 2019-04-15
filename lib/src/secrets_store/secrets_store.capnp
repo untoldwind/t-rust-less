@@ -9,15 +9,11 @@ enum KeyType {
 
 # Layout of a (private ring block)
 struct Ring {
-    users @0 : List(User);
-
-    struct User {
-        id @0 : Text;
-        name @1 : Text;
-        email @2 : Text;
-        publicKeys @3 : List(PublicKey);
-        privateKeys @4 : List(PrivateKey);
-    }
+    id @0 : Text;
+    name @1 : Text;
+    email @2 : Text;
+    publicKeys @3 : List(PublicKey);
+    privateKeys @4 : List(PrivateKey);
 
     struct PublicKey {
         type @0 : KeyType;

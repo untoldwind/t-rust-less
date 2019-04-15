@@ -81,18 +81,46 @@ impl LocalDirBlockStore {
 }
 
 impl BlockStore for LocalDirBlockStore {
-  fn get_ring(&self) -> StoreResult<Option<Vec<u8>>> {
-    let base_dir = self.base_dir.read()?;
-    Self::read_optional_file(base_dir.join("ring"))
+  fn list_ring_ids(&self) -> StoreResult<Vec<String>> {
+    match read_dir(self.base_dir.write()?.join("rings")) {
+      Ok(ring_dir) => {
+        let mut ids = vec![];
+        for maybe_entry in ring_dir {
+          let entry = maybe_entry?;
+
+          if !entry.metadata()?.is_file() {
+            continue;
+          }
+          let file_name = entry.path().file_name().unwrap().to_string_lossy().to_string();
+
+          if file_name.ends_with(".bak") {
+            continue;
+          }
+
+          ids.push(file_name);
+        }
+
+        Ok(ids)
+      }
+      Err(ref err) if err.kind() == io::ErrorKind::NotFound => Ok(vec![]),
+      Err(err) => Err(err.into()),
+    }
   }
 
-  fn store_ring(&self, raw: &[u8]) -> StoreResult<()> {
-    let maybe_current = self.get_ring()?;
-    let base_dir = self.base_dir.write()?;
+  fn get_ring(&self, ring_id: &str) -> StoreResult<Vec<u8>> {
+    let base_dir = self.base_dir.read()?;
+    Self::read_optional_file(base_dir.join("rings").join(ring_id))?
+      .ok_or_else(|| StoreError::InvalidBlock(ring_id.to_string()))
+  }
+
+  fn store_ring(&self, ring_id: &str, raw: &[u8]) -> StoreResult<()> {
+    let maybe_current = self.get_ring(ring_id);
+    let ring_dir = self.base_dir.write()?.join("rings");
+    DirBuilder::new().recursive(true).create(&ring_dir)?;
 
     match maybe_current {
-      Some(current) => {
-        let mut backup_file = File::create(base_dir.join("ring.bak"))?;
+      Ok(current) => {
+        let mut backup_file = File::create(ring_dir.join(format!("{}.bak", ring_id)))?;
 
         backup_file.write_all(&current)?;
         backup_file.flush()?;
@@ -101,7 +129,7 @@ impl BlockStore for LocalDirBlockStore {
       _ => (),
     }
 
-    let mut ring_file = File::create(base_dir.join("ring"))?;
+    let mut ring_file = File::create(ring_dir.join(ring_id))?;
 
     ring_file.write_all(raw)?;
     ring_file.flush()?;

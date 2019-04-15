@@ -12,7 +12,7 @@ use super::{BlockStore, Change, ChangeLog, StoreError, StoreResult};
 /// the future.
 ///
 pub struct MemoryBlockStore {
-  ring: RwLock<Option<Vec<u8>>>,
+  rings: RwLock<HashMap<String, Vec<u8>>>,
   indexes: RwLock<HashMap<String, Vec<u8>>>,
   blocks: RwLock<HashMap<String, Vec<u8>>>,
   changes: RwLock<HashMap<String, Vec<Change>>>,
@@ -21,7 +21,7 @@ pub struct MemoryBlockStore {
 impl MemoryBlockStore {
   pub fn new() -> MemoryBlockStore {
     MemoryBlockStore {
-      ring: RwLock::new(None),
+      rings: RwLock::new(HashMap::new()),
       indexes: RwLock::new(HashMap::new()),
       blocks: RwLock::new(HashMap::new()),
       changes: RwLock::new(HashMap::new()),
@@ -38,16 +38,26 @@ impl MemoryBlockStore {
 }
 
 impl BlockStore for MemoryBlockStore {
-  fn get_ring(&self) -> StoreResult<Option<Vec<u8>>> {
-    let ring = self.ring.read()?;
+  fn list_ring_ids(&self) -> StoreResult<Vec<String>> {
+    let rings = self.rings.read()?;
 
-    Ok(ring.clone())
+    Ok(rings.keys().cloned().collect())
   }
 
-  fn store_ring(&self, raw: &[u8]) -> StoreResult<()> {
-    let mut ring = self.ring.write()?;
+  fn get_ring(&self, ring_id: &str) -> StoreResult<Vec<u8>> {
+    let rings = self.rings.read()?;
 
-    ring.replace(raw.to_vec());
+    rings
+      .get(ring_id)
+      .cloned()
+      .ok_or_else(|| StoreError::InvalidBlock(ring_id.to_string()))
+  }
+
+  fn store_ring(&self, ring_id: &str, raw: &[u8]) -> StoreResult<()> {
+    let mut rings = self.rings.write()?;
+
+    rings.insert(ring_id.to_string(), raw.to_vec());
+
     Ok(())
   }
 

@@ -12,14 +12,29 @@ fn common_store_tests(store: Arc<BlockStore>) {
 }
 
 fn common_test_ring(store: &BlockStore, rng: &mut ThreadRng) {
-  let ring1 = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
-  let ring2 = rng.sample_iter(&distributions::Standard).take(300).collect::<Vec<u8>>();
+  let ring1a = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
+  let ring1b = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
+  let ring2a = rng.sample_iter(&distributions::Standard).take(300).collect::<Vec<u8>>();
+  let ring2b = rng.sample_iter(&distributions::Standard).take(300).collect::<Vec<u8>>();
 
-  assert_that(&store.get_ring()).is_ok_containing(None);
-  assert_that(&store.store_ring(&ring1)).is_ok();
-  assert_that(&store.get_ring()).is_ok_containing(Some(ring1));
-  assert_that(&store.store_ring(&ring2)).is_ok();
-  assert_that(&store.get_ring()).is_ok_containing(Some(ring2));
+  assert_that(&store.list_ring_ids()).is_ok_containing(vec![]);
+  assert_that(&store.store_ring("ring1", &ring1a)).is_ok();
+  assert_that(&store.get_ring("ring1")).is_ok_containing(ring1a);
+  assert_that(&store.store_ring("ring1", &ring1b)).is_ok();
+  assert_that(&store.get_ring("ring1")).is_ok_containing(ring1b);
+
+  let mut ring_ids1 = store.list_ring_ids().unwrap();
+  ring_ids1.sort();
+  assert_that(&ring_ids1).is_equal_to(vec!["ring1".to_string()]);
+
+  assert_that(&store.store_ring("ring2", &ring2a)).is_ok();
+  assert_that(&store.get_ring("ring2")).is_ok_containing(ring2a);
+  assert_that(&store.store_ring("ring2", &ring2b)).is_ok();
+  assert_that(&store.get_ring("ring2")).is_ok_containing(ring2b);
+
+  let mut ring_ids2 = store.list_ring_ids().unwrap();
+  ring_ids2.sort();
+  assert_that(&ring_ids2).is_equal_to(vec!["ring1".to_string(), "ring2".to_string()]);
 }
 
 fn common_test_index(store: &BlockStore, rng: &mut ThreadRng) {
