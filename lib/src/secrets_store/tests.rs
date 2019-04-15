@@ -33,14 +33,35 @@ fn common_secrets_store_tests(secrets_store: Arc<SecretsStore>) {
   ))
   .is_err_containing(SecretStoreError::Conflict);
 
+  assert_that(&secrets_store.unlock("identity1", secret_from_str("Passphrase2")))
+    .is_err_containing(SecretStoreError::InvalidPassphrase);
+
   secrets_store
     .unlock("identity1", secret_from_str("Passphrase1"))
     .unwrap();
 
-  let status = secrets_store.status().unwrap();
+  let unlock_status = secrets_store.status().unwrap();
 
-  assert_that(&status.locked).is_false();
-  assert_that(&status.unlocked_by).is_equal_to(Some(id1));
+  assert_that(&unlock_status.locked).is_false();
+  assert_that(&unlock_status.unlocked_by).contains_value(id1);
+
+  secrets_store
+    .change_passphrase(secret_from_str("Passphrase1abc"))
+    .unwrap();
+
+  secrets_store.lock().unwrap();
+
+  let locked_status = secrets_store.status().unwrap();
+
+  assert_that(&locked_status.locked).is_true();
+  assert_that(&locked_status.unlocked_by).is_none();
+
+  assert_that(&secrets_store.unlock("identity1", secret_from_str("Passphrase1")))
+    .is_err_containing(SecretStoreError::InvalidPassphrase);
+
+  secrets_store
+    .unlock("identity1", secret_from_str("Passphrase1abc"))
+    .unwrap();
 }
 
 fn add_identity(

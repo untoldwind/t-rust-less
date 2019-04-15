@@ -1,6 +1,6 @@
 use std::io::Cursor;
 use std::sync::{Arc, RwLock};
-use std::time::{SystemTime, Duration};
+use std::time::{Duration, SystemTime};
 
 use capnp::{message, serialize};
 
@@ -208,41 +208,81 @@ impl SecretsStore for MultiLaneSecretsStore {
   }
 
   fn change_passphrase(&self, passphrase: SecretBytes) -> SecretStoreResult<()> {
-    let unlocked_user = self.unlocked_user.read()?;
+    let maybe_unlocked_user = self.unlocked_user.read()?;
+    let unlocked_user = maybe_unlocked_user.as_ref().ok_or(SecretStoreError::Locked)?;
+    let raw_ring = self
+      .block_store
+      .get_ring()?
+      .unwrap_or_else(|| panic!("Invalid state: Unlocked store without ring"));
+    let mut ring_message = message::Builder::new_default();
+    let new_ring = ring_message.init_root::<ring::Builder>();
+    let reader = serialize::read_message(&mut Cursor::new(&raw_ring), message::ReaderOptions::new())?;
+    let existing_ring = reader.get_root::<ring::Reader>()?;
+    let existing_users = existing_ring.get_users()?;
+    let mut users = new_ring.init_users(existing_users.len());
+    let mut changed = false;
 
-    if unlocked_user.is_none() {
-      return Err(SecretStoreError::Locked);
+    for (idx, user) in existing_users.into_iter().enumerate() {
+      let recipient = user.get_recipient()?;
+      if recipient.get_id()? == &unlocked_user.identity.id {
+        let mut new_user = users.reborrow().get(idx as u32);
+
+        new_user.set_recipient(recipient)?;
+        let mut user_private_keys = new_user.init_private_keys(unlocked_user.private_keys.len() as u32);
+
+        for (idx, (key_type, private_key)) in unlocked_user.private_keys.iter().enumerate() {
+          let cipher = self
+            .find_cipher(*key_type)
+            .unwrap_or_else(|| panic!("Unlocked user with unknown cipher"));
+          let nonce = Self::generate_nonce(cipher.seal_min_nonce_length().max(self.key_derivation.min_nonce_len()));
+          let seal_key = self.key_derivation.derive(
+            &passphrase,
+            self.key_derivation.default_preset(),
+            &nonce,
+            cipher.seal_key_length(),
+          )?;
+          let crypted_key = cipher.seal_private_key(&seal_key, &nonce, &private_key)?;
+          let mut user_key = user_private_keys.reborrow().get(idx as u32);
+
+          user_key.set_type(cipher.key_type());
+          user_key.set_preset(self.key_derivation.default_preset());
+          user_key.set_nonce(&nonce);
+          user_key.set_crypted_key(&crypted_key);
+        }
+        changed = true;
+      } else {
+        users.set_with_caveats(idx as u32, user)?;
+      }
     }
+    if !changed {
+      panic!("Invalid state: Unlocked store by use not in ring")
+    }
+    let new_ring_raw = serialize::write_message_to_words(&ring_message);
 
-    unimplemented!()
+    self
+      .block_store
+      .store_ring(capnp::Word::words_to_bytes(&new_ring_raw))?;
+
+    Ok(())
   }
 
   fn list(&self, filter: &SecretListFilter) -> SecretStoreResult<SecretList> {
-    let unlocked_user = self.unlocked_user.read()?;
-
-    if unlocked_user.is_none() {
-      return Err(SecretStoreError::Locked);
-    }
+    let maybe_unlocked_user = self.unlocked_user.read()?;
+    let unlocked_user = maybe_unlocked_user.as_ref().ok_or(SecretStoreError::Locked)?;
 
     unimplemented!()
   }
 
   fn add(&self, id: &str, secret_type: SecretType, secret_version: SecretVersion) -> SecretStoreResult<()> {
-    let unlocked_user = self.unlocked_user.read()?;
-
-    if unlocked_user.is_none() {
-      return Err(SecretStoreError::Locked);
-    }
+    let maybe_unlocked_user = self.unlocked_user.read()?;
+    let unlocked_user = maybe_unlocked_user.as_ref().ok_or(SecretStoreError::Locked)?;
 
     unimplemented!()
   }
 
   fn get(&self, id: &str) -> SecretStoreResult<Secret> {
-    let unlocked_user = self.unlocked_user.read()?;
-
-    if unlocked_user.is_none() {
-      return Err(SecretStoreError::Locked);
-    }
+    let maybe_unlocked_user = self.unlocked_user.read()?;
+    let unlocked_user = maybe_unlocked_user.as_ref().ok_or(SecretStoreError::Locked)?;
 
     unimplemented!()
   }

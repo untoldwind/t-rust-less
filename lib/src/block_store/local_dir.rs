@@ -1,5 +1,6 @@
 use super::{BlockStore, Change, ChangeLog, Operation, StoreError, StoreResult};
 use data_encoding::HEXLOWER;
+use log::{debug, info};
 use sha2::{Digest, Sha256};
 use std::fs::{metadata, read_dir, DirBuilder, File, OpenOptions};
 use std::io::prelude::*;
@@ -24,6 +25,7 @@ impl LocalDirBlockStore {
     if !md.is_dir() {
       Err(StoreError::InvalidStoreUrl(format!("{} is not a directory", base_dir)))
     } else {
+      info!("Opening local dir store on: {}", base_dir);
       Ok(LocalDirBlockStore {
         base_dir: RwLock::new(base_dir.into()),
       })
@@ -31,6 +33,7 @@ impl LocalDirBlockStore {
   }
 
   fn read_optional_file<P: AsRef<Path>>(path: P) -> StoreResult<Option<Vec<u8>>> {
+    debug!("Try reading file: {}", path.as_ref().to_string_lossy());
     match File::open(path) {
       Ok(mut index_file) => {
         let mut content = vec![];

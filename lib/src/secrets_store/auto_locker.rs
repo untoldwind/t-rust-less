@@ -35,7 +35,7 @@ where
       if let Some(autolock_at) = status.autolock_at {
         if autolock_at < Utc::now() {
           if let Err(error) = secrets_store.lock() {
-              error!("Autolocker was unable to lock store: {}", error);
+            error!("Autolocker was unable to lock store: {}", error);
           }
         }
       }

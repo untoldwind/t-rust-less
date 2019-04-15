@@ -102,9 +102,12 @@ fn store_config(s: &mut Cursive) {
   try_with_dialog!(fs::create_dir_all(&store_path), s, "Failed creating directory:\n{}");
 
   let store_url = format!("multilane+file://{}", store_path);
-  let secrets_store = try_with_dialog!(open_secrets_store(&store_url, autolock_timeout), s, "Unable to open store:\n{}");
+  let secrets_store = try_with_dialog!(
+    open_secrets_store(&store_url, autolock_timeout),
+    s,
+    "Unable to open store:\n{}"
+  );
   let identities = try_with_dialog!(secrets_store.identities(), s, "Unable to query identities:\n{}");
-
 
   let client_id = match s.user_data::<Config>() {
     Some(previous) => previous.client_id.clone(),
