@@ -31,30 +31,21 @@ pub use self::error::{StoreError, StoreResult};
 /// protected accordingly.
 ///
 pub trait BlockStore: Send + Sync {
-  /// Get/read the (private) ring block.
+  /// Get/read the ring block.
   ///
-  /// Every store has zero or one (private) ring containing all the relevant
-  /// key material to decrypt all the other blocks.
+  /// Every store has one  ring containing all the relevant key material to encrypt/decrypt
+  /// all the other blocks.
   ///
   /// This block should be protected by some sort of passphrase/key-derivation
   ///
   fn get_ring(&self) -> StoreResult<Option<Vec<u8>>>;
-  /// Set/write the (private) ring block.
+
+  /// Set/write the ring block.
   ///
   /// Implementors should ensure a sort of backup in case this operation fails, since
   /// loosing the (private) ring will render the entire store useless.
   ///
   fn store_ring(&self, raw: &[u8]) -> StoreResult<()>;
-
-  /// Get/read the public ring block.
-  ///
-  /// The public ring contains all the public key material that does not require
-  /// special protection
-  ///
-  fn get_public_ring(&self) -> StoreResult<Option<Vec<u8>>>;
-  /// Set/write the public ring block.
-  ///
-  fn store_public_ring(&self, raw: &[u8]) -> StoreResult<()>;
 
   /// Get all the change logs of the store.
   ///

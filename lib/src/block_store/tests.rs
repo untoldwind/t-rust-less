@@ -7,7 +7,6 @@ use tempdir::TempDir;
 fn common_store_tests(store: Arc<BlockStore>) {
   let mut rng = thread_rng();
   common_test_ring(store.as_ref(), &mut rng);
-  common_test_public_ring(store.as_ref(), &mut rng);
   common_test_index(store.as_ref(), &mut rng);
   common_test_blocks(store.as_ref(), &mut rng);
 }
@@ -21,17 +20,6 @@ fn common_test_ring(store: &BlockStore, rng: &mut ThreadRng) {
   assert_that(&store.get_ring()).is_ok_containing(Some(ring1));
   assert_that(&store.store_ring(&ring2)).is_ok();
   assert_that(&store.get_ring()).is_ok_containing(Some(ring2));
-}
-
-fn common_test_public_ring(store: &BlockStore, rng: &mut ThreadRng) {
-  let ring1 = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
-  let ring2 = rng.sample_iter(&distributions::Standard).take(300).collect::<Vec<u8>>();
-
-  assert_that(&store.get_public_ring()).is_ok_containing(None);
-  assert_that(&store.store_public_ring(&ring1)).is_ok();
-  assert_that(&store.get_public_ring()).is_ok_containing(Some(ring1));
-  assert_that(&store.store_public_ring(&ring2)).is_ok();
-  assert_that(&store.get_public_ring()).is_ok_containing(Some(ring2));
 }
 
 fn common_test_index(store: &BlockStore, rng: &mut ThreadRng) {

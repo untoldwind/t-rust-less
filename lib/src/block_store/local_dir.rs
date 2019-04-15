@@ -109,34 +109,6 @@ impl BlockStore for LocalDirBlockStore {
     Ok(())
   }
 
-  fn get_public_ring(&self) -> StoreResult<Option<Vec<u8>>> {
-    let base_dir = self.base_dir.read()?;
-    Self::read_optional_file(base_dir.join("ring.pub"))
-  }
-
-  fn store_public_ring(&self, raw: &[u8]) -> StoreResult<()> {
-    let maybe_current = self.get_public_ring()?;
-    let base_dir = self.base_dir.write()?;
-
-    match maybe_current {
-      Some(current) => {
-        let mut backup_file = File::create(base_dir.join("ring.pub,bak"))?;
-
-        backup_file.write_all(&current)?;
-        backup_file.flush()?;
-        backup_file.sync_all()?;
-      }
-      _ => (),
-    }
-
-    let mut ring_file = File::create(base_dir.join("ring.pub"))?;
-
-    ring_file.write_all(raw)?;
-    ring_file.flush()?;
-    ring_file.sync_all()?;
-    Ok(())
-  }
-
   fn change_logs(&self) -> StoreResult<Vec<ChangeLog>> {
     let base_dir = self.base_dir.read()?;
     let commit_dir = read_dir(base_dir.join("logs"))?;

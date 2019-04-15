@@ -11,7 +11,7 @@ use crate::secrets_store::cipher::{
   Cipher, KeyDerivation, PrivateKey, PublicKey, OPEN_SSL_RSA_AES_GCM, RUST_ARGON2_ID, RUST_X25519CHA_CHA20POLY1305,
 };
 use crate::secrets_store::{SecretStoreError, SecretStoreResult, SecretsStore};
-use crate::secrets_store_capnp::{public_ring, recipient, ring, KeyType};
+use crate::secrets_store_capnp::{ring, KeyType};
 use chrono::DateTime;
 use rand::{thread_rng, RngCore};
 
@@ -93,13 +93,13 @@ impl SecretsStore for MultiLaneSecretsStore {
             private_keys.push((cipher.key_type(), private_key));
           }
         }
-        for recipient_public_key in user.get_recipient()?.get_public_keys()? {
-          if let Some(cipher) = self.find_cipher(recipient_public_key.get_type()?) {
-            public_keys.push((cipher.key_type(), recipient_public_key.get_key()?.to_vec()));
+        for user_public_key in user.get_public_keys()? {
+          if let Some(cipher) = self.find_cipher(user_public_key.get_type()?) {
+            public_keys.push((cipher.key_type(), user_public_key.get_key()?.to_vec()));
           }
         }
         unlocked_user.replace(User {
-          identity: Self::identity_from_recipient(user.get_recipient()?)?,
+          identity: Self::identity_from_user(user)?,
           private_keys,
           public_keys,
           autolock_at: SystemTime::now() + self.autolock_timeout,
@@ -112,16 +112,16 @@ impl SecretsStore for MultiLaneSecretsStore {
   }
 
   fn identities(&self) -> SecretStoreResult<Vec<Identity>> {
-    match self.block_store.get_public_ring()? {
+    match self.block_store.get_ring()? {
       Some(raw) => {
         let mut cursor = Cursor::new(&raw);
         let reader = serialize::read_message(&mut cursor, message::ReaderOptions::new())?;
-        let public_ring = reader.get_root::<public_ring::Reader>()?;
-        let recipients = public_ring.get_recipients()?;
-        let mut identities = Vec::with_capacity(recipients.len() as usize);
+        let public_ring = reader.get_root::<ring::Reader>()?;
+        let users = public_ring.get_users()?;
+        let mut identities = Vec::with_capacity(users.len() as usize);
 
-        for recipient in recipients {
-          identities.push(Self::identity_from_recipient(recipient)?)
+        for user in users {
+          identities.push(Self::identity_from_user(user)?)
         }
 
         Ok(identities)
@@ -143,7 +143,7 @@ impl SecretsStore for MultiLaneSecretsStore {
         let users = new_ring.init_users(existing_users.len() + 1);
 
         for (idx, user) in existing_users.into_iter().enumerate() {
-          if user.get_recipient()?.get_id()? == &identity.id {
+          if user.get_id()? == &identity.id {
             return Err(SecretStoreError::Conflict);
           }
           users.set_with_caveats(idx as u32, user)?;
@@ -157,15 +157,11 @@ impl SecretsStore for MultiLaneSecretsStore {
         users.get(0)
       }
     };
-    {
-      let mut recipient = user.reborrow().get_recipient()?;
+    user.set_id(&identity.id);
+    user.set_name(&identity.name);
+    user.set_email(&identity.email);
 
-      recipient.set_id(&identity.id);
-      recipient.set_name(&identity.name);
-      recipient.set_email(&identity.email);
-
-      recipient.init_public_keys(self.ciphers.len() as u32);
-    }
+    user.reborrow().init_public_keys(self.ciphers.len() as u32);
     user.reborrow().init_private_keys(self.ciphers.len() as u32);
 
     for (idx, cipher) in self.ciphers.iter().enumerate() {
@@ -180,7 +176,7 @@ impl SecretsStore for MultiLaneSecretsStore {
       let crypted_key = cipher.seal_private_key(&seal_key, &nonce, &private_key)?;
 
       {
-        let mut recipient_key = user.reborrow().get_recipient()?.get_public_keys()?.get(idx as u32);
+        let mut recipient_key = user.reborrow().get_public_keys()?.get(idx as u32);
 
         recipient_key.set_type(cipher.key_type());
         recipient_key.set_key(&public_key);
@@ -195,14 +191,10 @@ impl SecretsStore for MultiLaneSecretsStore {
       }
     }
     let new_ring_raw = serialize::write_message_to_words(&ring_message);
-    let new_public_ring_raw = Self::public_ring_from_private(&ring_message.get_root_as_reader()?)?;
 
     self
       .block_store
       .store_ring(capnp::Word::words_to_bytes(&new_ring_raw))?;
-    self
-      .block_store
-      .store_public_ring(capnp::Word::words_to_bytes(&new_public_ring_raw))?;
 
     Ok(())
   }
@@ -223,11 +215,13 @@ impl SecretsStore for MultiLaneSecretsStore {
     let mut changed = false;
 
     for (idx, user) in existing_users.into_iter().enumerate() {
-      let recipient = user.get_recipient()?;
-      if recipient.get_id()? == &unlocked_user.identity.id {
+      if user.get_id()? == &unlocked_user.identity.id {
         let mut new_user = users.reborrow().get(idx as u32);
 
-        new_user.set_recipient(recipient)?;
+        new_user.set_id(user.get_id()?);
+        new_user.set_name(user.get_name()?);
+        new_user.set_email(user.get_email()?);
+        new_user.set_public_keys(user.get_public_keys()?)?;
         let mut user_private_keys = new_user.init_private_keys(unlocked_user.private_keys.len() as u32);
 
         for (idx, (key_type, private_key)) in unlocked_user.private_keys.iter().enumerate() {
@@ -298,25 +292,9 @@ impl MultiLaneSecretsStore {
     nonce
   }
 
-  fn public_ring_from_private(ring: &ring::Reader) -> SecretStoreResult<Vec<capnp::Word>> {
-    let mut public_ring_message = message::Builder::new_default();
-    let public_ring = public_ring_message.init_root::<public_ring::Builder>();
-    let users = ring.get_users()?;
-    let recipients = public_ring.init_recipients(users.len());
-
-    for (idx, user) in users.into_iter().enumerate() {
-      let recipient = user.get_recipient()?;
-
-      recipients.set_with_caveats(idx as u32, recipient)?;
-    }
-
-    Ok(serialize::write_message_to_words(&public_ring_message))
-  }
-
   fn find_user<'a>(ring: ring::Reader<'a>, id: &str) -> SecretStoreResult<Option<ring::user::Reader<'a>>> {
     for user in ring.get_users()? {
-      let recipient = user.get_recipient()?;
-      if recipient.get_id()? == id {
+      if user.get_id()? == id {
         return Ok(Some(user));
       }
     }
@@ -332,11 +310,11 @@ impl MultiLaneSecretsStore {
     None
   }
 
-  fn identity_from_recipient(recipient: recipient::Reader) -> SecretStoreResult<Identity> {
+  fn identity_from_user(user: ring::user::Reader) -> SecretStoreResult<Identity> {
     Ok(Identity {
-      id: recipient.get_id()?.to_string(),
-      name: recipient.get_name()?.to_string(),
-      email: recipient.get_email()?.to_string(),
+      id: user.get_id()?.to_string(),
+      name: user.get_name()?.to_string(),
+      email: user.get_email()?.to_string(),
     })
   }
 }

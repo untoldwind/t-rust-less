@@ -13,7 +13,6 @@ use super::{BlockStore, Change, ChangeLog, StoreError, StoreResult};
 ///
 pub struct MemoryBlockStore {
   ring: RwLock<Option<Vec<u8>>>,
-  pub_ring: RwLock<Option<Vec<u8>>>,
   indexes: RwLock<HashMap<String, Vec<u8>>>,
   blocks: RwLock<HashMap<String, Vec<u8>>>,
   changes: RwLock<HashMap<String, Vec<Change>>>,
@@ -23,7 +22,6 @@ impl MemoryBlockStore {
   pub fn new() -> MemoryBlockStore {
     MemoryBlockStore {
       ring: RwLock::new(None),
-      pub_ring: RwLock::new(None),
       indexes: RwLock::new(HashMap::new()),
       blocks: RwLock::new(HashMap::new()),
       changes: RwLock::new(HashMap::new()),
@@ -50,19 +48,6 @@ impl BlockStore for MemoryBlockStore {
     let mut ring = self.ring.write()?;
 
     ring.replace(raw.to_vec());
-    Ok(())
-  }
-
-  fn get_public_ring(&self) -> StoreResult<Option<Vec<u8>>> {
-    let pub_ring = self.pub_ring.read()?;
-
-    Ok(pub_ring.clone())
-  }
-
-  fn store_public_ring(&self, raw: &[u8]) -> StoreResult<()> {
-    let mut pub_ring = self.pub_ring.write()?;
-
-    pub_ring.replace(raw.to_vec());
     Ok(())
   }
 
