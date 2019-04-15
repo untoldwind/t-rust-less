@@ -90,7 +90,7 @@ fn secret_from_str(s: &str) -> SecretBytes {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn test_multi_lane_secrets_store() {
-  let secrets_store = open_secrets_store("multilane+memory://", Duration::from_secs(300)).unwrap();
+  let secrets_store = open_secrets_store("multilane+memory://", "node1", Duration::from_secs(300)).unwrap();
 
   common_secrets_store_tests(secrets_store)
 }

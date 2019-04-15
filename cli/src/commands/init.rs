@@ -94,6 +94,10 @@ fn store_config(s: &mut Cursive) {
     s,
     "Autolock timeout has to be a positive integer:\n{}"
   ));
+  let client_id = match s.user_data::<Config>() {
+    Some(previous) => previous.client_id.clone(),
+    _ => generate_client_id(),
+  };
 
   if store_path.is_empty() {
     s.add_layer(Dialog::info("Store directory must not be empty"));
@@ -103,16 +107,11 @@ fn store_config(s: &mut Cursive) {
 
   let store_url = format!("multilane+file://{}", store_path);
   let secrets_store = try_with_dialog!(
-    open_secrets_store(&store_url, autolock_timeout),
+    open_secrets_store(&store_url, &client_id, autolock_timeout),
     s,
     "Unable to open store:\n{}"
   );
   let identities = try_with_dialog!(secrets_store.identities(), s, "Unable to query identities:\n{}");
-
-  let client_id = match s.user_data::<Config>() {
-    Some(previous) => previous.client_id.clone(),
-    _ => generate_client_id(),
-  };
 
   let config = Config {
     client_id,

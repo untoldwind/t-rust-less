@@ -59,19 +59,20 @@ pub trait BlockStore: Send + Sync {
   ///
   fn change_logs(&self) -> StoreResult<Vec<ChangeLog>>;
 
-  /// Get the index block of a specific client.
+  /// Get the index block of a specific client/user.
   ///
   /// An index block contains any sort of searchable index data referencing the
   /// underlying data blocks. As the index might contain sensible data this block
   /// has to be protected similar to a regular data block.
   ///
-  /// Index blocks should not be shared among clients. I.e. every client has its own set
-  /// of index blocks.
+  /// Index blocks should not be shared among clients or user. I.e. every client/user
+  /// should have its own set index blocks.
   ///
-  fn get_index(&self, node: &str) -> StoreResult<Option<Vec<u8>>>;
-  /// Store the index block of a specific client.
+  fn get_index(&self, index_id: &str) -> StoreResult<Option<Vec<u8>>>;
+
+  /// Store the index block of a specific client/user.
   ///
-  fn store_index(&self, node: &str, raw: &[u8]) -> StoreResult<()>;
+  fn store_index(&self, index_id: &str, raw: &[u8]) -> StoreResult<()>;
 
   /// Add a new data block to the store.
   ///
@@ -91,15 +92,15 @@ pub trait BlockStore: Send + Sync {
   /// commit its changes. This will create an entry in the `change_log` so that
   /// other clients will notice the new data blocks.
   ///
-  fn commit(&self, node: &str, changes: &[Change]) -> StoreResult<()>;
+  fn commit(&self, changes: &[Change]) -> StoreResult<()>;
 }
 
-pub fn open_block_store(url: &str) -> StoreResult<Arc<BlockStore>> {
+pub fn open_block_store(url: &str, node_id: &str) -> StoreResult<Arc<BlockStore>> {
   let store_url = Url::parse(url)?;
 
   match store_url.scheme() {
-    "file" => Ok(Arc::new(local_dir::LocalDirBlockStore::new(store_url.path())?)),
-    "memory" => Ok(Arc::new(memory::MemoryBlockStore::new())),
+    "file" => Ok(Arc::new(local_dir::LocalDirBlockStore::new(store_url.path(), node_id)?)),
+    "memory" => Ok(Arc::new(memory::MemoryBlockStore::new(node_id))),
     _ => Err(StoreError::InvalidStoreUrl(url.to_string())),
   }
 }

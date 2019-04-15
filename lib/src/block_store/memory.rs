@@ -12,6 +12,7 @@ use super::{BlockStore, Change, ChangeLog, StoreError, StoreResult};
 /// the future.
 ///
 pub struct MemoryBlockStore {
+  node_id: String,
   rings: RwLock<HashMap<String, Vec<u8>>>,
   indexes: RwLock<HashMap<String, Vec<u8>>>,
   blocks: RwLock<HashMap<String, Vec<u8>>>,
@@ -19,8 +20,9 @@ pub struct MemoryBlockStore {
 }
 
 impl MemoryBlockStore {
-  pub fn new() -> MemoryBlockStore {
+  pub fn new(node_id: &str) -> MemoryBlockStore {
     MemoryBlockStore {
+      node_id: node_id.to_string(),
       rings: RwLock::new(HashMap::new()),
       indexes: RwLock::new(HashMap::new()),
       blocks: RwLock::new(HashMap::new()),
@@ -105,15 +107,15 @@ impl BlockStore for MemoryBlockStore {
       .ok_or_else(|| StoreError::InvalidBlock(block.to_string()))
   }
 
-  fn commit(&self, node: &str, changes: &[Change]) -> StoreResult<()> {
+  fn commit(&self, changes: &[Change]) -> StoreResult<()> {
     let mut stored_changes = self.changes.write()?;
 
-    match stored_changes.get_mut(node) {
+    match stored_changes.get_mut(&self.node_id) {
       Some(existing) => {
         existing.extend_from_slice(changes);
       }
       None => {
-        stored_changes.insert(node.to_string(), changes.to_vec());
+        stored_changes.insert(self.node_id.to_string(), changes.to_vec());
       }
     }
     Ok(())

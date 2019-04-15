@@ -15,11 +15,12 @@ use std::sync::RwLock;
 ///
 #[derive(Debug)]
 pub struct LocalDirBlockStore {
+  node_id: String,
   base_dir: RwLock<PathBuf>,
 }
 
 impl LocalDirBlockStore {
-  pub fn new(base_dir: &str) -> StoreResult<LocalDirBlockStore> {
+  pub fn new(base_dir: &str, node_id: &str) -> StoreResult<LocalDirBlockStore> {
     let md = metadata(base_dir)?;
 
     if !md.is_dir() {
@@ -27,6 +28,7 @@ impl LocalDirBlockStore {
     } else {
       info!("Opening local dir store on: {}", base_dir);
       Ok(LocalDirBlockStore {
+        node_id: node_id.to_string(),
         base_dir: RwLock::new(base_dir.into()),
       })
     }
@@ -197,13 +199,13 @@ impl BlockStore for LocalDirBlockStore {
     Self::read_optional_file(&block_file_path)?.ok_or_else(|| StoreError::InvalidBlock(block.to_string()))
   }
 
-  fn commit(&self, node: &str, changes: &[Change]) -> StoreResult<()> {
+  fn commit(&self, changes: &[Change]) -> StoreResult<()> {
     let base_dir = self.base_dir.write()?;
     DirBuilder::new().recursive(true).create(base_dir.join("logs"))?;
     let mut log_file = OpenOptions::new()
       .create(true)
       .append(true)
-      .open(base_dir.join("logs").join(node))?;
+      .open(base_dir.join("logs").join(&self.node_id))?;
 
     for change in changes {
       match change.op {

@@ -88,14 +88,14 @@ fn test_local_dir_store() {
   let tempdir = TempDir::new("t-rust-less-test").unwrap();
   let url = format!("file://{}", tempdir.path().to_string_lossy());
 
-  let store = open_block_store(&url).unwrap();
+  let store = open_block_store(&url, "node1").unwrap();
 
   common_store_tests(store);
 }
 
 #[test]
 fn test_memory_store() {
-  let store = open_block_store("memory://").unwrap();
+  let store = open_block_store("memory://", "node1").unwrap();
 
   common_store_tests(store);
 }

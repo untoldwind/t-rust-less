@@ -31,13 +31,17 @@ pub trait SecretsStore: Send + Sync {
   fn get(&self, id: &str) -> SecretStoreResult<Secret>;
 }
 
-pub fn open_secrets_store(url: &str, autolock_timeout: Duration) -> SecretStoreResult<Arc<SecretsStore>> {
+pub fn open_secrets_store(
+  url: &str,
+  node_id: &str,
+  autolock_timeout: Duration,
+) -> SecretStoreResult<Arc<SecretsStore>> {
   let (scheme, block_store_url) = match url.find('+') {
     Some(idx) => (&url[..idx], &url[idx + 1..]),
     _ => return Err(SecretStoreError::InvalidStoreUrl(url.to_string())),
   };
 
-  let block_store = open_block_store(block_store_url)?;
+  let block_store = open_block_store(block_store_url, node_id)?;
 
   let secrets_store = match scheme {
     "multilane" => Arc::new(multi_lane::MultiLaneSecretsStore::new(block_store, autolock_timeout)),
