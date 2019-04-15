@@ -46,7 +46,7 @@ impl BlockStore for MemoryBlockStore {
     Ok(ring.clone())
   }
 
-  fn store_ring(&mut self, raw: &[u8]) -> StoreResult<()> {
+  fn store_ring(&self, raw: &[u8]) -> StoreResult<()> {
     let mut ring = self.ring.write()?;
 
     ring.replace(raw.to_vec());
@@ -59,7 +59,7 @@ impl BlockStore for MemoryBlockStore {
     Ok(pub_ring.clone())
   }
 
-  fn store_public_ring(&mut self, raw: &[u8]) -> StoreResult<()> {
+  fn store_public_ring(&self, raw: &[u8]) -> StoreResult<()> {
     let mut pub_ring = self.pub_ring.write()?;
 
     pub_ring.replace(raw.to_vec());
@@ -86,14 +86,14 @@ impl BlockStore for MemoryBlockStore {
     Ok(indexes.get(node).cloned())
   }
 
-  fn store_index(&mut self, node: &str, raw: &[u8]) -> StoreResult<()> {
+  fn store_index(&self, node: &str, raw: &[u8]) -> StoreResult<()> {
     let mut indexes = self.indexes.write()?;
 
     indexes.insert(node.to_string(), raw.to_vec());
     Ok(())
   }
 
-  fn add_block(&mut self, raw: &[u8]) -> StoreResult<String> {
+  fn add_block(&self, raw: &[u8]) -> StoreResult<String> {
     let block_id = Self::generate_id(raw);
     let mut blocks = self.blocks.write()?;
 
@@ -110,7 +110,7 @@ impl BlockStore for MemoryBlockStore {
       .ok_or_else(|| StoreError::InvalidBlock(block.to_string()))
   }
 
-  fn commit(&mut self, node: &str, changes: &[Change]) -> StoreResult<()> {
+  fn commit(&self, node: &str, changes: &[Change]) -> StoreResult<()> {
     let mut stored_changes = self.changes.write()?;
 
     match stored_changes.get_mut(node) {

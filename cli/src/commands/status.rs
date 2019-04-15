@@ -5,7 +5,7 @@ use t_rust_less_lib::secrets_store::open_secrets_store;
 use termion::color;
 
 pub fn status(config: Config) {
-  let secrets_store = open_secrets_store(&config.store_url).ok_or_exit("Open store");
+  let secrets_store = open_secrets_store(&config.store_url, config.autolock_timeout).ok_or_exit("Open store");
   let status = secrets_store.status().ok_or_exit("Get status");
 
   if atty::is(Stream::Stdout) {

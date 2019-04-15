@@ -152,6 +152,10 @@ impl SecretBytes {
   }
 }
 
+unsafe impl Send for SecretBytes {}
+
+unsafe impl Sync for SecretBytes {}
+
 impl Drop for SecretBytes {
   fn drop(&mut self) {
     unsafe { alloc::free(self.ptr) }

@@ -1,4 +1,5 @@
 pub use self::model::*;
+use std::sync::Arc;
 use url::Url;
 
 mod error;
@@ -26,7 +27,10 @@ pub use self::error::{StoreError, StoreResult};
 /// As a rule a block store is supposed to be distributed among multiple clients, each able
 /// to asynchronously create additions to it.
 ///
-pub trait BlockStore {
+/// All implementation are supposed to be thread-safe. Any kind of internal state has to be
+/// protected accordingly.
+///
+pub trait BlockStore: Send + Sync {
   /// Get/read the (private) ring block.
   ///
   /// Every store has zero or one (private) ring containing all the relevant
@@ -40,7 +44,7 @@ pub trait BlockStore {
   /// Implementors should ensure a sort of backup in case this operation fails, since
   /// loosing the (private) ring will render the entire store useless.
   ///
-  fn store_ring(&mut self, raw: &[u8]) -> StoreResult<()>;
+  fn store_ring(&self, raw: &[u8]) -> StoreResult<()>;
 
   /// Get/read the public ring block.
   ///
@@ -50,7 +54,7 @@ pub trait BlockStore {
   fn get_public_ring(&self) -> StoreResult<Option<Vec<u8>>>;
   /// Set/write the public ring block.
   ///
-  fn store_public_ring(&mut self, raw: &[u8]) -> StoreResult<()>;
+  fn store_public_ring(&self, raw: &[u8]) -> StoreResult<()>;
 
   /// Get all the change logs of the store.
   ///
@@ -70,7 +74,7 @@ pub trait BlockStore {
   fn get_index(&self, node: &str) -> StoreResult<Option<Vec<u8>>>;
   /// Store the index block of a specific client.
   ///
-  fn store_index(&mut self, node: &str, raw: &[u8]) -> StoreResult<()>;
+  fn store_index(&self, node: &str, raw: &[u8]) -> StoreResult<()>;
 
   /// Add a new data block to the store.
   ///
@@ -79,7 +83,7 @@ pub trait BlockStore {
   ///
   /// The result of an add operation is a unique key of the data block.
   ///
-  fn add_block(&mut self, raw: &[u8]) -> StoreResult<String>;
+  fn add_block(&self, raw: &[u8]) -> StoreResult<String>;
   /// Get a block by its id.
   ///
   fn get_block(&self, block: &str) -> StoreResult<Vec<u8>>;
@@ -90,15 +94,15 @@ pub trait BlockStore {
   /// commit its changes. This will create an entry in the `change_log` so that
   /// other clients will notice the new data blocks.
   ///
-  fn commit(&mut self, node: &str, changes: &[Change]) -> StoreResult<()>;
+  fn commit(&self, node: &str, changes: &[Change]) -> StoreResult<()>;
 }
 
-pub fn open_block_store(url: &str) -> StoreResult<Box<BlockStore>> {
+pub fn open_block_store(url: &str) -> StoreResult<Arc<BlockStore>> {
   let store_url = Url::parse(url)?;
 
   match store_url.scheme() {
-    "file" => Ok(Box::new(local_dir::LocalDirBlockStore::new(store_url.path())?)),
-    "memory" => Ok(Box::new(memory::MemoryBlockStore::new())),
+    "file" => Ok(Arc::new(local_dir::LocalDirBlockStore::new(store_url.path())?)),
+    "memory" => Ok(Arc::new(memory::MemoryBlockStore::new())),
     _ => Err(StoreError::InvalidStoreUrl(url.to_string())),
   }
 }

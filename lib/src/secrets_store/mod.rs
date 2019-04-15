@@ -1,4 +1,6 @@
 use crate::api::{Identity, Secret, SecretList, SecretListFilter, SecretType, SecretVersion, Status};
+use std::sync::Arc;
+use std::time::Duration;
 
 mod auto_locker;
 mod cipher;
@@ -13,23 +15,23 @@ pub use self::error::{SecretStoreError, SecretStoreResult};
 use crate::block_store::open_block_store;
 use crate::memguard::SecretBytes;
 
-pub trait SecretsStore {
+pub trait SecretsStore: Send + Sync {
   fn status(&self) -> SecretStoreResult<Status>;
 
-  fn lock(&mut self) -> SecretStoreResult<()>;
-  fn unlock(&mut self, identity_id: &str, passphrase: SecretBytes) -> SecretStoreResult<()>;
+  fn lock(&self) -> SecretStoreResult<()>;
+  fn unlock(&self, identity_id: &str, passphrase: SecretBytes) -> SecretStoreResult<()>;
 
   fn identities(&self) -> SecretStoreResult<Vec<Identity>>;
-  fn add_identity(&mut self, identity: Identity, passphrase: SecretBytes) -> SecretStoreResult<()>;
-  fn change_passphrase(&mut self, passphrase: SecretBytes) -> SecretStoreResult<()>;
+  fn add_identity(&self, identity: Identity, passphrase: SecretBytes) -> SecretStoreResult<()>;
+  fn change_passphrase(&self, passphrase: SecretBytes) -> SecretStoreResult<()>;
 
   fn list(&self, filter: &SecretListFilter) -> SecretStoreResult<SecretList>;
 
-  fn add(&mut self, id: &str, secret_type: SecretType, secret_version: SecretVersion) -> SecretStoreResult<()>;
+  fn add(&self, id: &str, secret_type: SecretType, secret_version: SecretVersion) -> SecretStoreResult<()>;
   fn get(&self, id: &str) -> SecretStoreResult<Secret>;
 }
 
-pub fn open_secrets_store(url: &str) -> SecretStoreResult<Box<SecretsStore>> {
+pub fn open_secrets_store(url: &str, autolock_timeout: Duration) -> SecretStoreResult<Arc<SecretsStore>> {
   let (scheme, block_store_url) = match url.find('+') {
     Some(idx) => (&url[..idx], &url[idx + 1..]),
     _ => return Err(SecretStoreError::InvalidStoreUrl(url.to_string())),
@@ -37,8 +39,11 @@ pub fn open_secrets_store(url: &str) -> SecretStoreResult<Box<SecretsStore>> {
 
   let block_store = open_block_store(block_store_url)?;
 
-  match scheme {
-    "multilane" => Ok(Box::new(multi_lane::MultiLaneSecretsStore::new(block_store))),
-    _ => Err(SecretStoreError::InvalidStoreUrl(url.to_string())),
-  }
+  let secrets_store = match scheme {
+    "multilane" => Arc::new(multi_lane::MultiLaneSecretsStore::new(block_store, autolock_timeout)),
+    _ => return Err(SecretStoreError::InvalidStoreUrl(url.to_string())),
+  };
+  auto_locker::Autolocker::spawn_for(&secrets_store);
+
+  Ok(secrets_store)
 }

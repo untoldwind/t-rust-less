@@ -101,7 +101,7 @@ pub trait Cipher: Send + Sync {
 /// Each method may have multiple presets for internal parameters that have to be adjusted to
 /// common CPU power and use-case. Each preset is identified by a simple number.
 ///
-pub trait KeyDerivation {
+pub trait KeyDerivation: Send + Sync {
   /// Get the default preset to use (for new keys).
   fn default_preset(&self) -> u8;
 

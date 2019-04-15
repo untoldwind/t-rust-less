@@ -1,6 +1,6 @@
 use std::io::Cursor;
-use std::sync::RwLock;
-use std::time::SystemTime;
+use std::sync::{Arc, RwLock};
+use std::time::{SystemTime, Duration};
 
 use capnp::{message, serialize};
 
@@ -26,16 +26,18 @@ pub struct MultiLaneSecretsStore {
   ciphers: Vec<&'static Cipher>,
   key_derivation: &'static KeyDerivation,
   unlocked_user: RwLock<Option<User>>,
-  block_store: Box<BlockStore>,
+  block_store: Arc<BlockStore>,
+  autolock_timeout: Duration,
 }
 
 impl MultiLaneSecretsStore {
-  pub fn new(block_store: Box<BlockStore>) -> MultiLaneSecretsStore {
+  pub fn new(block_store: Arc<BlockStore>, autolock_timeout: Duration) -> MultiLaneSecretsStore {
     MultiLaneSecretsStore {
       ciphers: vec![&OPEN_SSL_RSA_AES_GCM, &RUST_X25519CHA_CHA20POLY1305],
       key_derivation: &RUST_ARGON2_ID,
       unlocked_user: RwLock::new(None),
       block_store,
+      autolock_timeout,
     }
   }
 }
@@ -52,14 +54,14 @@ impl SecretsStore for MultiLaneSecretsStore {
     })
   }
 
-  fn lock(&mut self) -> SecretStoreResult<()> {
+  fn lock(&self) -> SecretStoreResult<()> {
     let mut unlocked_user = self.unlocked_user.write()?;
     unlocked_user.take();
 
     Ok(())
   }
 
-  fn unlock(&mut self, identity_id: &str, passphrase: SecretBytes) -> SecretStoreResult<()> {
+  fn unlock(&self, identity_id: &str, passphrase: SecretBytes) -> SecretStoreResult<()> {
     let mut unlocked_user = self.unlocked_user.write()?;
 
     if unlocked_user.is_some() {
@@ -100,7 +102,7 @@ impl SecretsStore for MultiLaneSecretsStore {
           identity: Self::identity_from_recipient(user.get_recipient()?)?,
           private_keys,
           public_keys,
-          autolock_at: SystemTime::now(),
+          autolock_at: SystemTime::now() + self.autolock_timeout,
         });
 
         Ok(())
@@ -128,7 +130,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     }
   }
 
-  fn add_identity(&mut self, identity: Identity, passphrase: SecretBytes) -> SecretStoreResult<()> {
+  fn add_identity(&self, identity: Identity, passphrase: SecretBytes) -> SecretStoreResult<()> {
     let mut ring_message = message::Builder::new_default();
     let new_ring = ring_message.init_root::<ring::Builder>();
 
@@ -205,18 +207,43 @@ impl SecretsStore for MultiLaneSecretsStore {
     Ok(())
   }
 
-  fn change_passphrase(&mut self, passphrase: SecretBytes) -> SecretStoreResult<()> {
+  fn change_passphrase(&self, passphrase: SecretBytes) -> SecretStoreResult<()> {
+    let unlocked_user = self.unlocked_user.read()?;
+
+    if unlocked_user.is_none() {
+      return Err(SecretStoreError::Locked);
+    }
+
     unimplemented!()
   }
 
   fn list(&self, filter: &SecretListFilter) -> SecretStoreResult<SecretList> {
+    let unlocked_user = self.unlocked_user.read()?;
+
+    if unlocked_user.is_none() {
+      return Err(SecretStoreError::Locked);
+    }
+
     unimplemented!()
   }
 
-  fn add(&mut self, id: &str, secret_type: SecretType, secret_version: SecretVersion) -> SecretStoreResult<()> {
+  fn add(&self, id: &str, secret_type: SecretType, secret_version: SecretVersion) -> SecretStoreResult<()> {
+    let unlocked_user = self.unlocked_user.read()?;
+
+    if unlocked_user.is_none() {
+      return Err(SecretStoreError::Locked);
+    }
+
     unimplemented!()
   }
+
   fn get(&self, id: &str) -> SecretStoreResult<Secret> {
+    let unlocked_user = self.unlocked_user.read()?;
+
+    if unlocked_user.is_none() {
+      return Err(SecretStoreError::Locked);
+    }
+
     unimplemented!()
   }
 }

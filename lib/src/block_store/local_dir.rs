@@ -83,7 +83,7 @@ impl BlockStore for LocalDirBlockStore {
     Self::read_optional_file(base_dir.join("ring"))
   }
 
-  fn store_ring(&mut self, raw: &[u8]) -> StoreResult<()> {
+  fn store_ring(&self, raw: &[u8]) -> StoreResult<()> {
     let maybe_current = self.get_ring()?;
     let base_dir = self.base_dir.write()?;
 
@@ -111,7 +111,7 @@ impl BlockStore for LocalDirBlockStore {
     Self::read_optional_file(base_dir.join("ring.pub"))
   }
 
-  fn store_public_ring(&mut self, raw: &[u8]) -> StoreResult<()> {
+  fn store_public_ring(&self, raw: &[u8]) -> StoreResult<()> {
     let maybe_current = self.get_public_ring()?;
     let base_dir = self.base_dir.write()?;
 
@@ -159,7 +159,7 @@ impl BlockStore for LocalDirBlockStore {
     Self::read_optional_file(base_dir.join("indexes").join(node))
   }
 
-  fn store_index(&mut self, node: &str, raw: &[u8]) -> StoreResult<()> {
+  fn store_index(&self, node: &str, raw: &[u8]) -> StoreResult<()> {
     let base_dir = self.base_dir.write()?;
     DirBuilder::new().recursive(true).create(base_dir.join("indexes"))?;
     let mut index_file = File::create(base_dir.join("indexes").join(node))?;
@@ -170,7 +170,7 @@ impl BlockStore for LocalDirBlockStore {
     Ok(())
   }
 
-  fn add_block(&mut self, raw: &[u8]) -> StoreResult<String> {
+  fn add_block(&self, raw: &[u8]) -> StoreResult<String> {
     let base_dir = self.base_dir.write()?;
     let block_id = Self::generate_id(raw);
     let block_file_path = Self::block_file(&base_dir, &block_id)?;
@@ -194,7 +194,7 @@ impl BlockStore for LocalDirBlockStore {
     Self::read_optional_file(&block_file_path)?.ok_or_else(|| StoreError::InvalidBlock(block.to_string()))
   }
 
-  fn commit(&mut self, node: &str, changes: &[Change]) -> StoreResult<()> {
+  fn commit(&self, node: &str, changes: &[Change]) -> StoreResult<()> {
     let base_dir = self.base_dir.write()?;
     DirBuilder::new().recursive(true).create(base_dir.join("logs"))?;
     let mut log_file = OpenOptions::new()
