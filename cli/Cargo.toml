@@ -9,8 +9,6 @@ edition = "2018"
 log = "0"
 env_logger = "0"
 clap = { version = "2", default-features = false, features = ["suggestions", "color"]}
-cursive = { version = "0", default-features = false, features = ["termion-backend"]}
-termion="1"
 atty = "0.2"
 t-rust-less-lib = { path = "../lib" }
 zxcvbn = "1"
@@ -20,6 +18,13 @@ rand = "0.5"
 dirs = "1"
 toml = "0"
 url = "1"
+
+[target.'cfg(unix)'.dependencies]
+cursive = { version = "0", default-features = false, features = ["termion-backend"]}
+termion="1"
+
+[target.'cfg(windows)'.dependencies]
+cursive = { version = "0", default-features = false, features = ["pancurses-backend"]}
 
 [dev-dependencies]
 tempdir = "0"
