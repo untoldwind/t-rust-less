@@ -10,10 +10,8 @@ fn common_padding_tests<T>(data: SecretBytes)
 where
   T: Padding,
 {
-  let mut rng = thread_rng();
-
   for pad_align in &[100, 128, 200, 256, 1000, 1024] {
-    let padded = T::pad_secret_data(&mut rng, data.clone(), *pad_align).unwrap();
+    let padded = T::pad_secret_data(data.clone(), *pad_align).unwrap();
 
     assert!(padded.len() % *pad_align == 0);
 

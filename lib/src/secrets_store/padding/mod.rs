@@ -6,14 +6,9 @@ mod non_zero;
 mod tests;
 
 pub use self::non_zero::*;
-use rand::{CryptoRng, RngCore};
 
 pub trait Padding {
-  fn pad_secret_data<T: RngCore + CryptoRng>(
-    rng: &mut T,
-    data: SecretBytes,
-    align: usize,
-  ) -> SecretStoreResult<SecretBytes>;
+  fn pad_secret_data(data: SecretBytes, align: usize) -> SecretStoreResult<SecretBytes>;
 
   fn unpad_data(padded: &[u8]) -> SecretStoreResult<&[u8]>;
 }

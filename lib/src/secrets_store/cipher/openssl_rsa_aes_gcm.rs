@@ -74,7 +74,7 @@ impl Cipher for OpenSslRsaAesGcmCipher {
 
   fn encrypt(
     &self,
-    recipients: &[(&str, &PublicKey)],
+    recipients: &[(&str, PublicKey)],
     data: &PrivateData,
     mut header_builder: block::header::Builder,
   ) -> SecretStoreResult<PublicData> {

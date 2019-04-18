@@ -73,7 +73,7 @@ pub trait Cipher: Send + Sync {
   ///
   fn encrypt(
     &self,
-    recipients: &[(&str, &PublicKey)],
+    recipients: &[(&str, PublicKey)],
     data: &PrivateData,
     header_builder: block::header::Builder,
   ) -> SecretStoreResult<PublicData>;

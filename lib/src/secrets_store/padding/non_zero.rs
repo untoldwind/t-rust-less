@@ -1,7 +1,7 @@
 use super::Padding;
 use crate::memguard::SecretBytes;
 use crate::secrets_store::{SecretStoreError, SecretStoreResult};
-use rand::{CryptoRng, RngCore};
+use rand::{thread_rng, RngCore};
 use std::io::Write;
 
 pub struct NonZeroPadding;
@@ -21,13 +21,10 @@ pub struct NonZeroPadding;
 /// The exact head and tail size is choosen at random depending on the size of the content.
 ///
 impl Padding for NonZeroPadding {
-  fn pad_secret_data<T: RngCore + CryptoRng>(
-    rng: &mut T,
-    data: SecretBytes,
-    align: usize,
-  ) -> SecretStoreResult<SecretBytes> {
+  fn pad_secret_data(data: SecretBytes, align: usize) -> SecretStoreResult<SecretBytes> {
     assert!(data.borrow().iter().find(|b| **b == 0).is_none());
 
+    let mut rng = thread_rng();
     let over_align = data.len() % align;
 
     if over_align == 0 {

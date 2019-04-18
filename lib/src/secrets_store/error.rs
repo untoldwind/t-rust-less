@@ -16,6 +16,8 @@ pub enum SecretStoreError {
   Mutex(String),
   BlockStore(StoreError),
   InvalidStoreUrl(String),
+  Json(String),
+  InvalidRecipient(String),
 }
 
 impl fmt::Display for SecretStoreError {
@@ -34,6 +36,8 @@ impl fmt::Display for SecretStoreError {
       SecretStoreError::Mutex(error) => write!(f, "Mutex: {}", error)?,
       SecretStoreError::BlockStore(error) => write!(f, "BlockStore: {}", error)?,
       SecretStoreError::InvalidStoreUrl(error) => write!(f, "Invalid store url: {}", error)?,
+      SecretStoreError::Json(error) => write!(f, "Json error: {}", error)?,
+      SecretStoreError::InvalidRecipient(error) => write!(f, "Invalid recipient: {}", error)?,
     }
     Ok(())
   }
@@ -47,6 +51,7 @@ error_convert_from!(std::io::Error, SecretStoreError, IO(display));
 error_convert_from!(chacha20_poly1305_aead::DecryptError, SecretStoreError, Cipher(display));
 error_convert_from!(capnp::Error, SecretStoreError, IO(display));
 error_convert_from!(capnp::NotInSchema, SecretStoreError, IO(display));
+error_convert_from!(serde_json::Error, SecretStoreError, Json(display));
 error_convert_from!(StoreError, SecretStoreError, BlockStore(direct));
 
 impl<T> From<std::sync::PoisonError<T>> for SecretStoreError {

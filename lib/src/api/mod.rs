@@ -5,6 +5,8 @@ use crate::memguard::weak::{ZeroingBytes, ZeroingString};
 use chrono::{DateTime, Utc};
 use serde_derive::{Deserialize, Serialize};
 
+/// Status information of a secrets store
+///
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Status {
   pub locked: bool,
@@ -13,6 +15,9 @@ pub struct Status {
   pub version: String,
 }
 
+/// An Identity that might be able to unlock a
+/// secrets store and be a recipient of secrets.
+///
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Identity {
   pub id: String,
@@ -20,6 +25,10 @@ pub struct Identity {
   pub email: String,
 }
 
+/// General type of a secret.
+///
+/// This only serves as a hint for an UI.
+///
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SecretType {
@@ -28,6 +37,7 @@ pub enum SecretType {
   Licence,
   Wlan,
   Password,
+  Other,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -69,13 +79,21 @@ pub struct SecretAttachment {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SecretVersion {
-  timestamp: DateTime<Utc>,
-  name: ZeroingString,
-  tags: Vec<ZeroingString>,
-  urls: Vec<ZeroingString>,
-  properties: BTreeMap<String, ZeroingString>,
-  attachments: Vec<SecretAttachment>,
-  deleted: bool,
+  pub secret_id: ZeroingString,
+  pub secret_type: SecretType,
+  pub timestamp: DateTime<Utc>,
+  pub name: ZeroingString,
+  #[serde(default)]
+  pub tags: Vec<ZeroingString>,
+  #[serde(default)]
+  pub urls: Vec<ZeroingString>,
+  pub properties: BTreeMap<String, ZeroingString>,
+  #[serde(default)]
+  pub attachments: Vec<SecretAttachment>,
+  #[serde(default)]
+  pub deleted: bool,
+  #[serde(default)]
+  pub recipients: Vec<ZeroingString>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

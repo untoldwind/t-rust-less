@@ -1,4 +1,4 @@
-use crate::api::{Identity, Secret, SecretList, SecretListFilter, SecretType, SecretVersion, Status};
+use crate::api::{Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -27,8 +27,8 @@ pub trait SecretsStore: Send + Sync {
 
   fn list(&self, filter: &SecretListFilter) -> SecretStoreResult<SecretList>;
 
-  fn add(&self, id: &str, secret_type: SecretType, secret_version: SecretVersion) -> SecretStoreResult<()>;
-  fn get(&self, id: &str) -> SecretStoreResult<Secret>;
+  fn add(&self, secret_version: SecretVersion) -> SecretStoreResult<()>;
+  fn get(&self, secret_id: &str) -> SecretStoreResult<Secret>;
 }
 
 pub fn open_secrets_store(

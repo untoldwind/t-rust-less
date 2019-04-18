@@ -62,15 +62,9 @@ where
   let headers = block.reborrow().init_headers(1);
 
   let crypted_data = cipher
-    .encrypt(
-      &[(id1, &public_key1), (id2, &public_key2)],
-      &private_data,
-      headers.get(0),
-    )
+    .encrypt(&[(id1, public_key1), (id2, public_key2)], &private_data, headers.get(0))
     .unwrap();
-  block
-    .init_content(crypted_data.len() as u32)
-    .copy_from_slice(&crypted_data);
+  block.set_content(&crypted_data);
 
   let message_payload = capnp::serialize::write_message_to_words(&message);
 

@@ -8,9 +8,9 @@
 //! most likely copy-pasted by to displayed to the user ... so there is no 100% guaranty anyway
 //! and it would be a waste of effort providing a super-tight security.
 //!
+use super::memory;
 use serde_derive::{Deserialize, Serialize};
 use std::ops::{Deref, DerefMut};
-use std::ptr;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -28,7 +28,7 @@ impl ZeroingBytes {
 impl Drop for ZeroingBytes {
   fn drop(&mut self) {
     unsafe {
-      ptr::write_bytes(self.0.as_mut_ptr(), 0, self.0.capacity());
+      memory::memzero(self.0.as_mut_ptr(), self.0.capacity());
     }
   }
 }
@@ -47,6 +47,16 @@ impl DerefMut for ZeroingBytes {
   }
 }
 
+pub trait ZeroingBytesExt {
+  fn to_zeroing(self) -> ZeroingBytes;
+}
+
+impl ZeroingBytesExt for Vec<u8> {
+  fn to_zeroing(self) -> ZeroingBytes {
+    ZeroingBytes(self)
+  }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ZeroingString(String);
@@ -62,7 +72,7 @@ impl Drop for ZeroingString {
     unsafe {
       let bytes = self.0.as_bytes_mut();
 
-      ptr::write_bytes(bytes.as_mut_ptr(), 0, bytes.len());
+      memory::memzero(bytes.as_mut_ptr(), bytes.len());
     }
   }
 }
@@ -78,6 +88,22 @@ impl Deref for ZeroingString {
 impl DerefMut for ZeroingString {
   fn deref_mut(&mut self) -> &mut Self::Target {
     &mut self.0
+  }
+}
+
+impl AsRef<str> for ZeroingString {
+  fn as_ref(&self) -> &str {
+    self.0.as_ref()
+  }
+}
+
+pub trait ZeroingStringExt {
+  fn to_zeroing(self) -> ZeroingString;
+}
+
+impl ZeroingStringExt for String {
+  fn to_zeroing(self) -> ZeroingString {
+    ZeroingString(self)
   }
 }
 

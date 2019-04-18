@@ -4,14 +4,16 @@ use std::time::{Duration, SystemTime};
 
 use capnp::{message, serialize};
 
-use crate::api::{Identity, Secret, SecretList, SecretListFilter, SecretType, SecretVersion, Status};
-use crate::block_store::BlockStore;
+use crate::api::{Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
+use crate::block_store::{BlockStore, Change, Operation, StoreError};
+use crate::memguard::weak::ZeroingStringExt;
 use crate::memguard::SecretBytes;
 use crate::secrets_store::cipher::{
   Cipher, KeyDerivation, PrivateKey, PublicKey, OPEN_SSL_RSA_AES_GCM, RUST_ARGON2_ID, RUST_X25519CHA_CHA20POLY1305,
 };
+use crate::secrets_store::padding::{NonZeroPadding, Padding};
 use crate::secrets_store::{SecretStoreError, SecretStoreResult, SecretsStore};
-use crate::secrets_store_capnp::{ring, KeyType};
+use crate::secrets_store_capnp::{block, ring, KeyType};
 use chrono::DateTime;
 use rand::{thread_rng, RngCore};
 
@@ -230,14 +232,49 @@ impl SecretsStore for MultiLaneSecretsStore {
     unimplemented!()
   }
 
-  fn add(&self, id: &str, secret_type: SecretType, secret_version: SecretVersion) -> SecretStoreResult<()> {
+  fn add(&self, mut secret_version: SecretVersion) -> SecretStoreResult<()> {
     let maybe_unlocked_user = self.unlocked_user.read()?;
     let unlocked_user = maybe_unlocked_user.as_ref().ok_or(SecretStoreError::Locked)?;
 
-    unimplemented!()
+    if !secret_version
+      .recipients
+      .iter()
+      .any(|recipient| recipient.as_ref() == &unlocked_user.identity.id)
+    {
+      // User adding a secret version to the store is always a recipient
+      secret_version
+        .recipients
+        .push(unlocked_user.identity.id.clone().to_zeroing());
+    }
+
+    let recipients_for_cipher = self.find_recipients(&secret_version.recipients)?;
+    let mut block_message = capnp::message::Builder::new_default();
+    let mut block = block_message.init_root::<block::Builder>();
+    let mut headers = block.reborrow().init_headers(recipients_for_cipher.len() as u32);
+    let mut json_raw = serde_json::to_vec(&secret_version)?;
+    let mut secret_content = NonZeroPadding::pad_secret_data(SecretBytes::from(json_raw.as_mut()), 512)?;
+
+    for (idx, (cipher, recipients)) in recipients_for_cipher.into_iter().enumerate() {
+      let mut content = cipher.encrypt(&recipients, &secret_content, headers.reborrow().get(idx as u32))?;
+
+      secret_content = SecretBytes::from(content.as_mut());
+    }
+    block.set_content(&secret_content.borrow());
+
+    let block_content = serialize::write_message_to_words(&block_message);
+
+    let block_id = self
+      .block_store
+      .add_block(capnp::Word::words_to_bytes(&block_content))?;
+    self.block_store.commit(&[Change {
+      op: Operation::Add,
+      block: block_id,
+    }])?;
+
+    Ok(())
   }
 
-  fn get(&self, id: &str) -> SecretStoreResult<Secret> {
+  fn get(&self, secret_id: &str) -> SecretStoreResult<Secret> {
     let maybe_unlocked_user = self.unlocked_user.read()?;
     let unlocked_user = maybe_unlocked_user.as_ref().ok_or(SecretStoreError::Locked)?;
 
@@ -270,5 +307,42 @@ impl MultiLaneSecretsStore {
       name: ring.get_name()?.to_string(),
       email: ring.get_email()?.to_string(),
     })
+  }
+
+  fn find_recipients<'a, T: AsRef<str>>(
+    &self,
+    recipients: &'a [T],
+  ) -> SecretStoreResult<Vec<(&'static Cipher, Vec<(&'a str, PublicKey)>)>> {
+    let mut recipient_keys: Vec<(&'static Cipher, Vec<(&'a str, PublicKey)>)> = self
+      .ciphers
+      .iter()
+      .map(|cipher| (*cipher, Vec::with_capacity(recipients.len())))
+      .collect();
+
+    for recipient in recipients {
+      let identity_id = recipient.as_ref();
+      let raw = self.block_store.get_ring(identity_id).map_err(|e| match e {
+        StoreError::InvalidBlock(_) => SecretStoreError::InvalidRecipient(identity_id.to_string()),
+        err => err.into(),
+      })?;
+      let mut cursor = Cursor::new(&raw);
+      let reader = serialize::read_message(&mut cursor, message::ReaderOptions::new())?;
+      let ring = reader.get_root::<ring::Reader>()?;
+      let user_public_keys = ring.get_public_keys()?;
+
+      for (cipher, keys) in recipient_keys.iter_mut() {
+        let key_type = cipher.key_type();
+        let user_public_key = user_public_keys
+          .iter()
+          .find(|user_public_key| user_public_key.get_type() == Ok(key_type))
+          .ok_or_else(|| {
+            SecretStoreError::InvalidRecipient(format!("{} does not have required key type", identity_id))
+          })?;
+
+        keys.push((identity_id, user_public_key.get_key()?.to_vec()))
+      }
+    }
+
+    Ok(recipient_keys)
   }
 }
