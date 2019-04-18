@@ -1,7 +1,7 @@
 use crate::config::{config_file, read_config};
 use atty::Stream;
+use colored::*;
 use log::error;
-use termion::{color, style};
 
 mod cli;
 mod commands;
@@ -11,13 +11,7 @@ mod error;
 fn uninitialized() {
   if atty::is(Stream::Stdout) {
     println!();
-    println!(
-      "{}{}Missing configuration{}{}",
-      color::Fg(color::Red),
-      style::Bold,
-      color::Fg(color::Reset),
-      style::Reset
-    );
+    println!("{}", "Missing configuration".red(),);
     println!();
     println!(
       "t-rust-less was unable to find a configuration at '{}'.",

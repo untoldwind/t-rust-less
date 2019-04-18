@@ -1,8 +1,8 @@
 use crate::config::Config;
 use crate::error::ExtResult;
 use atty::Stream;
+use colored::*;
 use t_rust_less_lib::secrets_store::open_secrets_store;
-use termion::color;
 
 pub fn status(config: Config) {
   let secrets_store =
@@ -11,31 +11,16 @@ pub fn status(config: Config) {
 
   if atty::is(Stream::Stdout) {
     println!();
+    println!("Client version: {}", env!("CARGO_PKG_VERSION").cyan(),);
+    println!("Store version : {}", status.version.cyan());
     println!(
-      "{}Client version: {}{}",
-      color::Fg(color::Reset),
-      color::Fg(color::Cyan),
-      env!("CARGO_PKG_VERSION")
-    );
-    println!(
-      "{}Store version : {}{}",
-      color::Fg(color::Reset),
-      color::Fg(color::Cyan),
-      status.version
-    );
-    if status.locked {
-      println!(
-        "{}Status        : {}Locked",
-        color::Fg(color::Reset),
-        color::Fg(color::Green)
-      )
-    } else {
-      println!(
-        "{}Status        : {}Unlocked",
-        color::Fg(color::Reset),
-        color::Fg(color::Red)
-      )
-    }
+      "Status        : {}",
+      if status.locked {
+        "Locked".green()
+      } else {
+        "Unlocked".red()
+      }
+    )
   } else {
     println!("Client version: {}", env!("CARGO_PKG_VERSION"));
     println!("Store version : {}", status.version);

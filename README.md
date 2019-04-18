@@ -15,9 +15,9 @@ Some major changes:
 
 ### To windows (library only atm)
 
-#### Prepare
+#### Building (on Archlinux)
 
-On archlinux one needs AUR `mingw-w64-gcc` (or `mingw-w64-gcc-bin`).
+On one needs AUR `mingw-w64-gcc`, `mingw-w64-crt` (or `mingw-w64-gcc-bin`, `mingw-w64-crt-bin`).
 
 Add `~/.cargo/config`:
 ```
@@ -26,10 +26,17 @@ linker = "/usr/bin/x86_64-w64-mingw32-gcc"
 ar = "/usr/x86_64-w64-mingw32/bin/ar"
 ```
 
-#### Building
+```
+cd cli; cargo build --target x86_64-pc-windows-gnu --features pancurses_backend --no-default-features --release
+```
+
+(unluckily we cannot automatically toggle features based on target)
+
+If you get an linkage error with `__onexitbegin`, `__onexitend`, most likely the `crt2.o` does not match:
 
 ```
-cargo build --release --target=x86_64-pc-windows-gnu
+mv ~/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-pc-windows-gnu/lib/crt2.o  ~/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-pc-windows-gnu/lib/crt2.o.bak
+cp /usr/x86_64-w64-mingw32/lib/crt2.o ~/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-pc-windows-gnu/lib/crt2.o
 ```
 
 ### To wasm (library only)
