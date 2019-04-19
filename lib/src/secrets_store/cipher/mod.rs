@@ -1,5 +1,5 @@
 use crate::memguard::SecretBytes;
-use crate::secrets_store_capnp::{block, KeyType};
+use crate::secrets_store_capnp::{block, KeyDerivationType, KeyType};
 
 use super::SecretStoreResult;
 
@@ -102,6 +102,9 @@ pub trait Cipher: Send + Sync {
 /// common CPU power and use-case. Each preset is identified by a simple number.
 ///
 pub trait KeyDerivation: Send + Sync {
+  /// Get the key derivation type of the implmenetation.
+  fn key_derivation_type(&self) -> KeyDerivationType;
+
   /// Get the default preset to use (for new keys).
   fn default_preset(&self) -> u8;
 

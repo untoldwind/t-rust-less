@@ -80,6 +80,11 @@ impl SecretsStore for MultiLaneSecretsStore {
     for user_private_key in ring.get_private_keys()? {
       if let Some(cipher) = self.find_cipher(user_private_key.get_type()?) {
         let nonce = user_private_key.get_nonce()?;
+        if user_private_key.get_derivation_type()? != self.key_derivation.key_derivation_type() {
+          return Err(SecretStoreError::KeyDerivation(
+            "Key derivation method is not compatible".to_string(),
+          ));
+        }
         let seal_key = self.key_derivation.derive(
           &passphrase,
           user_private_key.get_preset(),
@@ -159,6 +164,7 @@ impl SecretsStore for MultiLaneSecretsStore {
         let mut user_private_key = new_ring.reborrow().get_private_keys()?.get(idx as u32);
 
         user_private_key.set_type(cipher.key_type());
+        user_private_key.set_derivation_type(self.key_derivation.key_derivation_type());
         user_private_key.set_preset(self.key_derivation.default_preset());
         user_private_key.set_nonce(&nonce);
         user_private_key.set_crypted_key(&crypted_key);

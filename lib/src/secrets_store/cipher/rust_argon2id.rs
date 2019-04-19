@@ -1,6 +1,7 @@
 use super::{KeyDerivation, SealKey};
 use crate::memguard::SecretBytes;
 use crate::secrets_store::{SecretStoreError, SecretStoreResult};
+use crate::secrets_store_capnp::KeyDerivationType;
 use argon2::{self, Config, ThreadMode, Variant, Version};
 
 pub static RUST_ARGON2_ID: RustArgon2id = RustArgon2id();
@@ -24,6 +25,10 @@ const PRESETS: &[Preset] = &[Preset {
 pub struct RustArgon2id();
 
 impl KeyDerivation for RustArgon2id {
+  fn key_derivation_type(&self) -> KeyDerivationType {
+    KeyDerivationType::Argon2
+  }
+
   fn default_preset(&self) -> u8 {
     0
   }

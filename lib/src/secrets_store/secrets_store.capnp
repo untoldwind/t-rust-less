@@ -1,5 +1,9 @@
 @0x89ae7248ac2e8067;
 
+enum KeyDerivationType {
+    argon2 @0;
+}
+
 # Enumeration of all cipher suites
 enum KeyType {
     rsaAesGcm @0;
@@ -22,9 +26,10 @@ struct Ring {
 
     struct PrivateKey {
         type @0 : KeyType;
-        preset @1 : UInt8;
-        nonce @2 : Data;
-        cryptedKey @3 : Data;
+        derivationType @1: KeyDerivationType;
+        preset @2 : UInt8;
+        nonce @3 : Data;
+        cryptedKey @4 : Data;
     }
 }
 

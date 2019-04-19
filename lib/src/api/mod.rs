@@ -78,7 +78,7 @@ pub struct SecretEntry {
 ///
 /// For the most part this is just the entry itself with some additional information
 /// which parts should be highlighted in the UI
-/// 
+///
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SecretEntryMatch {
   pub entry: SecretEntry,
