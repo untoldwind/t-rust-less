@@ -11,6 +11,15 @@ Some major changes:
 * ... which essentially means that a `trustless` store will not be compatible with a `t-rust-less` whatsoever.
   Sorry, but an `export` -> `import` will be required.
 
+## Building
+
+Best use the `./build-release.sh` script with will bootstrap a docker container containing all the relevant dependencies.
+
+Otherwise you need:
+* Rust version 1.34
+* Capn Proto compiler (capnpc), i.e. install `capnproto` package.
+* For `openssl-sys` perl is required
+
 ## Cross-Compile
 
 ### To windows (library only atm)
