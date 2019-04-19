@@ -27,7 +27,7 @@ ar = "/usr/x86_64-w64-mingw32/bin/ar"
 ```
 
 ```
-cd cli; cargo build --target x86_64-pc-windows-gnu --features pancurses_backend --no-default-features --release
+cd cli; cargo build --target x86_64-pc-windows-gnu --features crossterm_backend --no-default-features --release
 ```
 
 (unluckily we cannot automatically toggle features based on target)
