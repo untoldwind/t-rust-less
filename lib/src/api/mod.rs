@@ -66,8 +66,6 @@ pub struct SecretListFilter {
 pub struct SecretEntry {
   pub id: String,
   pub name: ZeroingString,
-  #[serde(default, rename = "nameHighlights")]
-  pub name_highlights: Vec<u32>,
   #[serde(rename = "type")]
   pub secret_type: SecretType,
   pub tags: Vec<ZeroingString>,
@@ -76,10 +74,22 @@ pub struct SecretEntry {
   pub deleted: bool,
 }
 
+/// Representation of a filter match to a SecretEntry.
+///
+/// For the most part this is just the entry itself with some additional information
+/// which parts should be highlighted in the UI
+/// 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SecretEntryMatch {
+  pub entry: SecretEntry,
+  /// Array of positions (single chars) to highlight in the name of the entry
+  pub name_highlights: Vec<u32>,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SecretList {
   all_tags: Vec<ZeroingString>,
-  entries: Vec<SecretEntry>,
+  entries: Vec<SecretEntryMatch>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

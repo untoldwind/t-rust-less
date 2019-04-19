@@ -86,7 +86,6 @@ impl Index {
               entry: SecretEntry {
                 id: version.secret_id,
                 name: version.name,
-                name_highlights: vec![],
                 secret_type: version.secret_type,
                 tags: version.tags,
                 urls: version.urls,
