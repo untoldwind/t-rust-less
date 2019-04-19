@@ -351,4 +351,11 @@ impl MultiLaneSecretsStore {
 
     Ok(recipient_keys)
   }
+
+  fn get_secret_version(&self, block_id: &str) -> SecretStoreResult<Option<SecretVersion>> {
+    let maybe_unlocked_user = self.unlocked_user.read()?;
+    let unlocked_user = maybe_unlocked_user.as_ref().ok_or(SecretStoreError::Locked)?;
+
+    unimplemented!()
+  }
 }

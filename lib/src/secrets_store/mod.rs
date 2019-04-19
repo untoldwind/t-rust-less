@@ -5,10 +5,12 @@ use std::time::Duration;
 mod auto_locker;
 mod cipher;
 mod error;
-pub mod index;
+mod index;
 mod multi_lane;
 mod padding;
 
+#[cfg(test)]
+mod index_tests;
 #[cfg(test)]
 mod tests;
 

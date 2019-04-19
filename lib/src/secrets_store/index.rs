@@ -11,6 +11,37 @@ pub struct IndexEntry {
   current_block: String,
 }
 
+impl IndexEntry {
+  fn new(block_id: &str, version: SecretVersion) -> IndexEntry {
+    IndexEntry {
+      entry: SecretEntry {
+        id: version.secret_id,
+        name: version.name,
+        secret_type: version.secret_type,
+        tags: version.tags,
+        urls: version.urls,
+        timestamp: version.timestamp,
+        deleted: version.deleted,
+      },
+      blocks: vec![block_id.to_string()],
+      current_block: block_id.to_string(),
+    }
+  }
+
+  fn add_version(&mut self, block_id: &str, version: SecretVersion) {
+    self.blocks.push(block_id.to_string());
+    if self.entry.timestamp < version.timestamp {
+      self.entry.name = version.name;
+      self.entry.secret_type = version.secret_type;
+      self.entry.tags = version.tags;
+      self.entry.urls = version.urls;
+      self.entry.timestamp = version.timestamp;
+      self.entry.deleted = version.deleted;
+      self.current_block = block_id.to_string();
+    }
+  }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct Index {
   heads: HashMap<String, Change>,
@@ -69,32 +100,9 @@ impl Index {
     match version_accessor(block_id)? {
       Some(version) => {
         match self.entries.get_mut(&version.secret_id) {
-          Some(existing) => {
-            existing.blocks.push(block_id.to_string());
-            if existing.entry.timestamp < version.timestamp {
-              existing.entry.name = version.name;
-              existing.entry.secret_type = version.secret_type;
-              existing.entry.tags = version.tags;
-              existing.entry.urls = version.urls;
-              existing.entry.timestamp = version.timestamp;
-              existing.entry.deleted = version.deleted;
-              existing.current_block = block_id.to_string();
-            }
-          }
+          Some(existing) => existing.add_version(block_id, version),
           None => {
-            let entry = IndexEntry {
-              entry: SecretEntry {
-                id: version.secret_id,
-                name: version.name,
-                secret_type: version.secret_type,
-                tags: version.tags,
-                urls: version.urls,
-                timestamp: version.timestamp,
-                deleted: version.deleted,
-              },
-              blocks: vec![block_id.to_string()],
-              current_block: block_id.to_string(),
-            };
+            let entry = IndexEntry::new(block_id, version);
 
             self.entries.insert(entry.entry.id.clone(), entry);
           }
@@ -128,19 +136,38 @@ impl Index {
         }
         if &entry.current_block == block_id {
           // Need to recreate the entry to figure out the new current block
-          entry = Self::create_entry(&entry.blocks, &version_accessor)?;
+          if let Some(new_entry) = Self::create_entry(&entry.blocks, &version_accessor)? {
+            self.entries.insert(new_entry.entry.id.clone(), new_entry);
+          }
+        } else {
+          self.entries.insert(entry.entry.id.clone(), entry);
         }
-        self.entries.insert(entry.entry.id.clone(), entry);
       }
     }
 
     Ok(true)
   }
 
-  fn create_entry<F>(block_ids: &[String], version_accessor: F) -> SecretStoreResult<IndexEntry>
+  fn create_entry<F>(block_ids: &[String], version_accessor: F) -> SecretStoreResult<Option<IndexEntry>>
   where
     F: Fn(&str) -> SecretStoreResult<Option<SecretVersion>>,
   {
-    unimplemented!()
+    let mut versions = Vec::with_capacity(block_ids.len());
+
+    for block_id in block_ids {
+      if let Some(version) = version_accessor(block_id)? {
+        versions.push((block_id, version))
+      }
+    }
+
+    let mut entry = match versions.pop() {
+      Some((block_id, version)) => IndexEntry::new(block_id, version),
+      None => return Ok(None),
+    };
+    for (block_id, version) in versions {
+      entry.add_version(block_id, version)
+    }
+
+    Ok(Some(entry))
   }
 }
