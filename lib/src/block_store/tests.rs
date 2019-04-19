@@ -1,4 +1,6 @@
 use super::{open_block_store, BlockStore, StoreError};
+use crate::block_store::model::Operation;
+use crate::block_store::{Change, ChangeLog};
 use rand::{distributions, thread_rng, Rng, ThreadRng};
 use spectral::prelude::*;
 use std::sync::Arc;
@@ -8,7 +10,7 @@ fn common_store_tests(store: Arc<BlockStore>) {
   let mut rng = thread_rng();
   common_test_ring(store.as_ref(), &mut rng);
   common_test_index(store.as_ref(), &mut rng);
-  common_test_blocks(store.as_ref(), &mut rng);
+  common_test_blocks_commits(store.as_ref(), &mut rng);
 }
 
 fn common_test_ring(store: &BlockStore, rng: &mut ThreadRng) {
@@ -63,7 +65,7 @@ fn common_test_index(store: &BlockStore, rng: &mut ThreadRng) {
   assert_that(&store.get_index(&node2)).is_ok_containing(Some(node2_index2));
 }
 
-fn common_test_blocks(store: &BlockStore, rng: &mut ThreadRng) {
+fn common_test_blocks_commits(store: &BlockStore, rng: &mut ThreadRng) {
   assert_that(&store.get_block("00000000000")).is_err_containing(StoreError::InvalidBlock("00000000000".to_string()));
 
   let block1 = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
@@ -81,6 +83,66 @@ fn common_test_blocks(store: &BlockStore, rng: &mut ThreadRng) {
   assert_that(&store.get_block(&block1_id)).is_ok_containing(block1);
   assert_that(&store.get_block(&block2_id)).is_ok_containing(block2);
   assert_that(&store.get_block(&block3_id)).is_ok_containing(block3);
+
+  assert_that(&store.commit(&[
+    Change {
+      op: Operation::Add,
+      block: block1_id.clone(),
+    },
+    Change {
+      op: Operation::Add,
+      block: block2_id.clone(),
+    },
+  ]))
+  .is_ok();
+
+  assert_that(&store.change_logs()).is_ok_containing(vec![ChangeLog {
+    node: store.node_id().to_string(),
+    changes: vec![
+      Change {
+        op: Operation::Add,
+        block: block1_id.clone(),
+      },
+      Change {
+        op: Operation::Add,
+        block: block2_id.clone(),
+      },
+    ],
+  }]);
+
+  assert_that(&store.commit(&[Change {
+    op: Operation::Add,
+    block: block2_id.clone(),
+  }]))
+  .is_err()
+  .matches(|error| match error {
+    StoreError::Conflict(_) => true,
+    _ => false,
+  });
+
+  assert_that(&store.commit(&[Change {
+    op: Operation::Add,
+    block: block3_id.clone(),
+  }]))
+  .is_ok();
+
+  assert_that(&store.change_logs()).is_ok_containing(vec![ChangeLog {
+    node: store.node_id().to_string(),
+    changes: vec![
+      Change {
+        op: Operation::Add,
+        block: block1_id,
+      },
+      Change {
+        op: Operation::Add,
+        block: block2_id,
+      },
+      Change {
+        op: Operation::Add,
+        block: block3_id,
+      },
+    ],
+  }]);
 }
 
 #[test]

@@ -81,7 +81,7 @@ fn add_identities_test(secrets_store: &SecretsStore) -> Vec<(Identity, SecretByt
 
 fn add_secrets_versions(secrets_store: &SecretsStore, ids_with_passphrase: &[(Identity, SecretBytes)]) {
   let version1 = SecretVersion {
-    secret_id: "secret1".to_string().to_zeroing(),
+    secret_id: "secret1".to_string(),
     secret_type: SecretType::Login,
     timestamp: Utc::now(),
     name: "First secret".to_string().to_zeroing(),

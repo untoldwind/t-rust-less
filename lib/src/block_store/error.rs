@@ -7,6 +7,7 @@ pub enum StoreError {
   InvalidStoreUrl(String),
   IO(String),
   Mutex(String),
+  Conflict(String),
 }
 
 impl fmt::Display for StoreError {
@@ -16,6 +17,7 @@ impl fmt::Display for StoreError {
       StoreError::InvalidStoreUrl(url) => write!(f, "Invalid store url: {}", url)?,
       StoreError::IO(error) => write!(f, "IO: {}", error)?,
       StoreError::Mutex(error) => write!(f, "Internal locking problem: {}", error)?,
+      StoreError::Conflict(error) => write!(f, "Conflict: {}", error)?,
     }
     Ok(())
   }

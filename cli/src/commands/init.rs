@@ -111,7 +111,8 @@ fn store_config(s: &mut Cursive) {
   let secrets_store = try_with_dialog!(
     open_secrets_store(&secrets_store_url, &client_id, autolock_timeout),
     s,
-    "Unable to open store {}:\n{}", secrets_store_url
+    "Unable to open store {}:\n{}",
+    secrets_store_url
   );
   let identities = try_with_dialog!(secrets_store.identities(), s, "Unable to query identities:\n{}");
 

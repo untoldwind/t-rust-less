@@ -1,6 +1,6 @@
 use crate::config::{config_file, read_config};
 use atty::Stream;
-use crossterm_style::{Color, style};
+use crossterm_style::{style, Color};
 use log::error;
 
 mod cli;

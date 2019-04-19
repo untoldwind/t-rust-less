@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::error::ExtResult;
 use atty::Stream;
-use crossterm_style::{Color, style};
+use crossterm_style::{style, Color};
 use t_rust_less_lib::secrets_store::open_secrets_store;
 
 pub fn status(config: Config) {

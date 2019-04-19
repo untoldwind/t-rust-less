@@ -40,6 +40,10 @@ impl MemoryBlockStore {
 }
 
 impl BlockStore for MemoryBlockStore {
+  fn node_id(&self) -> &str {
+    &self.node_id
+  }
+
   fn list_ring_ids(&self) -> StoreResult<Vec<String>> {
     let rings = self.rings.read()?;
 
@@ -112,6 +116,9 @@ impl BlockStore for MemoryBlockStore {
 
     match stored_changes.get_mut(&self.node_id) {
       Some(existing) => {
+        if existing.iter().any(|change| changes.contains(change)) {
+          return Err(StoreError::Conflict("Change already committed".to_string()));
+        }
         existing.extend_from_slice(changes);
       }
       None => {

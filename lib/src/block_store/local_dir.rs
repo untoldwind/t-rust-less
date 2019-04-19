@@ -4,7 +4,7 @@ use log::{debug, info};
 use sha2::{Digest, Sha256};
 use std::fs::{metadata, read_dir, DirBuilder, File, OpenOptions};
 use std::io::prelude::*;
-use std::io::{self, BufReader};
+use std::io::{self, BufReader, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 
@@ -25,7 +25,10 @@ impl LocalDirBlockStore {
     let md = metadata(&base_dir)?;
 
     if !md.is_dir() {
-      Err(StoreError::InvalidStoreUrl(format!("{} is not a directory", base_dir.to_string_lossy())))
+      Err(StoreError::InvalidStoreUrl(format!(
+        "{} is not a directory",
+        base_dir.to_string_lossy()
+      )))
     } else {
       info!("Opening local dir store on: {}", base_dir.to_string_lossy());
       Ok(LocalDirBlockStore {
@@ -50,10 +53,9 @@ impl LocalDirBlockStore {
     }
   }
 
-  fn parse_change_log(file_name: &str, path: &Path) -> StoreResult<ChangeLog> {
-    let file = File::open(path)?;
+  fn parse_change_log(node_id: &str, file: &File) -> StoreResult<ChangeLog> {
     let reader = BufReader::new(file);
-    let mut change_log = ChangeLog::new(file_name);
+    let mut change_log = ChangeLog::new(node_id);
 
     for maybe_line in reader.lines() {
       let line = maybe_line?;
@@ -84,6 +86,10 @@ impl LocalDirBlockStore {
 }
 
 impl BlockStore for LocalDirBlockStore {
+  fn node_id(&self) -> &str {
+    &self.node_id
+  }
+
   fn list_ring_ids(&self) -> StoreResult<Vec<String>> {
     match read_dir(self.base_dir.write()?.join("rings")) {
       Ok(ring_dir) => {
@@ -151,10 +157,9 @@ impl BlockStore for LocalDirBlockStore {
       if !entry.metadata()?.is_file() {
         continue;
       }
-      change_logs.push(Self::parse_change_log(
-        &entry.file_name().to_string_lossy(),
-        &entry.path(),
-      )?);
+      let file = File::open(entry.path())?;
+
+      change_logs.push(Self::parse_change_log(&entry.file_name().to_string_lossy(), &file)?);
     }
 
     Ok(change_logs)
@@ -205,9 +210,15 @@ impl BlockStore for LocalDirBlockStore {
     DirBuilder::new().recursive(true).create(base_dir.join("logs"))?;
     let mut log_file = OpenOptions::new()
       .create(true)
-      .append(true)
+      .write(true)
+      .read(true)
       .open(base_dir.join("logs").join(&self.node_id))?;
+    let existing = Self::parse_change_log(&self.node_id, &log_file)?;
+    log_file.seek(SeekFrom::End(0))?;
 
+    if existing.changes.iter().any(|change| changes.contains(change)) {
+      return Err(StoreError::Conflict("Change already committed".to_string()));
+    }
     for change in changes {
       match change.op {
         Operation::Add => writeln!(log_file, "A {}", change.block)?,

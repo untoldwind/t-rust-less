@@ -25,6 +25,10 @@ rand = "0.5"
 rust-argon2 = "0"
 zxcvbn = "1"
 log = "0"
+fuzzy-matcher = "0"
+sublime_fuzzy = "0"
+rff = "0"
+itertools = "0"
 
 [dev-dependencies]
 tempdir = "0"

@@ -31,6 +31,12 @@ pub use self::error::{StoreError, StoreResult};
 /// protected accordingly.
 ///
 pub trait BlockStore: Send + Sync {
+  /// Get the current node id.
+  ///
+  /// Each accessor to a distributed store should have a unique id.
+  ///
+  fn node_id(&self) -> &str;
+
   /// Get list of ring block identifiers.
   ///
   /// A store may contain any number of secrets rings. Usually associated with identities/users
@@ -99,7 +105,10 @@ pub fn open_block_store(url: &str, node_id: &str) -> StoreResult<Arc<BlockStore>
   let store_url = Url::parse(url)?;
 
   match store_url.scheme() {
-    "file" => Ok(Arc::new(local_dir::LocalDirBlockStore::new(store_url.to_file_path().unwrap(), node_id)?)),
+    "file" => Ok(Arc::new(local_dir::LocalDirBlockStore::new(
+      store_url.to_file_path().unwrap(),
+      node_id,
+    )?)),
     "memory" => Ok(Arc::new(memory::MemoryBlockStore::new(node_id))),
     _ => Err(StoreError::InvalidStoreUrl(url.to_string())),
   }
