@@ -20,16 +20,17 @@ pub struct LocalDirBlockStore {
 }
 
 impl LocalDirBlockStore {
-  pub fn new(base_dir: &str, node_id: &str) -> StoreResult<LocalDirBlockStore> {
-    let md = metadata(base_dir)?;
+  pub fn new<P: Into<PathBuf>>(base_dir_raw: P, node_id: &str) -> StoreResult<LocalDirBlockStore> {
+    let base_dir = base_dir_raw.into();
+    let md = metadata(&base_dir)?;
 
     if !md.is_dir() {
-      Err(StoreError::InvalidStoreUrl(format!("{} is not a directory", base_dir)))
+      Err(StoreError::InvalidStoreUrl(format!("{} is not a directory", base_dir.to_string_lossy())))
     } else {
-      info!("Opening local dir store on: {}", base_dir);
+      info!("Opening local dir store on: {}", base_dir.to_string_lossy());
       Ok(LocalDirBlockStore {
         node_id: node_id.to_string(),
-        base_dir: RwLock::new(base_dir.into()),
+        base_dir: RwLock::new(base_dir),
       })
     }
   }

@@ -99,7 +99,7 @@ pub fn open_block_store(url: &str, node_id: &str) -> StoreResult<Arc<BlockStore>
   let store_url = Url::parse(url)?;
 
   match store_url.scheme() {
-    "file" => Ok(Arc::new(local_dir::LocalDirBlockStore::new(store_url.path(), node_id)?)),
+    "file" => Ok(Arc::new(local_dir::LocalDirBlockStore::new(store_url.to_file_path().unwrap(), node_id)?)),
     "memory" => Ok(Arc::new(memory::MemoryBlockStore::new(node_id))),
     _ => Err(StoreError::InvalidStoreUrl(url.to_string())),
   }

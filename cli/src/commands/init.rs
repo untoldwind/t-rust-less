@@ -69,11 +69,11 @@ pub fn init(maybe_config: Option<Config>) {
 }
 
 macro_rules! try_with_dialog {
-  ($result:expr, $siv:expr, $format:expr) => {
+  ($result:expr, $siv:expr, $format:expr $(, $args:expr )*) => {
     match $result {
       Ok(result) => result,
       Err(error) => {
-        $siv.add_layer(Dialog::info(format!($format, error)));
+        $siv.add_layer(Dialog::info(format!($format $(, $args )*, error)));
         return;
       }
     }
@@ -105,17 +105,19 @@ fn store_config(s: &mut Cursive) {
   }
   try_with_dialog!(fs::create_dir_all(&store_path), s, "Failed creating directory:\n{}");
 
-  let store_url = format!("multilane+file://{}", store_path);
+  let store_url = Url::from_directory_path(store_path).unwrap();
+  let secrets_store_url = format!("multilane+{}", store_url.to_string());
+
   let secrets_store = try_with_dialog!(
-    open_secrets_store(&store_url, &client_id, autolock_timeout),
+    open_secrets_store(&secrets_store_url, &client_id, autolock_timeout),
     s,
-    "Unable to open store:\n{}"
+    "Unable to open store {}:\n{}", secrets_store_url
   );
   let identities = try_with_dialog!(secrets_store.identities(), s, "Unable to query identities:\n{}");
 
   let config = Config {
     client_id,
-    store_url,
+    store_url: secrets_store_url,
     autolock_timeout,
   };
 
