@@ -5,7 +5,7 @@ use capnp::{message, serialize};
 
 use crate::api::{Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
 use crate::block_store::{BlockStore, Change, Operation, StoreError};
-use crate::memguard::weak::ZeroingStringExt;
+use crate::memguard::weak::{ZeroingHHeapAllocator, ZeroingStringExt};
 use crate::memguard::SecretBytes;
 use crate::secrets_store::cipher::{
   Cipher, KeyDerivation, PrivateKey, PublicKey, OPEN_SSL_RSA_AES_GCM, RUST_ARGON2_ID, RUST_X25519CHA_CHA20POLY1305,
@@ -130,7 +130,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     if self.block_store.list_ring_ids()?.iter().any(|id| id == &identity.id) {
       return Err(SecretStoreError::Conflict);
     }
-    let mut ring_message = message::Builder::new_default();
+    let mut ring_message = message::Builder::new(ZeroingHHeapAllocator::new());
     let mut new_ring = ring_message.init_root::<ring::Builder>();
 
     new_ring.set_id(&identity.id);
@@ -178,7 +178,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     let maybe_unlocked_user = self.unlocked_user.read()?;
     let unlocked_user = maybe_unlocked_user.as_ref().ok_or(SecretStoreError::Locked)?;
 
-    let mut ring_message = message::Builder::new_default();
+    let mut ring_message = message::Builder::new(ZeroingHHeapAllocator::new());
     let mut new_ring = ring_message.init_root::<ring::Builder>();
 
     new_ring.set_id(&unlocked_user.identity.id);
@@ -247,7 +247,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     }
 
     let recipients_for_cipher = self.find_recipients(&secret_version.recipients)?;
-    let mut block_message = capnp::message::Builder::new_default();
+    let mut block_message = message::Builder::new(ZeroingHHeapAllocator::new());
     let mut block = block_message.init_root::<block::Builder>();
     let mut headers = block.reborrow().init_headers(recipients_for_cipher.len() as u32);
     let mut json_raw = serde_json::to_vec(&secret_version)?;

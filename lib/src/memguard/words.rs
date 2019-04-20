@@ -1,5 +1,6 @@
 use super::alloc;
 use super::memory;
+use capnp::message::{AllocationStrategy, Allocator, SUGGESTED_ALLOCATION_STRATEGY, SUGGESTED_FIRST_SEGMENT_WORDS};
 use capnp::Word;
 use std::convert::{AsMut, AsRef};
 use std::ops::{Deref, DerefMut};
@@ -127,6 +128,14 @@ impl SecretWords {
       alloc::mprotect(self.ptr, alloc::Prot::NoAccess);
     }
   }
+
+  /// Internal use only.
+  /// This will take a write-lock and never undo it until the SecretWords are dropped.
+  fn as_mut_ptr(&mut self) -> *mut Word {
+    self.lock_write();
+
+    self.ptr.as_ptr()
+  }
 }
 
 unsafe impl Send for SecretWords {}
@@ -233,6 +242,49 @@ impl<'a> AsRef<[Word]> for RefMut<'a> {
 impl<'a> AsMut<[Word]> for RefMut<'a> {
   fn as_mut(&mut self) -> &mut [Word] {
     unsafe { slice::from_raw_parts_mut(self.words.ptr.as_ptr(), self.words.size) }
+  }
+}
+
+pub struct SecureHHeapAllocator {
+  owned_memory: Vec<SecretWords>,
+  next_size: u32,
+  allocation_strategy: AllocationStrategy,
+}
+
+impl SecureHHeapAllocator {
+  pub fn new() -> SecureHHeapAllocator {
+    SecureHHeapAllocator {
+      owned_memory: Vec::new(),
+      next_size: SUGGESTED_FIRST_SEGMENT_WORDS,
+      allocation_strategy: SUGGESTED_ALLOCATION_STRATEGY,
+    }
+  }
+
+  pub fn first_segment_words(mut self, value: u32) -> SecureHHeapAllocator {
+    self.next_size = value;
+    self
+  }
+
+  pub fn allocation_strategy(mut self, value: AllocationStrategy) -> SecureHHeapAllocator {
+    self.allocation_strategy = value;
+    self
+  }
+}
+
+unsafe impl Allocator for SecureHHeapAllocator {
+  fn allocate_segment(&mut self, minimum_size: u32) -> (*mut Word, u32) {
+    let size = ::std::cmp::max(minimum_size, self.next_size);
+    let mut new_words = SecretWords::zeroed(size as usize);
+    let ptr = new_words.as_mut_ptr();
+    self.owned_memory.push(new_words);
+
+    match self.allocation_strategy {
+      AllocationStrategy::GrowHeuristically => {
+        self.next_size += size;
+      }
+      _ => {}
+    }
+    (ptr, size as u32)
   }
 }
 
