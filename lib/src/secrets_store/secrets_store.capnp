@@ -50,3 +50,42 @@ struct Block {
         cryptedKey @1: Data;
     }
 }
+
+# Internal layout of an index
+# This is supposed to be in-(secure)-memory only. When written to some persistent medium
+# an index has to be wrapped in a block like all other secrets
+struct Index {
+    heads @0 : List(Head);
+    entries @1 : List(Entry);
+
+    enum Operation {
+        add @0;
+        delete @1;
+    }
+
+    struct Head {
+        operation @0 : Operation;
+        blockId @1 : Text;
+    }
+
+    enum SecretType {
+        login @0;
+        note @1;
+        licence @2;
+        wlan @3;
+        password @4;
+        other @5;
+    }
+
+    struct Entry {
+        id @0 : Text;
+        timestamp @1 : Int64;
+        name @2 : Text;
+        type @3 : SecretType;
+        tags @4 : List(Text);
+        urls @5 : List(Text);
+        deleted @6 : Bool;
+        blockIds @7 : List(Text);
+        currentBlockId @8 : Text;
+    }
+}

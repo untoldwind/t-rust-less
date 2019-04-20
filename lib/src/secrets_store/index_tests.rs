@@ -63,8 +63,8 @@ fn test_process_simple_changelog() {
   let mut test_store: TestStore = Default::default();
   let mut index: Index = Default::default();
 
-  for i in (0..10) {
-    for j in (0..5) {
+  for i in 0..10 {
+    for j in 0..5 {
       test_store.add_secret_version(&format!("Secret_{}", i), j)
     }
   }
