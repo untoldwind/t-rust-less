@@ -1,4 +1,4 @@
-use crate::api::{SecretEntry, SecretVersion};
+use crate::api::{SecretEntry, SecretEntryMatch, SecretListFilter, SecretVersion};
 use crate::block_store::{Change, ChangeLog, Operation};
 use crate::secrets_store::SecretStoreResult;
 use serde_derive::{Deserialize, Serialize};
@@ -61,6 +61,10 @@ impl Index {
       }
     }
     Ok(changed)
+  }
+
+  pub fn filter_entries(filter: &SecretListFilter) -> Vec<SecretEntryMatch> {
+    unimplemented!()
   }
 
   fn process_change_log<F>(&mut self, change_log: &ChangeLog, version_accessor: F) -> SecretStoreResult<bool>

@@ -82,8 +82,14 @@ pub struct SecretEntry {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SecretEntryMatch {
   pub entry: SecretEntry,
+  /// Matching score of the name
+  pub name_score: isize,
   /// Array of positions (single chars) to highlight in the name of the entry
-  pub name_highlights: Vec<u32>,
+  pub name_highlights: Vec<usize>,
+  /// Array of matching urls
+  pub url_highlights: Vec<usize>,
+  /// Array of matching tags
+  pub tags_highlights: Vec<usize>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
