@@ -1,6 +1,7 @@
 use super::{open_block_store, BlockStore, StoreError};
 use crate::block_store::model::Operation;
 use crate::block_store::{Change, ChangeLog};
+use capnp::Word;
 use rand::{distributions, thread_rng, Rng, ThreadRng};
 use spectral::prelude::*;
 use std::sync::Arc;
@@ -14,10 +15,26 @@ fn common_store_tests(store: Arc<BlockStore>) {
 }
 
 fn common_test_ring(store: &BlockStore, rng: &mut ThreadRng) {
-  let ring1a = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
-  let ring1b = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
-  let ring2a = rng.sample_iter(&distributions::Standard).take(300).collect::<Vec<u8>>();
-  let ring2b = rng.sample_iter(&distributions::Standard).take(300).collect::<Vec<u8>>();
+  let ring1a = rng
+    .sample_iter(&distributions::Standard)
+    .map(|w| Word { raw_content: w })
+    .take(200)
+    .collect::<Vec<Word>>();
+  let ring1b = rng
+    .sample_iter(&distributions::Standard)
+    .map(|w| Word { raw_content: w })
+    .take(200)
+    .collect::<Vec<Word>>();
+  let ring2a = rng
+    .sample_iter(&distributions::Standard)
+    .map(|w| Word { raw_content: w })
+    .take(300)
+    .collect::<Vec<Word>>();
+  let ring2b = rng
+    .sample_iter(&distributions::Standard)
+    .map(|w| Word { raw_content: w })
+    .take(300)
+    .collect::<Vec<Word>>();
 
   assert_that(&store.list_ring_ids()).is_ok_containing(vec![]);
   assert_that(&store.store_ring("ring1", &ring1a)).is_ok();
@@ -44,14 +61,30 @@ fn common_test_index(store: &BlockStore, rng: &mut ThreadRng) {
     .sample_iter(&distributions::Alphanumeric)
     .take(40)
     .collect::<String>();
-  let node1_index1 = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
-  let node1_index2 = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
+  let node1_index1 = rng
+    .sample_iter(&distributions::Standard)
+    .map(|w| Word { raw_content: w })
+    .take(200)
+    .collect::<Vec<Word>>();
+  let node1_index2 = rng
+    .sample_iter(&distributions::Standard)
+    .map(|w| Word { raw_content: w })
+    .take(200)
+    .collect::<Vec<Word>>();
   let node2 = rng
     .sample_iter(&distributions::Alphanumeric)
     .take(40)
     .collect::<String>();
-  let node2_index1 = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
-  let node2_index2 = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
+  let node2_index1 = rng
+    .sample_iter(&distributions::Standard)
+    .map(|w| Word { raw_content: w })
+    .take(200)
+    .collect::<Vec<Word>>();
+  let node2_index2 = rng
+    .sample_iter(&distributions::Standard)
+    .map(|w| Word { raw_content: w })
+    .take(200)
+    .collect::<Vec<Word>>();
 
   assert_that(&store.get_index(&node1)).is_ok_containing(None);
   assert_that(&store.store_index(&node1, &node1_index1)).is_ok();
@@ -68,9 +101,21 @@ fn common_test_index(store: &BlockStore, rng: &mut ThreadRng) {
 fn common_test_blocks_commits(store: &BlockStore, rng: &mut ThreadRng) {
   assert_that(&store.get_block("00000000000")).is_err_containing(StoreError::InvalidBlock("00000000000".to_string()));
 
-  let block1 = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
-  let block2 = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
-  let block3 = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
+  let block1 = rng
+    .sample_iter(&distributions::Standard)
+    .map(|w| Word { raw_content: w })
+    .take(200)
+    .collect::<Vec<Word>>();
+  let block2 = rng
+    .sample_iter(&distributions::Standard)
+    .map(|w| Word { raw_content: w })
+    .take(200)
+    .collect::<Vec<Word>>();
+  let block3 = rng
+    .sample_iter(&distributions::Standard)
+    .map(|w| Word { raw_content: w })
+    .take(200)
+    .collect::<Vec<Word>>();
 
   let block1_id = store.add_block(&block1).unwrap();
   let block2_id = store.add_block(&block2).unwrap();

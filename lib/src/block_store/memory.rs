@@ -5,6 +5,7 @@ use data_encoding::HEXLOWER;
 use sha2::{Digest, Sha256};
 
 use super::{BlockStore, Change, ChangeLog, StoreError, StoreResult};
+use capnp::Word;
 
 /// Memory based reference implementation of a block store.
 ///
@@ -13,9 +14,9 @@ use super::{BlockStore, Change, ChangeLog, StoreError, StoreResult};
 ///
 pub struct MemoryBlockStore {
   node_id: String,
-  rings: RwLock<HashMap<String, Vec<u8>>>,
-  indexes: RwLock<HashMap<String, Vec<u8>>>,
-  blocks: RwLock<HashMap<String, Vec<u8>>>,
+  rings: RwLock<HashMap<String, Vec<Word>>>,
+  indexes: RwLock<HashMap<String, Vec<Word>>>,
+  blocks: RwLock<HashMap<String, Vec<Word>>>,
   changes: RwLock<HashMap<String, Vec<Change>>>,
 }
 
@@ -30,10 +31,10 @@ impl MemoryBlockStore {
     }
   }
 
-  fn generate_id(data: &[u8]) -> String {
+  fn generate_id(data: &[Word]) -> String {
     let mut hasher = Sha256::new();
 
-    hasher.input(data);
+    hasher.input(Word::words_to_bytes(data));
 
     HEXLOWER.encode(&hasher.result())
   }
@@ -50,7 +51,7 @@ impl BlockStore for MemoryBlockStore {
     Ok(rings.keys().cloned().collect())
   }
 
-  fn get_ring(&self, ring_id: &str) -> StoreResult<Vec<u8>> {
+  fn get_ring(&self, ring_id: &str) -> StoreResult<Vec<Word>> {
     let rings = self.rings.read()?;
 
     rings
@@ -59,7 +60,7 @@ impl BlockStore for MemoryBlockStore {
       .ok_or_else(|| StoreError::InvalidBlock(ring_id.to_string()))
   }
 
-  fn store_ring(&self, ring_id: &str, raw: &[u8]) -> StoreResult<()> {
+  fn store_ring(&self, ring_id: &str, raw: &[Word]) -> StoreResult<()> {
     let mut rings = self.rings.write()?;
 
     rings.insert(ring_id.to_string(), raw.to_vec());
@@ -81,20 +82,20 @@ impl BlockStore for MemoryBlockStore {
     )
   }
 
-  fn get_index(&self, node: &str) -> StoreResult<Option<Vec<u8>>> {
+  fn get_index(&self, node: &str) -> StoreResult<Option<Vec<Word>>> {
     let indexes = self.indexes.read()?;
 
     Ok(indexes.get(node).cloned())
   }
 
-  fn store_index(&self, node: &str, raw: &[u8]) -> StoreResult<()> {
+  fn store_index(&self, node: &str, raw: &[Word]) -> StoreResult<()> {
     let mut indexes = self.indexes.write()?;
 
     indexes.insert(node.to_string(), raw.to_vec());
     Ok(())
   }
 
-  fn add_block(&self, raw: &[u8]) -> StoreResult<String> {
+  fn add_block(&self, raw: &[Word]) -> StoreResult<String> {
     let block_id = Self::generate_id(raw);
     let mut blocks = self.blocks.write()?;
 
@@ -102,7 +103,7 @@ impl BlockStore for MemoryBlockStore {
     Ok(block_id)
   }
 
-  fn get_block(&self, block: &str) -> StoreResult<Vec<u8>> {
+  fn get_block(&self, block: &str) -> StoreResult<Vec<Word>> {
     let blocks = self.blocks.read()?;
 
     blocks

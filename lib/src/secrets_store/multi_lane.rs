@@ -1,4 +1,3 @@
-use std::io::Cursor;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, SystemTime};
 
@@ -71,8 +70,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     }
 
     let raw = self.block_store.get_ring(identity_id)?;
-    let mut cursor = Cursor::new(&raw);
-    let reader = serialize::read_message(&mut cursor, message::ReaderOptions::new())?;
+    let reader = serialize::read_message_from_words(&raw, message::ReaderOptions::new())?;
     let ring = reader.get_root::<ring::Reader>()?;
     let mut private_keys = Vec::with_capacity(self.ciphers.len());
     let mut public_keys = Vec::with_capacity(self.ciphers.len());
@@ -119,8 +117,7 @@ impl SecretsStore for MultiLaneSecretsStore {
 
     for ring_id in ring_ids {
       let raw = self.block_store.get_ring(&ring_id)?;
-      let mut cursor = Cursor::new(&raw);
-      let reader = serialize::read_message(&mut cursor, message::ReaderOptions::new())?;
+      let reader = serialize::read_message_from_words(&raw, message::ReaderOptions::new())?;
       let ring = reader.get_root::<ring::Reader>()?;
 
       identities.push(Self::identity_from_ring(ring)?)
@@ -172,9 +169,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     }
     let new_ring_raw = serialize::write_message_to_words(&ring_message);
 
-    self
-      .block_store
-      .store_ring(&identity.id, capnp::Word::words_to_bytes(&new_ring_raw))?;
+    self.block_store.store_ring(&identity.id, &new_ring_raw)?;
 
     Ok(())
   }
@@ -224,9 +219,7 @@ impl SecretsStore for MultiLaneSecretsStore {
 
     let new_ring_raw = serialize::write_message_to_words(&ring_message);
 
-    self
-      .block_store
-      .store_ring(&unlocked_user.identity.id, capnp::Word::words_to_bytes(&new_ring_raw))?;
+    self.block_store.store_ring(&unlocked_user.identity.id, &new_ring_raw)?;
 
     Ok(())
   }
@@ -269,9 +262,7 @@ impl SecretsStore for MultiLaneSecretsStore {
 
     let block_content = serialize::write_message_to_words(&block_message);
 
-    let block_id = self
-      .block_store
-      .add_block(capnp::Word::words_to_bytes(&block_content))?;
+    let block_id = self.block_store.add_block(&block_content)?;
     self.block_store.commit(&[Change {
       op: Operation::Add,
       block: block_id,
@@ -331,8 +322,7 @@ impl MultiLaneSecretsStore {
         StoreError::InvalidBlock(_) => SecretStoreError::InvalidRecipient(identity_id.to_string()),
         err => err.into(),
       })?;
-      let mut cursor = Cursor::new(&raw);
-      let reader = serialize::read_message(&mut cursor, message::ReaderOptions::new())?;
+      let reader = serialize::read_message_from_words(&raw, message::ReaderOptions::new())?;
       let ring = reader.get_root::<ring::Reader>()?;
       let user_public_keys = ring.get_public_keys()?;
 

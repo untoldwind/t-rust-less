@@ -1,4 +1,5 @@
 use super::{BlockStore, Change, ChangeLog, Operation, StoreError, StoreResult};
+use capnp::Word;
 use data_encoding::HEXLOWER;
 use log::{debug, info};
 use sha2::{Digest, Sha256};
@@ -38,13 +39,14 @@ impl LocalDirBlockStore {
     }
   }
 
-  fn read_optional_file<P: AsRef<Path>>(path: P) -> StoreResult<Option<Vec<u8>>> {
+  fn read_optional_file<P: AsRef<Path>>(path: P) -> StoreResult<Option<Vec<Word>>> {
     debug!("Try reading file: {}", path.as_ref().to_string_lossy());
     match File::open(path) {
-      Ok(mut index_file) => {
-        let mut content = vec![];
+      Ok(mut file) => {
+        let file_len = file.metadata()?.len() as usize;
+        let mut content: Vec<Word> = Word::allocate_zeroed_vec(file_len / 8);
 
-        index_file.read_to_end(&mut content)?;
+        file.read_exact(Word::words_to_bytes_mut(&mut content))?;
 
         Ok(Some(content))
       }
@@ -69,10 +71,10 @@ impl LocalDirBlockStore {
     Ok(change_log)
   }
 
-  fn generate_id(data: &[u8]) -> String {
+  fn generate_id(data: &[Word]) -> String {
     let mut hasher = Sha256::new();
 
-    hasher.input(data);
+    hasher.input(Word::words_to_bytes(data));
 
     HEXLOWER.encode(&hasher.result())
   }
@@ -116,13 +118,13 @@ impl BlockStore for LocalDirBlockStore {
     }
   }
 
-  fn get_ring(&self, ring_id: &str) -> StoreResult<Vec<u8>> {
+  fn get_ring(&self, ring_id: &str) -> StoreResult<Vec<Word>> {
     let base_dir = self.base_dir.read()?;
     Self::read_optional_file(base_dir.join("rings").join(ring_id))?
       .ok_or_else(|| StoreError::InvalidBlock(ring_id.to_string()))
   }
 
-  fn store_ring(&self, ring_id: &str, raw: &[u8]) -> StoreResult<()> {
+  fn store_ring(&self, ring_id: &str, raw: &[Word]) -> StoreResult<()> {
     let maybe_current = self.get_ring(ring_id);
     let ring_dir = self.base_dir.write()?.join("rings");
     DirBuilder::new().recursive(true).create(&ring_dir)?;
@@ -131,7 +133,7 @@ impl BlockStore for LocalDirBlockStore {
       Ok(current) => {
         let mut backup_file = File::create(ring_dir.join(format!("{}.bak", ring_id)))?;
 
-        backup_file.write_all(&current)?;
+        backup_file.write_all(Word::words_to_bytes(&current))?;
         backup_file.flush()?;
         backup_file.sync_all()?;
       }
@@ -140,7 +142,7 @@ impl BlockStore for LocalDirBlockStore {
 
     let mut ring_file = File::create(ring_dir.join(ring_id))?;
 
-    ring_file.write_all(raw)?;
+    ring_file.write_all(Word::words_to_bytes(raw))?;
     ring_file.flush()?;
     ring_file.sync_all()?;
     Ok(())
@@ -165,23 +167,23 @@ impl BlockStore for LocalDirBlockStore {
     Ok(change_logs)
   }
 
-  fn get_index(&self, node: &str) -> StoreResult<Option<Vec<u8>>> {
+  fn get_index(&self, node: &str) -> StoreResult<Option<Vec<Word>>> {
     let base_dir = self.base_dir.read()?;
     Self::read_optional_file(base_dir.join("indexes").join(node))
   }
 
-  fn store_index(&self, node: &str, raw: &[u8]) -> StoreResult<()> {
+  fn store_index(&self, node: &str, raw: &[Word]) -> StoreResult<()> {
     let base_dir = self.base_dir.write()?;
     DirBuilder::new().recursive(true).create(base_dir.join("indexes"))?;
     let mut index_file = File::create(base_dir.join("indexes").join(node))?;
 
-    index_file.write_all(raw)?;
+    index_file.write_all(Word::words_to_bytes(raw))?;
     index_file.flush()?;
 
     Ok(())
   }
 
-  fn add_block(&self, raw: &[u8]) -> StoreResult<String> {
+  fn add_block(&self, raw: &[Word]) -> StoreResult<String> {
     let base_dir = self.base_dir.write()?;
     let block_id = Self::generate_id(raw);
     let block_file_path = Self::block_file(&base_dir, &block_id)?;
@@ -191,14 +193,14 @@ impl BlockStore for LocalDirBlockStore {
       .create(block_file_path.parent().unwrap())?;
     let mut block_file = File::create(block_file_path)?;
 
-    block_file.write_all(raw)?;
+    block_file.write_all(Word::words_to_bytes(raw))?;
     block_file.flush()?;
     block_file.sync_all()?;
 
     Ok(block_id)
   }
 
-  fn get_block(&self, block: &str) -> StoreResult<Vec<u8>> {
+  fn get_block(&self, block: &str) -> StoreResult<Vec<Word>> {
     let base_dir = self.base_dir.read()?;
     let block_file_path = Self::block_file(&base_dir, &block)?;
 
