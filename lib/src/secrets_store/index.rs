@@ -53,6 +53,17 @@ pub struct Index {
 }
 
 impl Index {
+  fn from_raw(raw: &mut [u8]) -> SecretStoreResult<Index> {
+    let data = SecretWords::from(raw);
+    let heads = Self::current_heads(&data)?;
+
+    Ok(Index {
+      data,
+      heads,
+      entries: HashMap::new(),
+    })
+  }
+
   pub fn process_change_logs<F>(&mut self, change_logs: &[ChangeLog], version_accessor: F) -> SecretStoreResult<bool>
   where
     F: Fn(&str) -> SecretStoreResult<Option<SecretVersion>>,
@@ -72,16 +83,38 @@ impl Index {
   }
 
   pub fn process_change_logs2<F>(&mut self, change_logs: &[ChangeLog], version_accessor: F) -> SecretStoreResult<bool>
-    where
-        F: Fn(&str) -> SecretStoreResult<Option<SecretVersion>>,
+  where
+    F: Fn(&str) -> SecretStoreResult<Option<SecretVersion>>,
   {
     let (new_heads, added_versions, deleted_blocks) = self.collect_changes(change_logs, version_accessor)?;
 
     if added_versions.is_empty() && deleted_blocks.is_empty() {
       // No change that affects us
-      return Ok(false)
+      return Ok(false);
     }
-    
+
+    let data_borrow = self.data.borrow();
+    let reader = serialize::read_message_from_words(&data_borrow, message::ReaderOptions::new())?;
+    let index = reader.get_root::<index::Reader>()?;
+    let mut to_keep = HashSet::new();
+    let mut to_remove = HashSet::new();
+
+    for entry in index.get_entries()? {
+      let secret_id = entry.get_id()?;
+      let mut remainging_count = 0;
+      for maybe_block_id in entry.get_block_ids()? {
+        let block_id = maybe_block_id?;
+        if !deleted_blocks.contains(block_id) {
+          remainging_count += 1
+        }
+      }
+      if remainging_count > 0 {
+        to_keep.insert(secret_id.to_string());
+      } else {
+        to_remove.insert(secret_id.to_string());
+      }
+    }
+
     unimplemented!()
   }
 
@@ -197,7 +230,11 @@ impl Index {
     &mut self,
     change_logs: &[ChangeLog],
     version_accessor: F,
-  ) -> SecretStoreResult<(HashMap<String, Change>, HashMap<String, HashMap<String, SecretVersion>>, HashSet<String>)>
+  ) -> SecretStoreResult<(
+    HashMap<String, Change>,
+    HashMap<String, HashMap<String, SecretVersion>>,
+    HashSet<String>,
+  )>
   where
     F: Fn(&str) -> SecretStoreResult<Option<SecretVersion>>,
   {
@@ -210,7 +247,7 @@ impl Index {
 
       for change in changes {
         match change.op {
-          Operation::Add  => {
+          Operation::Add => {
             if let Some(secret_version) = version_accessor(&change.block)? {
               let secret_id = secret_version.secret_id.clone();
               let mut by_blocks = added_versions.remove(&secret_id).unwrap_or_else(|| HashMap::new());
@@ -240,9 +277,8 @@ impl Index {
     Ok((new_heads, added_versions, deleted_blocks))
   }
 
-  fn current_heads(index_data: SecretWords) -> SecretStoreResult<HashMap<String, Change>> {
+  fn current_heads(index_data: &SecretWords) -> SecretStoreResult<HashMap<String, Change>> {
     let index_borrow = index_data.borrow();
-
     let reader = serialize::read_message_from_words(&index_borrow, message::ReaderOptions::new())?;
     let index = reader.get_root::<index::Reader>()?;
     let mut heads = HashMap::with_capacity(index.get_heads()?.len() as usize);
@@ -269,16 +305,6 @@ impl Default for Index {
 
     Index {
       data: index_data.into(),
-      heads: HashMap::new(),
-      entries: HashMap::new(),
-    }
-  }
-}
-
-impl From<&mut [u8]> for Index {
-  fn from(bytes: &mut [u8]) -> Self {
-    Index {
-      data: SecretWords::from(bytes),
       heads: HashMap::new(),
       entries: HashMap::new(),
     }
