@@ -197,6 +197,25 @@ impl From<&mut [u8]> for SecretBytes {
   }
 }
 
+impl From<Vec<u8>> for SecretBytes {
+  fn from(mut bytes: Vec<u8>) -> Self {
+    unsafe {
+      let ptr = alloc::malloc(bytes.len());
+
+      copy_nonoverlapping(bytes.as_ptr(), ptr.as_ptr(), bytes.len());
+      memory::memzero(bytes.as_mut_ptr(), bytes.len());
+      alloc::mprotect(ptr, alloc::Prot::NoAccess);
+
+      SecretBytes {
+        ptr,
+        size: bytes.len(),
+        capacity: bytes.len(),
+        locks: AtomicIsize::new(0),
+      }
+    }
+  }
+}
+
 pub struct Ref<'a> {
   bytes: &'a SecretBytes,
 }

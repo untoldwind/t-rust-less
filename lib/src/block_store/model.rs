@@ -37,12 +37,9 @@ impl ChangeLog {
     }
   }
 
-  pub fn changes_since(&self, change: &Change) -> impl Iterator<Item = &Change> {
-    let skip = self
-      .changes
-      .iter()
-      .position(|c| c == change)
-      .map(|pos| pos + 1)
+  pub fn changes_since(&self, maybe_change: Option<&Change>) -> impl Iterator<Item = &Change> {
+    let skip = maybe_change
+      .and_then(|change| self.changes.iter().position(|c| c == change).map(|pos| pos + 1))
       .unwrap_or(0);
 
     self.changes.iter().dropping(skip)

@@ -1,9 +1,12 @@
 use crate::api::{SecretEntry, SecretEntryMatch, SecretListFilter, SecretVersion};
 use crate::block_store::{Change, ChangeLog, Operation};
+use crate::memguard::weak::ZeroingHHeapAllocator;
 use crate::memguard::SecretWords;
 use crate::secrets_store::SecretStoreResult;
+use crate::secrets_store_capnp::index;
+use capnp::{message, serialize};
 use serde_derive::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IndexEntry {
@@ -68,14 +71,28 @@ impl Index {
     unimplemented!()
   }
 
+  pub fn process_change_logs2<F>(&mut self, change_logs: &[ChangeLog], version_accessor: F) -> SecretStoreResult<bool>
+    where
+        F: Fn(&str) -> SecretStoreResult<Option<SecretVersion>>,
+  {
+    let (new_heads, added_versions, deleted_blocks) = self.collect_changes(change_logs, version_accessor)?;
+
+    if added_versions.is_empty() && deleted_blocks.is_empty() {
+      // No change that affects us
+      return Ok(false)
+    }
+    
+    unimplemented!()
+  }
+
   fn process_change_log<F>(&mut self, change_log: &ChangeLog, version_accessor: F) -> SecretStoreResult<bool>
   where
     F: Fn(&str) -> SecretStoreResult<Option<SecretVersion>>,
   {
-    match self.heads.get(&change_log.node) {
-      Some(head) => self.process_changes(change_log.changes_since(head), version_accessor),
-      None => self.process_changes(change_log.changes.iter(), version_accessor),
-    }
+    self.process_changes(
+      change_log.changes_since(self.heads.get(&change_log.node)),
+      version_accessor,
+    )
   }
 
   fn process_changes<'a, F, I>(&mut self, changes: I, version_accessor: F) -> SecretStoreResult<bool>
@@ -175,12 +192,83 @@ impl Index {
 
     Ok(Some(entry))
   }
+
+  fn collect_changes<F>(
+    &mut self,
+    change_logs: &[ChangeLog],
+    version_accessor: F,
+  ) -> SecretStoreResult<(HashMap<String, Change>, HashMap<String, HashMap<String, SecretVersion>>, HashSet<String>)>
+  where
+    F: Fn(&str) -> SecretStoreResult<Option<SecretVersion>>,
+  {
+    let mut new_heads = HashMap::with_capacity(change_logs.len());
+    let mut added_versions = HashMap::new();
+    let mut deleted_blocks = HashSet::new();
+
+    for change_log in change_logs {
+      let changes = change_log.changes_since(self.heads.get(&change_log.node));
+
+      for change in changes {
+        match change.op {
+          Operation::Add  => {
+            if let Some(secret_version) = version_accessor(&change.block)? {
+              let secret_id = secret_version.secret_id.clone();
+              let mut by_blocks = added_versions.remove(&secret_id).unwrap_or_else(|| HashMap::new());
+              by_blocks.insert(change.block.clone(), secret_version);
+              added_versions.insert(secret_id, by_blocks);
+            }
+          }
+          Operation::Delete => {
+            deleted_blocks.insert(change.block.clone());
+          }
+          _ => (),
+        }
+      }
+
+      if let Some(last) = change_log.changes.last() {
+        new_heads.insert(change_log.node.clone(), last.clone());
+      }
+    }
+
+    // Note there are usually more added blocks then deleted, so it is reasonable to do it this way
+    for deleted_block in &deleted_blocks {
+      for by_block in added_versions.values_mut() {
+        by_block.remove(deleted_block);
+      }
+    }
+
+    Ok((new_heads, added_versions, deleted_blocks))
+  }
+
+  fn current_heads(index_data: SecretWords) -> SecretStoreResult<HashMap<String, Change>> {
+    let index_borrow = index_data.borrow();
+
+    let reader = serialize::read_message_from_words(&index_borrow, message::ReaderOptions::new())?;
+    let index = reader.get_root::<index::Reader>()?;
+    let mut heads = HashMap::with_capacity(index.get_heads()?.len() as usize);
+
+    for head in index.get_heads()? {
+      let node_id = head.get_node_id()?.to_string();
+      let op = match head.get_operation()? {
+        index::HeadOperation::Add => Operation::Add,
+        index::HeadOperation::Delete => Operation::Delete,
+      };
+      let block = head.get_block_id()?.to_string();
+      heads.insert(node_id, Change { op, block });
+    }
+
+    Ok(heads)
+  }
 }
 
 impl Default for Index {
   fn default() -> Self {
+    let mut index_message = message::Builder::new(ZeroingHHeapAllocator::new());
+    index_message.init_root::<index::Builder>();
+    let mut index_data = serialize::write_message_to_words(&index_message);
+
     Index {
-      data: SecretWords::with_capacity(10),
+      data: index_data.into(),
       heads: HashMap::new(),
       entries: HashMap::new(),
     }

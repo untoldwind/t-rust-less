@@ -209,6 +209,25 @@ impl From<&mut [Word]> for SecretWords {
   }
 }
 
+impl From<Vec<Word>> for SecretWords {
+  fn from(mut words: Vec<Word>) -> Self {
+    unsafe {
+      let ptr = alloc::malloc(words.len() * 8).cast();
+
+      copy_nonoverlapping(words.as_ptr(), ptr.as_ptr(), words.len());
+      memory::memzero(words.as_mut_ptr() as *mut u8, words.len() * 8);
+      alloc::mprotect(ptr, alloc::Prot::NoAccess);
+
+      SecretWords {
+        ptr,
+        size: words.len(),
+        capacity: words.len(),
+        locks: AtomicIsize::new(0),
+      }
+    }
+  }
+}
+
 pub struct Ref<'a> {
   words: &'a SecretWords,
 }

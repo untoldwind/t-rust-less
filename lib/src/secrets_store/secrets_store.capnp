@@ -58,14 +58,15 @@ struct Index {
     heads @0 : List(Head);
     entries @1 : List(Entry);
 
-    enum Operation {
+    enum HeadOperation {
         add @0;
         delete @1;
     }
 
     struct Head {
-        operation @0 : Operation;
-        blockId @1 : Text;
+        nodeId @0: Text;
+        operation @1 : HeadOperation;
+        blockId @2 : Text;
     }
 
     enum SecretType {
