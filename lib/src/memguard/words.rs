@@ -2,6 +2,7 @@ use super::alloc;
 use super::memory;
 use capnp::message::{AllocationStrategy, Allocator, SUGGESTED_ALLOCATION_STRATEGY, SUGGESTED_FIRST_SEGMENT_WORDS};
 use capnp::Word;
+use log::warn;
 use std::convert::{AsMut, AsRef};
 use std::ops::{Deref, DerefMut};
 use std::ptr::{copy_nonoverlapping, NonNull};
@@ -166,6 +167,29 @@ impl Clone for SecretWords {
   }
 }
 
+impl From<&mut [u8]> for SecretWords {
+  fn from(bytes: &mut [u8]) -> Self {
+    if bytes.len() % 8 != 0 {
+      warn!("Bytes not aligned to 8 bytes. Probably these are not the bytes you are looking for.");
+    }
+    unsafe {
+      let len = bytes.len() / 8;
+      let ptr = alloc::malloc(len * 8).cast();
+
+      copy_nonoverlapping(bytes.as_ptr(), ptr.as_ptr() as *mut u8, len * 8);
+      memory::memzero(bytes.as_mut_ptr(), bytes.len());
+      alloc::mprotect(ptr, alloc::Prot::NoAccess);
+
+      SecretWords {
+        ptr,
+        size: len,
+        capacity: len,
+        locks: AtomicIsize::new(0),
+      }
+    }
+  }
+}
+
 impl From<&mut [Word]> for SecretWords {
   fn from(words: &mut [Word]) -> Self {
     unsafe {
@@ -290,6 +314,7 @@ unsafe impl Allocator for SecureHHeapAllocator {
 
 #[cfg(test)]
 mod tests {
+  use byteorder::{ByteOrder, NativeEndian};
   use rand::{distributions, thread_rng, Rng};
   use spectral::prelude::*;
 
@@ -393,5 +418,49 @@ mod tests {
 
     assert_that(&guarded.locks()).is_equal_to(0);
     assert_slices_equal(&guarded.borrow(), &expected2);
+  }
+
+  #[test]
+  fn test_from_unaligned_source() {
+    let mut chunks = [0u8; 16];
+
+    NativeEndian::write_u64(&mut chunks[0..8], 0x1234567812345678);
+    NativeEndian::write_u64(&mut chunks[8..16], 0xf0e1d2c3b4a59687);
+
+    let mut bytes1 = [0u8; 100 * 16 + 1];
+    let mut bytes2 = [0u8; 100 * 16 + 3];
+
+    for i in 0..100 {
+      bytes1[i * 16 + 1..i * 16 + 1 + 16].copy_from_slice(&chunks);
+      bytes2[i * 16 + 3..i * 16 + 3 + 16].copy_from_slice(&chunks);
+    }
+
+    let guarded1 = SecretWords::from(&mut bytes1[1..]);
+    let guarded2 = SecretWords::from(&mut bytes2[3..]);
+
+    for b in &bytes1[..] {
+      assert_that(b).is_equal_to(0);
+    }
+    for b in &bytes2[..] {
+      assert_that(b).is_equal_to(0);
+    }
+
+    assert_that(&guarded1.len()).is_equal_to(200);
+    assert_that(&guarded2.len()).is_equal_to(200);
+
+    for (idx, w) in guarded1.borrow().iter().enumerate() {
+      if idx % 2 == 0 {
+        assert_that(&w.raw_content).is_equal_to(0x1234567812345678);
+      } else {
+        assert_that(&w.raw_content).is_equal_to(0xf0e1d2c3b4a59687);
+      }
+    }
+    for (idx, w) in guarded2.borrow().iter().enumerate() {
+      if idx % 2 == 0 {
+        assert_that(&w.raw_content).is_equal_to(0x1234567812345678);
+      } else {
+        assert_that(&w.raw_content).is_equal_to(0xf0e1d2c3b4a59687);
+      }
+    }
   }
 }

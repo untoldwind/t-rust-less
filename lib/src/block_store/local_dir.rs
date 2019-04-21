@@ -1,6 +1,7 @@
 use super::{BlockStore, Change, ChangeLog, Operation, StoreError, StoreResult};
 use capnp::Word;
 use data_encoding::HEXLOWER;
+use log::warn;
 use log::{debug, info};
 use sha2::{Digest, Sha256};
 use std::fs::{metadata, read_dir, DirBuilder, File, OpenOptions};
@@ -44,6 +45,9 @@ impl LocalDirBlockStore {
     match File::open(path) {
       Ok(mut file) => {
         let file_len = file.metadata()?.len() as usize;
+        if file_len % 8 != 0 {
+          warn!("File length not aligned to 8 bytes. Probably this is not the file you are looking for.");
+        }
         let mut content: Vec<Word> = Word::allocate_zeroed_vec(file_len / 8);
 
         file.read_exact(Word::words_to_bytes_mut(&mut content))?;

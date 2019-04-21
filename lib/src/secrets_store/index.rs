@@ -1,5 +1,6 @@
 use crate::api::{SecretEntry, SecretEntryMatch, SecretListFilter, SecretVersion};
 use crate::block_store::{Change, ChangeLog, Operation};
+use crate::memguard::SecretWords;
 use crate::secrets_store::SecretStoreResult;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -42,8 +43,8 @@ impl IndexEntry {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct Index {
+  data: SecretWords,
   heads: HashMap<String, Change>,
   entries: HashMap<String, IndexEntry>,
 }
@@ -173,5 +174,25 @@ impl Index {
     }
 
     Ok(Some(entry))
+  }
+}
+
+impl Default for Index {
+  fn default() -> Self {
+    Index {
+      data: SecretWords::with_capacity(10),
+      heads: HashMap::new(),
+      entries: HashMap::new(),
+    }
+  }
+}
+
+impl From<&mut [u8]> for Index {
+  fn from(bytes: &mut [u8]) -> Self {
+    Index {
+      data: SecretWords::from(bytes),
+      heads: HashMap::new(),
+      entries: HashMap::new(),
+    }
   }
 }

@@ -33,6 +33,7 @@ itertools = "0"
 tempdir = "0"
 spectral = "0"
 quickcheck = "0"
+byteorder = "1"
 
 [target.'cfg(unix)'.dependencies]
 xcb = { version = "0.8", features = [ "thread", "xfixes" ] }
