@@ -4,8 +4,6 @@ use crate::secrets_store::{SecretStoreError, SecretStoreResult};
 use rand::{thread_rng, RngCore};
 use std::io::Write;
 
-pub struct NonZeroPadding;
-
 /// Padding scheme that requires the padded data to contain no zero byte.
 ///
 /// This come handy when storing plain ascii or json data.
@@ -20,6 +18,8 @@ pub struct NonZeroPadding;
 /// ```
 /// The exact head and tail size is choosen at random depending on the size of the content.
 ///
+pub struct NonZeroPadding;
+
 impl Padding for NonZeroPadding {
   fn pad_secret_data(data: SecretBytes, align: usize) -> SecretStoreResult<SecretBytes> {
     assert!(data.borrow().iter().find(|b| **b == 0).is_none());
@@ -31,7 +31,13 @@ impl Padding for NonZeroPadding {
       return Ok(data);
     }
 
-    let mut pad_bytes = vec![0u8; align - over_align - 1];
+    let mut pad_length = align - over_align - 1;
+
+    if pad_length == 0 {
+      pad_length = align
+    }
+
+    let mut pad_bytes = vec![0u8; pad_length];
 
     rng.fill_bytes(&mut pad_bytes);
 

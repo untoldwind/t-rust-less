@@ -2,10 +2,12 @@ use super::SecretStoreResult;
 use crate::memguard::SecretBytes;
 
 mod non_zero;
+mod random_front_back;
 #[cfg(test)]
 mod tests;
 
 pub use self::non_zero::*;
+pub use self::random_front_back::*;
 
 pub trait Padding {
   fn pad_secret_data(data: SecretBytes, align: usize) -> SecretStoreResult<SecretBytes>;

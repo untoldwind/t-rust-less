@@ -1,5 +1,6 @@
-use super::{NonZeroPadding, Padding};
+use super::{NonZeroPadding, Padding, RandomFrontBack};
 use crate::memguard::SecretBytes;
+use quickcheck::quickcheck;
 use rand::thread_rng;
 
 fn assert_slices_equal(actual: &[u8], expected: &[u8]) {
@@ -36,8 +37,51 @@ fn clean_zero_bytes(mut data: SecretBytes) -> SecretBytes {
 fn test_non_zero_padding() {
   let mut rng = thread_rng();
 
+  common_padding_tests::<NonZeroPadding>(clean_zero_bytes(SecretBytes::random(&mut rng, 127)));
+  common_padding_tests::<NonZeroPadding>(clean_zero_bytes(SecretBytes::random(&mut rng, 128)));
+  common_padding_tests::<NonZeroPadding>(clean_zero_bytes(SecretBytes::random(&mut rng, 129)));
   common_padding_tests::<NonZeroPadding>(clean_zero_bytes(SecretBytes::random(&mut rng, 137)));
   common_padding_tests::<NonZeroPadding>(clean_zero_bytes(SecretBytes::random(&mut rng, 1234)));
   common_padding_tests::<NonZeroPadding>(clean_zero_bytes(SecretBytes::random(&mut rng, 12345)));
   common_padding_tests::<NonZeroPadding>(clean_zero_bytes(SecretBytes::random(&mut rng, 123456)));
+}
+
+#[test]
+fn test_non_zero_padding_quick() {
+  #[allow(clippy::needless_pass_by_value)]
+  fn check_padding(mut data: Vec<u8>) -> bool {
+    for b in &mut data[..] {
+      if *b == 0 {
+        *b = 255;
+      }
+    }
+    common_padding_tests::<NonZeroPadding>(SecretBytes::from(data.as_mut()));
+    true
+  }
+
+  quickcheck(check_padding as fn(Vec<u8>) -> bool);
+}
+
+#[test]
+fn test_randon_front_back_padding() {
+  let mut rng = thread_rng();
+
+  common_padding_tests::<RandomFrontBack>(SecretBytes::random(&mut rng, 127));
+  common_padding_tests::<RandomFrontBack>(SecretBytes::random(&mut rng, 128));
+  common_padding_tests::<RandomFrontBack>(SecretBytes::random(&mut rng, 129));
+  common_padding_tests::<RandomFrontBack>(SecretBytes::random(&mut rng, 137));
+  common_padding_tests::<RandomFrontBack>(SecretBytes::random(&mut rng, 1234));
+  common_padding_tests::<RandomFrontBack>(SecretBytes::random(&mut rng, 12345));
+  common_padding_tests::<RandomFrontBack>(SecretBytes::random(&mut rng, 123456));
+}
+
+#[test]
+fn test_randon_front_back_padding_quick() {
+  #[allow(clippy::needless_pass_by_value)]
+  fn check_padding(mut data: Vec<u8>) -> bool {
+    common_padding_tests::<RandomFrontBack>(SecretBytes::from(data.as_mut()));
+    true
+  }
+
+  quickcheck(check_padding as fn(Vec<u8>) -> bool);
 }
