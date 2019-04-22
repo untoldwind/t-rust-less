@@ -15,12 +15,14 @@ use crate::secrets_store::{SecretStoreError, SecretStoreResult, SecretsStore};
 use crate::secrets_store_capnp::{block, ring, KeyType};
 use chrono::DateTime;
 use rand::{thread_rng, RngCore};
+use crate::secrets_store::index::Index;
 
 struct User {
   identity: Identity,
   public_keys: Vec<(KeyType, PublicKey)>,
   private_keys: Vec<(KeyType, PrivateKey)>,
   autolock_at: SystemTime,
+  index: Index,
 }
 
 pub struct MultiLaneSecretsStore {
@@ -106,6 +108,7 @@ impl SecretsStore for MultiLaneSecretsStore {
       private_keys,
       public_keys,
       autolock_at: SystemTime::now() + self.autolock_timeout,
+      index: Default::default(),
     });
 
     Ok(())
@@ -228,7 +231,10 @@ impl SecretsStore for MultiLaneSecretsStore {
     let maybe_unlocked_user = self.unlocked_user.read()?;
     let unlocked_user = maybe_unlocked_user.as_ref().ok_or(SecretStoreError::Locked)?;
 
-    unimplemented!()
+    Ok(SecretList {
+      all_tags: vec![],
+      entries: unlocked_user.index.filter_entries(filter)?,
+    })
   }
 
   fn add(&self, mut secret_version: SecretVersion) -> SecretStoreResult<()> {

@@ -29,7 +29,7 @@ pub struct Identity {
 ///
 /// This only serves as a hint for an UI.
 ///
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum SecretType {
   Login,
@@ -48,12 +48,12 @@ pub enum SecretType {
 ///
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct SecretListFilter {
-  url: Option<String>,
-  tag: Option<String>,
+  pub url: Option<String>,
+  pub tag: Option<String>,
   #[serde(rename = "type")]
-  secret_type: Option<SecretType>,
-  name: Option<String>,
-  deleted: bool,
+  pub secret_type: Option<SecretType>,
+  pub name: Option<String>,
+  pub deleted: bool,
 }
 
 /// SecretEntry contains all the information of a secrets that should be
@@ -94,8 +94,8 @@ pub struct SecretEntryMatch {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SecretList {
-  all_tags: Vec<ZeroingString>,
-  entries: Vec<SecretEntryMatch>,
+  pub all_tags: Vec<ZeroingString>,
+  pub entries: Vec<SecretEntryMatch>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -1,103 +1,117 @@
-use crate::api::{SecretEntry, SecretEntryMatch, SecretListFilter, SecretVersion};
+use crate::api::{SecretEntry, SecretEntryMatch, SecretListFilter, SecretType, SecretVersion};
 use crate::block_store::{Change, ChangeLog, Operation};
-use crate::memguard::weak::ZeroingHHeapAllocator;
+use crate::memguard::weak::{ZeroingHHeapAllocator, ZeroingString, ZeroingStringExt};
 use crate::memguard::SecretWords;
 use crate::secrets_store::SecretStoreResult;
 use crate::secrets_store_capnp::index;
-use capnp::{message, serialize};
-use serde_derive::{Deserialize, Serialize};
+use capnp::{message, serialize, text_list};
+use chrono::prelude::*;
 use std::collections::{HashMap, HashSet};
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct IndexEntry {
-  entry: SecretEntry,
-  blocks: Vec<String>,
-  current_block: String,
-}
-
-impl IndexEntry {
-  fn new(block_id: &str, version: SecretVersion) -> IndexEntry {
-    IndexEntry {
-      entry: SecretEntry {
-        id: version.secret_id,
-        name: version.name,
-        secret_type: version.secret_type,
-        tags: version.tags,
-        urls: version.urls,
-        timestamp: version.timestamp,
-        deleted: version.deleted,
-      },
-      blocks: vec![block_id.to_string()],
-      current_block: block_id.to_string(),
-    }
-  }
-
-  fn add_version(&mut self, block_id: &str, version: SecretVersion) {
-    self.blocks.push(block_id.to_string());
-    if self.entry.timestamp < version.timestamp {
-      self.entry.name = version.name;
-      self.entry.secret_type = version.secret_type;
-      self.entry.tags = version.tags;
-      self.entry.urls = version.urls;
-      self.entry.timestamp = version.timestamp;
-      self.entry.deleted = version.deleted;
-      self.current_block = block_id.to_string();
-    }
-  }
-}
 
 pub struct Index {
   data: SecretWords,
   heads: HashMap<String, Change>,
-  entries: HashMap<String, IndexEntry>,
 }
 
 impl Index {
   fn from_raw(raw: &mut [u8]) -> SecretStoreResult<Index> {
     let data = SecretWords::from(raw);
-    let heads = Self::current_heads(&data)?;
+    let heads = Self::read_current_heads(&data)?;
 
-    Ok(Index {
-      data,
-      heads,
-      entries: HashMap::new(),
-    })
+    Ok(Index { data, heads })
+  }
+
+  pub fn filter_entries(&self, filter: &SecretListFilter) -> SecretStoreResult<Vec<SecretEntryMatch>> {
+    let data_borrow = self.data.borrow();
+    let reader = serialize::read_message_from_words(&data_borrow, message::ReaderOptions::new())?;
+    let index = reader.get_root::<index::Reader>()?;
+    let mut matches = Vec::new();
+
+    for entry in index.get_entries()? {
+      if let Some(entry_match) = Self::match_entry(entry, filter)? {
+        matches.push(entry_match);
+      }
+    }
+
+    Ok(matches)
   }
 
   pub fn process_change_logs<F>(&mut self, change_logs: &[ChangeLog], version_accessor: F) -> SecretStoreResult<bool>
   where
     F: Fn(&str) -> SecretStoreResult<Option<SecretVersion>>,
   {
-    let mut changed = false;
-
-    for change_log in change_logs {
-      if self.process_change_log(change_log, &version_accessor)? {
-        changed = true;
-      }
-    }
-    Ok(changed)
-  }
-
-  pub fn filter_entries(filter: &SecretListFilter) -> Vec<SecretEntryMatch> {
-    unimplemented!()
-  }
-
-  pub fn process_change_logs2<F>(&mut self, change_logs: &[ChangeLog], version_accessor: F) -> SecretStoreResult<bool>
-  where
-    F: Fn(&str) -> SecretStoreResult<Option<SecretVersion>>,
-  {
-    let (new_heads, added_versions, deleted_blocks) = self.collect_changes(change_logs, version_accessor)?;
+    let (new_heads, added_versions, deleted_blocks) = self.collect_changes(change_logs, &version_accessor)?;
 
     if added_versions.is_empty() && deleted_blocks.is_empty() {
-      // No change that affects us
-      return Ok(false);
+      return Ok(false); // No change that affects us
     }
 
+    let to_keep = self.collect_entries_to_keep(&deleted_blocks)?;
+    let additions = added_versions.keys().filter(|id| !to_keep.contains(*id)).count();
+    let mut index_message = message::Builder::new(ZeroingHHeapAllocator::new());
+    {
+      let index_borrow = self.data.borrow();
+      let reader = serialize::read_message_from_words(&index_borrow, message::ReaderOptions::new())?;
+      let old_index = reader.get_root::<index::Reader>()?;
+      let mut new_index = index_message.init_root::<index::Builder>();
+
+      Self::update_heads(new_index.reborrow(), &new_heads);
+      let mut entry_pos = 0;
+      let mut new_entries = new_index.init_entries((to_keep.len() + additions) as u32);
+
+      for old_entry in old_index.get_entries()? {
+        let secret_id = old_entry.get_id()?;
+        if !to_keep.contains(secret_id) {
+          continue;
+        }
+        let new_block_ids = Self::merge_block_ids(
+          old_entry.reborrow(),
+          added_versions.get(secret_id).map(|m| m.keys()),
+          &deleted_blocks,
+        )?;
+
+        if deleted_blocks.contains(old_entry.get_current_block_id()?) {
+          Self::recreate_entry(
+            new_entries.reborrow().get(entry_pos),
+            new_block_ids,
+            added_versions.get(secret_id),
+            &version_accessor,
+          )?;
+          entry_pos += 1;
+        } else {
+          new_entries.set_with_caveats(entry_pos, old_entry)?;
+          Self::update_entry(
+            new_entries.reborrow().get(entry_pos),
+            new_block_ids,
+            added_versions.get(secret_id),
+          )?;
+          entry_pos += 1;
+        }
+      }
+      for (secret_id, added_version) in added_versions {
+        if to_keep.contains(&secret_id) {
+          continue;
+        }
+        Self::update_entry(
+          new_entries.reborrow().get(entry_pos),
+          added_version.keys().cloned().collect(),
+          Some(&added_version),
+        )?;
+        entry_pos += 1;
+      }
+    }
+
+    self.data = SecretWords::from(serialize::write_message_to_words(&index_message));
+    self.heads = new_heads;
+
+    Ok(true)
+  }
+
+  fn collect_entries_to_keep(&self, deleted_blocks: &HashSet<String>) -> SecretStoreResult<HashSet<String>> {
     let data_borrow = self.data.borrow();
     let reader = serialize::read_message_from_words(&data_borrow, message::ReaderOptions::new())?;
     let index = reader.get_root::<index::Reader>()?;
     let mut to_keep = HashSet::new();
-    let mut to_remove = HashSet::new();
 
     for entry in index.get_entries()? {
       let secret_id = entry.get_id()?;
@@ -110,120 +124,10 @@ impl Index {
       }
       if remainging_count > 0 {
         to_keep.insert(secret_id.to_string());
-      } else {
-        to_remove.insert(secret_id.to_string());
       }
     }
 
-    unimplemented!()
-  }
-
-  fn process_change_log<F>(&mut self, change_log: &ChangeLog, version_accessor: F) -> SecretStoreResult<bool>
-  where
-    F: Fn(&str) -> SecretStoreResult<Option<SecretVersion>>,
-  {
-    self.process_changes(
-      change_log.changes_since(self.heads.get(&change_log.node)),
-      version_accessor,
-    )
-  }
-
-  fn process_changes<'a, F, I>(&mut self, changes: I, version_accessor: F) -> SecretStoreResult<bool>
-  where
-    F: Fn(&str) -> SecretStoreResult<Option<SecretVersion>>,
-    I: Iterator<Item = &'a Change>,
-  {
-    let mut changed = false;
-
-    for change in changes {
-      let relevant_change = match change.op {
-        Operation::Add => self.process_block_added(&change.block, &version_accessor)?,
-        Operation::Delete => self.process_block_deleted(&change.block, &version_accessor)?,
-      };
-      if relevant_change {
-        changed = true;
-      }
-    }
-
-    Ok(changed)
-  }
-
-  fn process_block_added<'a, F>(&mut self, block_id: &str, version_accessor: F) -> SecretStoreResult<bool>
-  where
-    F: Fn(&str) -> SecretStoreResult<Option<SecretVersion>>,
-  {
-    match version_accessor(block_id)? {
-      Some(version) => {
-        match self.entries.get_mut(&version.secret_id) {
-          Some(existing) => existing.add_version(block_id, version),
-          None => {
-            let entry = IndexEntry::new(block_id, version);
-
-            self.entries.insert(entry.entry.id.clone(), entry);
-          }
-        }
-        Ok(true)
-      }
-      _ => Ok(false), // That version was not for us
-    }
-  }
-
-  fn process_block_deleted<'a, F>(&mut self, block_id: &String, version_accessor: F) -> SecretStoreResult<bool>
-  where
-    F: Fn(&str) -> SecretStoreResult<Option<SecretVersion>>,
-  {
-    let dirty_entry_ids: Vec<String> = self
-      .entries
-      .values()
-      .filter(|e| e.blocks.contains(block_id))
-      .map(|e| e.entry.id.clone())
-      .collect();
-
-    if dirty_entry_ids.is_empty() {
-      return Ok(false);
-    }
-
-    for dirty_entry_id in dirty_entry_ids {
-      if let Some(mut entry) = self.entries.remove(&dirty_entry_id) {
-        entry.blocks = entry.blocks.iter().filter(|b| *b != block_id).cloned().collect();
-        if entry.blocks.is_empty() {
-          continue; // This was the only block in the entry, so we can keep it removed
-        }
-        if &entry.current_block == block_id {
-          // Need to recreate the entry to figure out the new current block
-          if let Some(new_entry) = Self::create_entry(&entry.blocks, &version_accessor)? {
-            self.entries.insert(new_entry.entry.id.clone(), new_entry);
-          }
-        } else {
-          self.entries.insert(entry.entry.id.clone(), entry);
-        }
-      }
-    }
-
-    Ok(true)
-  }
-
-  fn create_entry<F>(block_ids: &[String], version_accessor: F) -> SecretStoreResult<Option<IndexEntry>>
-  where
-    F: Fn(&str) -> SecretStoreResult<Option<SecretVersion>>,
-  {
-    let mut versions = Vec::with_capacity(block_ids.len());
-
-    for block_id in block_ids {
-      if let Some(version) = version_accessor(block_id)? {
-        versions.push((block_id, version))
-      }
-    }
-
-    let mut entry = match versions.pop() {
-      Some((block_id, version)) => IndexEntry::new(block_id, version),
-      None => return Ok(None),
-    };
-    for (block_id, version) in versions {
-      entry.add_version(block_id, version)
-    }
-
-    Ok(Some(entry))
+    Ok(to_keep)
   }
 
   fn collect_changes<F>(
@@ -258,7 +162,6 @@ impl Index {
           Operation::Delete => {
             deleted_blocks.insert(change.block.clone());
           }
-          _ => (),
         }
       }
 
@@ -277,7 +180,7 @@ impl Index {
     Ok((new_heads, added_versions, deleted_blocks))
   }
 
-  fn current_heads(index_data: &SecretWords) -> SecretStoreResult<HashMap<String, Change>> {
+  fn read_current_heads(index_data: &SecretWords) -> SecretStoreResult<HashMap<String, Change>> {
     let index_borrow = index_data.borrow();
     let reader = serialize::read_message_from_words(&index_borrow, message::ReaderOptions::new())?;
     let index = reader.get_root::<index::Reader>()?;
@@ -295,18 +198,215 @@ impl Index {
 
     Ok(heads)
   }
+
+  fn update_heads(index: index::Builder, heads: &HashMap<String, Change>) {
+    let mut new_heads = index.init_heads(heads.len() as u32);
+
+    for (idx, (node_id, change)) in heads.into_iter().enumerate() {
+      let mut new_head = new_heads.reborrow().get(idx as u32);
+
+      new_head.set_node_id(&node_id);
+      match change.op {
+        Operation::Add => new_head.set_operation(index::HeadOperation::Add),
+        Operation::Delete => new_head.set_operation(index::HeadOperation::Delete),
+      }
+      new_head.set_block_id(&change.block);
+    }
+  }
+
+  fn merge_block_ids<I, S>(
+    old_entry: index::entry::Reader,
+    maybe_added_blocks: Option<I>,
+    deleted_blocks: &HashSet<String>,
+  ) -> SecretStoreResult<HashSet<String>>
+  where
+    I: Iterator<Item = S>,
+    S: AsRef<str>,
+  {
+    let mut block_ids = HashSet::new();
+
+    for maybe_block_id in old_entry.get_block_ids()? {
+      let block_id = maybe_block_id?;
+
+      if !deleted_blocks.contains(block_id) {
+        block_ids.insert(block_id.to_string());
+      }
+    }
+    if let Some(added_blocks) = maybe_added_blocks {
+      for block_id in added_blocks {
+        block_ids.insert(block_id.as_ref().to_string());
+      }
+    }
+    Ok(block_ids)
+  }
+
+  fn recreate_entry<F>(
+    mut new_entry: index::entry::Builder,
+    mut new_block_ids: HashSet<String>,
+    maybe_added_versions: Option<&HashMap<String, SecretVersion>>,
+    version_accessor: F,
+  ) -> SecretStoreResult<()>
+  where
+    F: Fn(&str) -> SecretStoreResult<Option<SecretVersion>>,
+  {
+    for block_id in new_block_ids.clone() {
+      let maybe_version = match maybe_added_versions.and_then(|a| a.get(&block_id)) {
+        None => version_accessor(&block_id)?,
+        Some(version) => Some(version.clone()),
+      };
+      match maybe_version {
+        Some(version) => {
+          if new_entry.reborrow().get_current_block_id()?.is_empty()
+            || new_entry.reborrow().get_timestamp() < version.timestamp.timestamp_millis()
+          {
+            Self::overwrite_entry(new_entry.reborrow(), &block_id, &version)?;
+          }
+        }
+        None => {
+          new_block_ids.remove(&block_id);
+        }
+      }
+    }
+
+    Self::set_text_list(
+      new_entry.reborrow().init_block_ids(new_block_ids.len() as u32),
+      &new_block_ids,
+    )?;
+
+    Ok(())
+  }
+
+  fn update_entry(
+    mut new_entry: index::entry::Builder,
+    mut new_block_ids: HashSet<String>,
+    maybe_added_versions: Option<&HashMap<String, SecretVersion>>,
+  ) -> SecretStoreResult<()> {
+    for block_id in new_block_ids.clone() {
+      let maybe_version = maybe_added_versions.and_then(|a| a.get(&block_id));
+      match maybe_version {
+        Some(version) => {
+          if new_entry.reborrow().get_current_block_id()?.is_empty()
+            || new_entry.reborrow().get_timestamp() < version.timestamp.timestamp_millis()
+          {
+            Self::overwrite_entry(new_entry.reborrow(), &block_id, version)?;
+          }
+        }
+        None => {
+          new_block_ids.remove(&block_id);
+        }
+      }
+    }
+
+    Self::set_text_list(
+      new_entry.reborrow().init_block_ids(new_block_ids.len() as u32),
+      &new_block_ids,
+    )?;
+
+    Ok(())
+  }
+
+  fn overwrite_entry(
+    mut new_entry: index::entry::Builder,
+    block_id: &str,
+    version: &SecretVersion,
+  ) -> SecretStoreResult<()> {
+    new_entry.set_id(&version.secret_id);
+    new_entry.set_timestamp(version.timestamp.timestamp_millis());
+    new_entry.set_name(&version.name);
+    match version.secret_type {
+      SecretType::Login => new_entry.set_type(index::SecretType::Login),
+      SecretType::Licence => new_entry.set_type(index::SecretType::Licence),
+      SecretType::Note => new_entry.set_type(index::SecretType::Note),
+      SecretType::Wlan => new_entry.set_type(index::SecretType::Wlan),
+      SecretType::Password => new_entry.set_type(index::SecretType::Password),
+      SecretType::Other => new_entry.set_type(index::SecretType::Other),
+    }
+    Self::set_text_list(new_entry.reborrow().init_tags(version.tags.len() as u32), &version.tags)?;
+    Self::set_text_list(new_entry.reborrow().init_urls(version.urls.len() as u32), &version.urls)?;
+    new_entry.set_deleted(version.deleted);
+    new_entry.set_current_block_id(block_id);
+
+    Ok(())
+  }
+
+  fn match_entry(
+    entry: index::entry::Reader,
+    filter: &SecretListFilter,
+  ) -> SecretStoreResult<Option<SecretEntryMatch>> {
+    if filter.deleted != entry.get_deleted() {
+      return Ok(None)
+    }
+
+    let (name_score, name_highlights) = match &filter.name {
+      Some(name_filter) => match  sublime_fuzzy::best_match(name_filter, entry.get_name()?) {
+        Some(fuzzy_match) => (fuzzy_match.score(), fuzzy_match.matches().clone()),
+        _ => return Ok(None),
+      },
+      None => (0, vec![]),
+    };
+
+    let url_highlights = vec![];
+    let tags_highlights = vec![];
+
+    let secret_type = match entry.get_type()? {
+      index::SecretType::Login => SecretType::Login,
+      index::SecretType::Licence => SecretType::Licence,
+      index::SecretType::Wlan => SecretType::Wlan,
+      index::SecretType::Note => SecretType::Note,
+      index::SecretType::Password => SecretType::Password,
+      index::SecretType::Other => SecretType::Other,
+    };
+    if !filter.secret_type.iter().all(|filter| filter == &secret_type) {
+      return Ok(None)
+    }
+
+    Ok(Some(SecretEntryMatch {
+      entry: SecretEntry {
+        id: entry.get_id()?.to_string(),
+        timestamp: Utc.timestamp_millis(entry.get_timestamp()),
+        name: entry.get_name()?.to_zeroing(),
+        secret_type,
+        tags: Self::read_text_list(entry.get_tags()?)?,
+        urls: Self::read_text_list(entry.get_urls()?)?,
+        deleted: entry.get_deleted(),
+      },
+      name_score,
+      name_highlights,
+      url_highlights,
+      tags_highlights,
+    }))
+  }
+
+  fn set_text_list<I, S>(mut text_list: text_list::Builder, texts: I) -> SecretStoreResult<()>
+  where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+  {
+    for (idx, text) in texts.into_iter().enumerate() {
+      text_list.set(idx as u32, capnp::text::new_reader(text.as_ref().as_bytes())?);
+    }
+    Ok(())
+  }
+
+  fn read_text_list(text_list: text_list::Reader) -> SecretStoreResult<Vec<ZeroingString>> {
+    let mut result = Vec::with_capacity(text_list.len() as usize);
+
+    for maybe_text in text_list {
+      result.push(maybe_text?.to_zeroing())
+    }
+    Ok(result)
+  }
 }
 
 impl Default for Index {
   fn default() -> Self {
     let mut index_message = message::Builder::new(ZeroingHHeapAllocator::new());
     index_message.init_root::<index::Builder>();
-    let mut index_data = serialize::write_message_to_words(&index_message);
+    let index_data = serialize::write_message_to_words(&index_message);
 
     Index {
       data: index_data.into(),
       heads: HashMap::new(),
-      entries: HashMap::new(),
     }
   }
 }

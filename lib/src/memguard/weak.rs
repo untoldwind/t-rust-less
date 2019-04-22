@@ -134,6 +134,12 @@ pub trait ZeroingStringExt {
   fn to_zeroing(self) -> ZeroingString;
 }
 
+impl ZeroingStringExt for &str {
+  fn to_zeroing(self) -> ZeroingString {
+    ZeroingString(self.to_string())
+  }
+}
+
 impl ZeroingStringExt for String {
   fn to_zeroing(self) -> ZeroingString {
     ZeroingString(self)
