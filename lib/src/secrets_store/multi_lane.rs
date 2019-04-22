@@ -254,21 +254,8 @@ impl SecretsStore for MultiLaneSecretsStore {
         .push(unlocked_user.identity.id.clone().to_zeroing());
     }
 
-    let recipients_for_cipher = self.find_recipients(&secret_version.recipients)?;
-    let mut block_message = message::Builder::new(ZeroingHHeapAllocator::new());
-    let mut block = block_message.init_root::<block::Builder>();
-    let mut headers = block.reborrow().init_headers(recipients_for_cipher.len() as u32);
     let mut json_raw = serde_json::to_vec(&secret_version)?;
-    let mut secret_content = NonZeroPadding::pad_secret_data(SecretBytes::from(json_raw.as_mut()), 512)?;
-
-    for (idx, (cipher, recipients)) in recipients_for_cipher.into_iter().enumerate() {
-      let mut content = cipher.encrypt(&recipients, &secret_content, headers.reborrow().get(idx as u32))?;
-
-      secret_content = SecretBytes::from(content.as_mut());
-    }
-    block.set_content(&secret_content.borrow());
-
-    let block_content = serialize::write_message_to_words(&block_message);
+    let block_content = self.ecnrypt_block(&secret_version.recipients, NonZeroPadding::pad_secret_data(SecretBytes::from(json_raw.as_mut()), 512)? )?;
 
     let block_id = self.block_store.add_block(&block_content)?;
     self.block_store.commit(&[Change {
@@ -373,12 +360,38 @@ impl MultiLaneSecretsStore {
     let maybe_unlocked_user = self.unlocked_user.read()?;
     let unlocked_user = maybe_unlocked_user.as_ref().ok_or(SecretStoreError::Locked)?;
 
-    unimplemented!()
+    let block_words = self.block_store.get_block(block_id)?;
+
+    match self.decrypt_block(&unlocked_user.identity.id, &unlocked_user.private_keys, block_words)? {
+      Some(padded_content) => {
+        let borrowed = padded_content.borrow();
+        let version = serde_json::from_slice(NonZeroPadding::unpad_data(&borrowed)?)?;
+
+        Ok(Some(version))
+      }
+      _ => Ok(None),
+    }
+  }
+
+  fn ecnrypt_block<'a, T: AsRef<str>>(&self,  recipients: &'a [T], mut secret_content: SecretBytes) -> SecretStoreResult<Vec<Word>> {
+    let recipients_for_cipher = self.find_recipients(recipients)?;
+    let mut block_message = message::Builder::new(ZeroingHHeapAllocator::new());
+    let mut block = block_message.init_root::<block::Builder>();
+    let mut headers = block.reborrow().init_headers(recipients_for_cipher.len() as u32);
+
+    for (idx, (cipher, recipients)) in recipients_for_cipher.into_iter().enumerate() {
+      let mut content = cipher.encrypt(&recipients, &secret_content, headers.reborrow().get(idx as u32))?;
+
+      secret_content = SecretBytes::from(content.as_mut());
+    }
+    block.set_content(&secret_content.borrow());
+
+  Ok( serialize::write_message_to_words(&block_message))
   }
 
   fn decrypt_block(&self, identity_id: &str, private_keys: &[(KeyType, PrivateKey)], block_words: Vec<Word>) -> SecretStoreResult<Option<SecretBytes>> {
     let reader = serialize::read_message_from_words(&block_words, Default::default())?;
-    let mut index_block = reader.get_root::<block::Reader>()?;
+    let index_block = reader.get_root::<block::Reader>()?;
     let headers = index_block.reborrow().get_headers()?;
 
     if !Self::check_recipient(identity_id, &headers)? {
