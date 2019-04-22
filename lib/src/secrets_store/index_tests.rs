@@ -59,7 +59,7 @@ impl TestStore {
 }
 
 #[test]
-fn test_process_simple_changelog() {
+fn test_process_change_logs() {
   let mut test_store: TestStore = Default::default();
   let mut index: Index = Default::default();
 
@@ -75,4 +75,27 @@ fn test_process_simple_changelog() {
     }),
   )
   .is_ok();
+
+  let mut all_matches = index.filter_entries(Default::default()).unwrap();
+
+  assert_that(&all_matches).has_length(10);
+
+  test_store.changes.clear();
+
+  for i in 10..15 {
+    for j in 0..2 {
+      test_store.add_secret_version(&format!("Secret_{}", i), j)
+    }
+  }
+
+  assert_that(
+    &index.process_change_logs(&[test_store.make_changelog("test_node")], |block_id| {
+      Ok(test_store.versions.get(block_id).cloned())
+    }),
+  )
+  .is_ok();
+
+  all_matches = index.filter_entries(Default::default()).unwrap();
+
+  assert_that(&all_matches).has_length(15);
 }

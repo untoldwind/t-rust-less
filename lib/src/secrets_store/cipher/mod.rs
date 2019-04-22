@@ -30,6 +30,9 @@ pub trait Cipher: Send + Sync {
   /// Get the type identifier use inside the storage format.
   fn key_type(&self) -> KeyType;
 
+  /// Get a displayable name of the cipher
+  fn name(&self) -> String;
+
   /// Generate a new public-private key-pair.
   ///
   /// The cipher should decide by itself a suitable key-strength.
@@ -92,6 +95,18 @@ pub trait Cipher: Send + Sync {
     header: block::header::Reader,
     crypted: &[u8],
   ) -> SecretStoreResult<PrivateData>;
+
+  fn find_matching_header<'a>(
+    &self,
+    headers: &capnp::struct_list::Reader<'a, block::header::Owned>,
+  ) -> SecretStoreResult<Option<block::header::Reader<'a>>> {
+    for header in headers.iter() {
+      if header.get_type()? == self.key_type() {
+        return Ok(Some(header));
+      }
+    }
+    Ok(None)
+  }
 }
 
 /// Common interface for a key-derivation method.

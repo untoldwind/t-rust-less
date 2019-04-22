@@ -33,6 +33,27 @@ pub struct SecretBytes {
 }
 
 impl SecretBytes {
+  /// Copy from slice of bytes.
+  ///
+  /// This is not a regular From implementation because the caller has to ensure that
+  /// the original bytes are zeroed out (or are already in some secured memspace.
+  /// This different signature should be a reminder of that.
+  pub fn from_secured(bytes: &[u8]) -> Self {
+    unsafe {
+      let ptr = alloc::malloc(bytes.len());
+
+      copy_nonoverlapping(bytes.as_ptr(), ptr.as_ptr(), bytes.len());
+      alloc::mprotect(ptr, alloc::Prot::NoAccess);
+
+      SecretBytes {
+        ptr,
+        size: bytes.len(),
+        capacity: bytes.len(),
+        locks: AtomicIsize::new(0),
+      }
+    }
+  }
+
   pub fn with_capacity(capacity: usize) -> SecretBytes {
     unsafe {
       let ptr = alloc::malloc(capacity);

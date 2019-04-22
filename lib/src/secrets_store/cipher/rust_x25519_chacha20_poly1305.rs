@@ -41,6 +41,10 @@ impl Cipher for RustX25519ChaCha20Poly1305Cipher {
     KeyType::Ed25519Chacha20Poly1305
   }
 
+  fn name(&self) -> String {
+    "RustX25519ChaCha20Poly1305Cipher".to_string()
+  }
+
   fn generate_key_pair(&self) -> SecretStoreResult<(PublicKey, PrivateKey)> {
     let mut rng = thread_rng();
     let private = x25519_dalek::StaticSecret::new(&mut rng);

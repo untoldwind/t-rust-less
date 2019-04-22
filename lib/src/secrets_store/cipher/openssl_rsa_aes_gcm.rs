@@ -18,6 +18,10 @@ impl Cipher for OpenSslRsaAesGcmCipher {
     KeyType::RsaAesGcm
   }
 
+  fn name(&self) -> String {
+    "OpenSslRsaAesGcmCipher".to_string()
+  }
+
   fn generate_key_pair(&self) -> SecretStoreResult<(PublicKey, PrivateKey)> {
     let private = Rsa::generate(RSA_KEY_BITS)?;
     let mut private_der_raw = private.private_key_to_der()?;

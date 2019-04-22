@@ -14,21 +14,21 @@ pub struct Index {
 }
 
 impl Index {
-  fn from_raw(raw: &mut [u8]) -> SecretStoreResult<Index> {
-    let data = SecretWords::from(raw);
+  pub fn from_secured_raw(raw: &[u8]) -> SecretStoreResult<Index> {
+    let data = SecretWords::from_secured(raw);
     let heads = Self::read_current_heads(&data)?;
 
     Ok(Index { data, heads })
   }
 
-  pub fn filter_entries(&self, filter: &SecretListFilter) -> SecretStoreResult<Vec<SecretEntryMatch>> {
+  pub fn filter_entries(&self, filter: SecretListFilter) -> SecretStoreResult<Vec<SecretEntryMatch>> {
     let data_borrow = self.data.borrow();
     let reader = serialize::read_message_from_words(&data_borrow, message::ReaderOptions::new())?;
     let index = reader.get_root::<index::Reader>()?;
     let mut matches = Vec::new();
 
     for entry in index.get_entries()? {
-      if let Some(entry_match) = Self::match_entry(entry, filter)? {
+      if let Some(entry_match) = Self::match_entry(entry, &filter)? {
         matches.push(entry_match);
       }
     }
@@ -334,11 +334,11 @@ impl Index {
     filter: &SecretListFilter,
   ) -> SecretStoreResult<Option<SecretEntryMatch>> {
     if filter.deleted != entry.get_deleted() {
-      return Ok(None)
+      return Ok(None);
     }
 
     let (name_score, name_highlights) = match &filter.name {
-      Some(name_filter) => match  sublime_fuzzy::best_match(name_filter, entry.get_name()?) {
+      Some(name_filter) => match sublime_fuzzy::best_match(name_filter, entry.get_name()?) {
         Some(fuzzy_match) => (fuzzy_match.score(), fuzzy_match.matches().clone()),
         _ => return Ok(None),
       },
@@ -357,7 +357,7 @@ impl Index {
       index::SecretType::Other => SecretType::Other,
     };
     if !filter.secret_type.iter().all(|filter| filter == &secret_type) {
-      return Ok(None)
+      return Ok(None);
     }
 
     Ok(Some(SecretEntryMatch {

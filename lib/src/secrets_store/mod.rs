@@ -28,7 +28,7 @@ pub trait SecretsStore: Send + Sync {
   fn add_identity(&self, identity: Identity, passphrase: SecretBytes) -> SecretStoreResult<()>;
   fn change_passphrase(&self, passphrase: SecretBytes) -> SecretStoreResult<()>;
 
-  fn list(&self, filter: &SecretListFilter) -> SecretStoreResult<SecretList>;
+  fn list(&self, filter: SecretListFilter) -> SecretStoreResult<SecretList>;
 
   fn add(&self, secret_version: SecretVersion) -> SecretStoreResult<()>;
   fn get(&self, secret_id: &str) -> SecretStoreResult<Secret>;

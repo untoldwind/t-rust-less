@@ -18,6 +18,7 @@ pub enum SecretStoreError {
   InvalidStoreUrl(String),
   Json(String),
   InvalidRecipient(String),
+  MissingPrivateKey(String),
 }
 
 impl fmt::Display for SecretStoreError {
@@ -38,6 +39,7 @@ impl fmt::Display for SecretStoreError {
       SecretStoreError::InvalidStoreUrl(error) => write!(f, "Invalid store url: {}", error)?,
       SecretStoreError::Json(error) => write!(f, "Json error: {}", error)?,
       SecretStoreError::InvalidRecipient(error) => write!(f, "Invalid recipient: {}", error)?,
+      SecretStoreError::MissingPrivateKey(cipher) => write!(f, "Missing private key for cipher: {}", cipher)?,
     }
     Ok(())
   }
