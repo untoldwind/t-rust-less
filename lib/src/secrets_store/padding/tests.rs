@@ -12,7 +12,7 @@ where
   T: Padding,
 {
   for pad_align in &[100, 128, 200, 256, 1000, 1024] {
-    let padded = T::pad_secret_data(data.clone(), *pad_align).unwrap();
+    let padded = T::pad_secret_data(&data.borrow(), *pad_align).unwrap();
 
     assert!(padded.len() % *pad_align == 0);
 

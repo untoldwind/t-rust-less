@@ -1,4 +1,4 @@
-use crate::api::{SecretEntry, SecretEntryMatch, SecretListFilter, SecretType, SecretVersion};
+use crate::api::{SecretEntry, SecretEntryMatch, SecretList, SecretListFilter, SecretType, SecretVersion};
 use crate::block_store::{Change, ChangeLog, Operation};
 use crate::memguard::weak::{ZeroingHHeapAllocator, ZeroingString, ZeroingStringExt};
 use crate::memguard::SecretWords;
@@ -6,34 +6,50 @@ use crate::secrets_store::SecretStoreResult;
 use crate::secrets_store_capnp::index;
 use capnp::{message, serialize, text_list};
 use chrono::prelude::*;
+use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 
 pub struct Index {
-  data: SecretWords,
+  pub(super) data: SecretWords,
   heads: HashMap<String, Change>,
+  current_blocks: HashMap<String, (String, bool)>,
 }
 
 impl Index {
   pub fn from_secured_raw(raw: &[u8]) -> SecretStoreResult<Index> {
     let data = SecretWords::from_secured(raw);
-    let heads = Self::read_current_heads(&data)?;
+    let (heads, current_blocks) = Self::read_current_head_and_blocks(&data)?;
 
-    Ok(Index { data, heads })
+    Ok(Index {
+      data,
+      heads,
+      current_blocks,
+    })
   }
 
-  pub fn filter_entries(&self, filter: SecretListFilter) -> SecretStoreResult<Vec<SecretEntryMatch>> {
+  pub fn filter_entries(&self, filter: SecretListFilter) -> SecretStoreResult<SecretList> {
     let data_borrow = self.data.borrow();
     let reader = serialize::read_message_from_words(&data_borrow, message::ReaderOptions::new())?;
     let index = reader.get_root::<index::Reader>()?;
-    let mut matches = Vec::new();
+    let mut entries = Vec::new();
+    let mut all_tags = HashSet::new();
 
     for entry in index.get_entries()? {
+      for maybe_tag in entry.get_tags()? {
+        let tag = maybe_tag?;
+        if !all_tags.contains(tag) {
+          all_tags.insert(tag.to_zeroing());
+        }
+      }
       if let Some(entry_match) = Self::match_entry(entry, &filter)? {
-        matches.push(entry_match);
+        entries.push(entry_match);
       }
     }
 
-    Ok(matches)
+    Ok(SecretList {
+      all_tags: all_tags.into_iter().collect(),
+      entries,
+    })
   }
 
   pub fn process_change_logs<F>(&mut self, change_logs: &[ChangeLog], version_accessor: F) -> SecretStoreResult<bool>
@@ -107,6 +123,50 @@ impl Index {
     Ok(true)
   }
 
+  fn read_current_head_and_blocks(
+    index_data: &SecretWords,
+  ) -> SecretStoreResult<(HashMap<String, Change>, HashMap<String, (String, bool)>)> {
+    let index_borrow = index_data.borrow();
+    let reader = serialize::read_message_from_words(&index_borrow, message::ReaderOptions::new())?;
+    let index = reader.get_root::<index::Reader>()?;
+    let mut heads = HashMap::with_capacity(index.get_heads()?.len() as usize);
+    let mut current_blocks = HashMap::with_capacity(index.get_entries()?.len() as usize);
+
+    for head in index.get_heads()? {
+      let node_id = head.get_node_id()?.to_string();
+      let op = match head.get_operation()? {
+        index::HeadOperation::Add => Operation::Add,
+        index::HeadOperation::Delete => Operation::Delete,
+      };
+      let block = head.get_block_id()?.to_string();
+      heads.insert(node_id, Change { op, block });
+    }
+    for entry in index.get_entries()? {
+      let secret_id = entry.get_id()?;
+      let current_block_id = entry.get_current_block_id()?;
+      let hash_versions = entry.get_block_ids()?.len() > 1;
+
+      current_blocks.insert(secret_id.to_string(), (current_block_id.to_string(), hash_versions));
+    }
+
+    Ok((heads, current_blocks))
+  }
+
+  fn update_heads(index: index::Builder, heads: &HashMap<String, Change>) {
+    let mut new_heads = index.init_heads(heads.len() as u32);
+
+    for (idx, (node_id, change)) in heads.into_iter().enumerate() {
+      let mut new_head = new_heads.reborrow().get(idx as u32);
+
+      new_head.set_node_id(&node_id);
+      match change.op {
+        Operation::Add => new_head.set_operation(index::HeadOperation::Add),
+        Operation::Delete => new_head.set_operation(index::HeadOperation::Delete),
+      }
+      new_head.set_block_id(&change.block);
+    }
+  }
+
   fn collect_entries_to_keep(&self, deleted_blocks: &HashSet<String>) -> SecretStoreResult<HashSet<String>> {
     let data_borrow = self.data.borrow();
     let reader = serialize::read_message_from_words(&data_borrow, message::ReaderOptions::new())?;
@@ -178,40 +238,6 @@ impl Index {
     }
 
     Ok((new_heads, added_versions, deleted_blocks))
-  }
-
-  fn read_current_heads(index_data: &SecretWords) -> SecretStoreResult<HashMap<String, Change>> {
-    let index_borrow = index_data.borrow();
-    let reader = serialize::read_message_from_words(&index_borrow, message::ReaderOptions::new())?;
-    let index = reader.get_root::<index::Reader>()?;
-    let mut heads = HashMap::with_capacity(index.get_heads()?.len() as usize);
-
-    for head in index.get_heads()? {
-      let node_id = head.get_node_id()?.to_string();
-      let op = match head.get_operation()? {
-        index::HeadOperation::Add => Operation::Add,
-        index::HeadOperation::Delete => Operation::Delete,
-      };
-      let block = head.get_block_id()?.to_string();
-      heads.insert(node_id, Change { op, block });
-    }
-
-    Ok(heads)
-  }
-
-  fn update_heads(index: index::Builder, heads: &HashMap<String, Change>) {
-    let mut new_heads = index.init_heads(heads.len() as u32);
-
-    for (idx, (node_id, change)) in heads.into_iter().enumerate() {
-      let mut new_head = new_heads.reborrow().get(idx as u32);
-
-      new_head.set_node_id(&node_id);
-      match change.op {
-        Operation::Add => new_head.set_operation(index::HeadOperation::Add),
-        Operation::Delete => new_head.set_operation(index::HeadOperation::Delete),
-      }
-      new_head.set_block_id(&change.block);
-    }
   }
 
   fn merge_block_ids<I, S>(
@@ -346,7 +372,20 @@ impl Index {
     };
 
     let url_highlights = vec![];
-    let tags_highlights = vec![];
+    let tags = Self::read_text_list(entry.get_tags()?)?;
+    let tags_highlights = match &filter.tag {
+      Some(tag_filter) => {
+        let highlights: Vec<usize> = tags
+          .iter()
+          .positions(|tag| tag.as_str() == tag_filter.as_str())
+          .collect();
+        if highlights.is_empty() {
+          return Ok(None);
+        }
+        highlights
+      }
+      None => vec![],
+    };
 
     let secret_type = match entry.get_type()? {
       index::SecretType::Login => SecretType::Login,
@@ -366,7 +405,7 @@ impl Index {
         timestamp: Utc.timestamp_millis(entry.get_timestamp()),
         name: entry.get_name()?.to_zeroing(),
         secret_type,
-        tags: Self::read_text_list(entry.get_tags()?)?,
+        tags,
         urls: Self::read_text_list(entry.get_urls()?)?,
         deleted: entry.get_deleted(),
       },
@@ -407,6 +446,7 @@ impl Default for Index {
     Index {
       data: index_data.into(),
       heads: HashMap::new(),
+      current_blocks: HashMap::new(),
     }
   }
 }

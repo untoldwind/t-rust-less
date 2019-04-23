@@ -14,7 +14,7 @@ use std::io::Write;
 pub struct RandomFrontBack;
 
 impl Padding for RandomFrontBack {
-  fn pad_secret_data(data: SecretBytes, align: usize) -> SecretStoreResult<SecretBytes> {
+  fn pad_secret_data(data: &[u8], align: usize) -> SecretStoreResult<SecretBytes> {
     let encoded_length = Self::encode_length(data.len());
     let effective_length = data.len() + 1 + encoded_length.len();
     let pad_length = align - (effective_length % align);
@@ -42,7 +42,7 @@ impl Padding for RandomFrontBack {
       padded_writer.write_all(head_pad)?;
       padded_writer.write_all(&[0u8])?;
       padded_writer.write_all(&encoded_length)?;
-      padded_writer.write_all(&data.borrow())?;
+      padded_writer.write_all(&data)?;
       padded_writer.write_all(tail_pad)?;
     }
 

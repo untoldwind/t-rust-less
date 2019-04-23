@@ -179,7 +179,7 @@ impl Clone for SecretWords {
     unsafe {
       let ptr = alloc::malloc(self.capacity * 8).cast::<Word>();
 
-      copy_nonoverlapping(self.borrow().as_ref().as_ptr(), ptr.as_ptr(), self.capacity);
+      copy_nonoverlapping(self.borrow().as_words().as_ptr(), ptr.as_ptr(), self.capacity);
       alloc::mprotect(ptr, alloc::Prot::NoAccess);
 
       SecretWords {
@@ -257,6 +257,19 @@ pub struct Ref<'a> {
   words: &'a SecretWords,
 }
 
+impl<'a> Ref<'a> {
+  pub fn as_bytes(&self) -> &[u8] {
+    unsafe {
+      let words = slice::from_raw_parts(self.words.ptr.as_ptr(), self.words.size);
+      Word::words_to_bytes(words)
+    }
+  }
+
+  pub fn as_words(&self) -> &[Word] {
+    unsafe { slice::from_raw_parts(self.words.ptr.as_ptr(), self.words.size) }
+  }
+}
+
 impl<'a> Drop for Ref<'a> {
   fn drop(&mut self) {
     self.words.unlock_read()
@@ -273,7 +286,13 @@ impl<'a> Deref for Ref<'a> {
 
 impl<'a> AsRef<[Word]> for Ref<'a> {
   fn as_ref(&self) -> &[Word] {
-    unsafe { slice::from_raw_parts(self.words.ptr.as_ptr(), self.words.size) }
+    self.as_words()
+  }
+}
+
+impl<'a> AsRef<[u8]> for Ref<'a> {
+  fn as_ref(&self) -> &[u8] {
+    self.as_bytes()
   }
 }
 
@@ -386,7 +405,7 @@ mod tests {
     let guarded = SecretWords::from(source.as_mut_slice());
 
     assert_that(&guarded.len()).is_equal_to(source.len());
-    assert_that(&guarded.borrow().as_ref().len()).is_equal_to(source.len());
+    assert_that(&guarded.borrow().as_words().len()).is_equal_to(source.len());
 
     for w in source.iter() {
       assert_that(&w.raw_content).is_equal_to(0);
@@ -421,7 +440,7 @@ mod tests {
       let ref1 = guarded.borrow();
 
       assert_that(&ref1.len()).is_equal_to(200);
-      for w in ref1.as_ref() {
+      for w in ref1.as_words() {
         assert_that(&w.raw_content).is_equal_to(0);
       }
     }

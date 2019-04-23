@@ -78,7 +78,7 @@ fn test_process_change_logs() {
 
   let mut all_matches = index.filter_entries(Default::default()).unwrap();
 
-  assert_that(&all_matches).has_length(10);
+  assert_that(&all_matches.entries).has_length(10);
 
   test_store.changes.clear();
 
@@ -97,5 +97,5 @@ fn test_process_change_logs() {
 
   all_matches = index.filter_entries(Default::default()).unwrap();
 
-  assert_that(&all_matches).has_length(15);
+  assert_that(&all_matches.entries).has_length(15);
 }

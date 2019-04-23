@@ -21,14 +21,14 @@ use std::io::Write;
 pub struct NonZeroPadding;
 
 impl Padding for NonZeroPadding {
-  fn pad_secret_data(data: SecretBytes, align: usize) -> SecretStoreResult<SecretBytes> {
-    assert!(data.borrow().iter().find(|b| **b == 0).is_none());
+  fn pad_secret_data(data: &[u8], align: usize) -> SecretStoreResult<SecretBytes> {
+    assert!(data.iter().find(|b| **b == 0).is_none());
 
     let mut rng = thread_rng();
     let over_align = data.len() % align;
 
     if over_align == 0 {
-      return Ok(data);
+      return Ok(SecretBytes::from_secured(data));
     }
 
     let mut pad_length = align - over_align - 1;
@@ -55,7 +55,7 @@ impl Padding for NonZeroPadding {
       let mut padded_writer = padded_data.borrow_mut();
 
       padded_writer.write_all(&pad_bytes[..first_zero + 1])?;
-      padded_writer.write_all(&data.borrow())?;
+      padded_writer.write_all(&data)?;
       padded_writer.write_all(&pad_bytes[first_zero..])?;
     }
 

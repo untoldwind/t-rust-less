@@ -12,6 +12,7 @@ use super::memory;
 use capnp::message::{AllocationStrategy, Allocator, SUGGESTED_ALLOCATION_STRATEGY, SUGGESTED_FIRST_SEGMENT_WORDS};
 use capnp::Word;
 use serde_derive::{Deserialize, Serialize};
+use std::borrow::Borrow;
 use std::ops::{Deref, DerefMut};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -90,7 +91,7 @@ impl DerefMut for ZeroingWords {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(transparent)]
 pub struct ZeroingString(String);
 
@@ -126,6 +127,12 @@ impl DerefMut for ZeroingString {
 
 impl AsRef<str> for ZeroingString {
   fn as_ref(&self) -> &str {
+    self.0.as_ref()
+  }
+}
+
+impl Borrow<str> for ZeroingString {
+  fn borrow(&self) -> &str {
     self.0.as_ref()
   }
 }

@@ -5,7 +5,7 @@ use capnp::{message, serialize, Word};
 
 use crate::api::{Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
 use crate::block_store::{BlockStore, Change, Operation, StoreError};
-use crate::memguard::weak::{ZeroingHHeapAllocator, ZeroingStringExt};
+use crate::memguard::weak::{ZeroingBytesExt, ZeroingHHeapAllocator, ZeroingStringExt};
 use crate::memguard::SecretBytes;
 use crate::secrets_store::cipher::{
   Cipher, KeyDerivation, PrivateKey, PublicKey, OPEN_SSL_RSA_AES_GCM, RUST_ARGON2_ID, RUST_X25519CHA_CHA20POLY1305,
@@ -15,8 +15,8 @@ use crate::secrets_store::padding::{NonZeroPadding, Padding, RandomFrontBack};
 use crate::secrets_store::{SecretStoreError, SecretStoreResult, SecretsStore};
 use crate::secrets_store_capnp::{block, ring, KeyType};
 use chrono::DateTime;
+use log::{info, warn};
 use rand::{thread_rng, RngCore};
-use log::warn;
 
 struct User {
   identity: Identity,
@@ -59,6 +59,7 @@ impl SecretsStore for MultiLaneSecretsStore {
   }
 
   fn lock(&self) -> SecretStoreResult<()> {
+    info!("Locking store");
     let mut unlocked_user = self.unlocked_user.write()?;
     unlocked_user.take();
 
@@ -66,6 +67,7 @@ impl SecretsStore for MultiLaneSecretsStore {
   }
 
   fn unlock(&self, identity_id: &str, passphrase: SecretBytes) -> SecretStoreResult<()> {
+    info!("Unlocking store for {}", identity_id);
     let mut unlocked_user = self.unlocked_user.write()?;
 
     if unlocked_user.is_some() {
@@ -104,7 +106,15 @@ impl SecretsStore for MultiLaneSecretsStore {
         public_keys.push((cipher.key_type(), user_public_key.get_key()?.to_vec()));
       }
     }
-    let index = self.read_index(identity_id, &private_keys)?;
+    let mut index = self.read_index(identity_id, &private_keys)?;
+    let change_logs = self.block_store.change_logs()?;
+    let index_updated = index.process_change_logs(&change_logs, |block_id| self.get_secret_version(block_id))?;
+
+    if index_updated {
+      info!("Index has been updated");
+      self.store_index(identity_id, &index)?;
+    }
+
     unlocked_user.replace(User {
       identity: Self::identity_from_ring(ring)?,
       private_keys,
@@ -233,10 +243,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     let maybe_unlocked_user = self.unlocked_user.read()?;
     let unlocked_user = maybe_unlocked_user.as_ref().ok_or(SecretStoreError::Locked)?;
 
-    Ok(SecretList {
-      all_tags: vec![],
-      entries: unlocked_user.index.filter_entries(filter)?,
-    })
+    unlocked_user.index.filter_entries(filter)
   }
 
   fn add(&self, mut secret_version: SecretVersion) -> SecretStoreResult<()> {
@@ -254,8 +261,14 @@ impl SecretsStore for MultiLaneSecretsStore {
         .push(unlocked_user.identity.id.clone().to_zeroing());
     }
 
-    let mut json_raw = serde_json::to_vec(&secret_version)?;
-    let block_content = self.ecnrypt_block(&secret_version.recipients, NonZeroPadding::pad_secret_data(SecretBytes::from(json_raw.as_mut()), 512)? )?;
+    let block_content = {
+      let json_raw = serde_json::to_vec(&secret_version)?.to_zeroing();
+
+      self.ecnrypt_block(
+        &secret_version.recipients,
+        NonZeroPadding::pad_secret_data(&json_raw, 512)?,
+      )?
+    };
 
     let block_id = self.block_store.add_block(&block_content)?;
     self.block_store.commit(&[Change {
@@ -339,21 +352,26 @@ impl MultiLaneSecretsStore {
 
   fn read_index(&self, identity_id: &str, private_keys: &[(KeyType, PrivateKey)]) -> SecretStoreResult<Index> {
     match self.block_store.get_index(identity_id)? {
-      Some(crypted_index) => {
-        match self.decrypt_block(identity_id, private_keys, crypted_index)? {
-          Some(padded_index_data) => {
-            let borrowed = padded_index_data.borrow();
-            let index_data = RandomFrontBack::unpad_data(&borrowed)?;
-            Ok(Index::from_secured_raw(index_data)?)
-          }
-          None => {
-            warn!("User is not allowed recipient for index-data. Will trigger re-index.");
-            Ok(Default::default())
-          }
+      Some(crypted_index) => match self.decrypt_block(identity_id, private_keys, crypted_index)? {
+        Some(padded_index_data) => {
+          let borrowed = padded_index_data.borrow();
+          let index_data = RandomFrontBack::unpad_data(&borrowed)?;
+          Ok(Index::from_secured_raw(index_data)?)
         }
-      }
+        None => {
+          warn!("User is not allowed recipient for index-data. Will trigger re-index.");
+          Ok(Default::default())
+        }
+      },
       None => Ok(Default::default()),
     }
+  }
+
+  fn store_index(&self, identity_id: &str, index: &Index) -> SecretStoreResult<()> {
+    let secret_content = RandomFrontBack::pad_secret_data(index.data.borrow().as_bytes(), 512)?;
+    let block_content = self.ecnrypt_block(&[identity_id], secret_content)?;
+
+    Ok(self.block_store.store_index(identity_id, &block_content)?)
   }
 
   fn get_secret_version(&self, block_id: &str) -> SecretStoreResult<Option<SecretVersion>> {
@@ -373,7 +391,11 @@ impl MultiLaneSecretsStore {
     }
   }
 
-  fn ecnrypt_block<'a, T: AsRef<str>>(&self,  recipients: &'a [T], mut secret_content: SecretBytes) -> SecretStoreResult<Vec<Word>> {
+  fn ecnrypt_block<T: AsRef<str>>(
+    &self,
+    recipients: &[T],
+    mut secret_content: SecretBytes,
+  ) -> SecretStoreResult<Vec<Word>> {
     let recipients_for_cipher = self.find_recipients(recipients)?;
     let mut block_message = message::Builder::new(ZeroingHHeapAllocator::new());
     let mut block = block_message.init_root::<block::Builder>();
@@ -386,10 +408,15 @@ impl MultiLaneSecretsStore {
     }
     block.set_content(&secret_content.borrow());
 
-  Ok( serialize::write_message_to_words(&block_message))
+    Ok(serialize::write_message_to_words(&block_message))
   }
 
-  fn decrypt_block(&self, identity_id: &str, private_keys: &[(KeyType, PrivateKey)], block_words: Vec<Word>) -> SecretStoreResult<Option<SecretBytes>> {
+  fn decrypt_block(
+    &self,
+    identity_id: &str,
+    private_keys: &[(KeyType, PrivateKey)],
+    block_words: Vec<Word>,
+  ) -> SecretStoreResult<Option<SecretBytes>> {
     let reader = serialize::read_message_from_words(&block_words, Default::default())?;
     let index_block = reader.get_root::<block::Reader>()?;
     let headers = index_block.reborrow().get_headers()?;
@@ -405,9 +432,9 @@ impl MultiLaneSecretsStore {
         None => continue,
       };
       let private_key = private_keys
-          .iter()
-          .find(|p| p.0 == cipher.key_type())
-          .ok_or_else(|| SecretStoreError::MissingPrivateKey(cipher.name()))?;
+        .iter()
+        .find(|p| p.0 == cipher.key_type())
+        .ok_or_else(|| SecretStoreError::MissingPrivateKey(cipher.name()))?;
 
       let next_content = cipher.decrypt((identity_id, &private_key.1), header, &content.borrow())?;
       content = next_content;
@@ -416,13 +443,16 @@ impl MultiLaneSecretsStore {
     Ok(Some(content))
   }
 
-  fn check_recipient<'a>(identity_id: &str, headers: &capnp::struct_list::Reader<'a, block::header::Owned>) -> SecretStoreResult<bool> {
-   'outer : for header in headers.iter() {
+  fn check_recipient<'a>(
+    identity_id: &str,
+    headers: &capnp::struct_list::Reader<'a, block::header::Owned>,
+  ) -> SecretStoreResult<bool> {
+    'outer: for header in headers.iter() {
       for recipient in header.get_recipients()? {
         if recipient.get_id()? == identity_id {
           continue 'outer;
         }
-        return Ok(false)
+        return Ok(false);
       }
     }
     Ok(true)

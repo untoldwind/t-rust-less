@@ -10,7 +10,7 @@ pub use self::non_zero::*;
 pub use self::random_front_back::*;
 
 pub trait Padding {
-  fn pad_secret_data(data: SecretBytes, align: usize) -> SecretStoreResult<SecretBytes>;
+  fn pad_secret_data(data: &[u8], align: usize) -> SecretStoreResult<SecretBytes>;
 
   fn unpad_data(padded: &[u8]) -> SecretStoreResult<&[u8]>;
 }

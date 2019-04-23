@@ -92,6 +92,9 @@ pub struct SecretEntryMatch {
   pub tags_highlights: Vec<usize>,
 }
 
+/// Convenient wrapper of a list of SecretEntryMatch'es.
+///
+/// Also contains a unique list of tags of all secrets (e.g. to support autocompletion)
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SecretList {
   pub all_tags: Vec<ZeroingString>,
@@ -141,10 +144,10 @@ pub struct PasswordStrength {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Secret {
-  id: ZeroingString,
+  pub id: ZeroingString,
   #[serde(rename = "type")]
-  secret_type: SecretType,
-  current: SecretVersion,
-  versions: Vec<SecretVersion>,
-  password_strengths: HashMap<String, PasswordStrength>,
+  pub secret_type: SecretType,
+  pub current: SecretVersion,
+  pub has_versions: bool,
+  pub password_strengths: HashMap<String, PasswordStrength>,
 }
