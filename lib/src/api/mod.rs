@@ -62,6 +62,8 @@ pub struct SecretListFilter {
 /// Even though a SecretEntry does no contain a password it is still supposed to
 /// be sensitive data.
 ///
+/// See SecretVersion for further detail.
+///
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SecretEntry {
   pub id: String,
@@ -101,6 +103,12 @@ pub struct SecretList {
   pub entries: Vec<SecretEntryMatch>,
 }
 
+/// Some short of attachment to a secret.
+///
+/// Be aware that t-rust-less is supposed to be a password store, do not misuse it as a
+/// secure document store. Nevertheless, sometimes it might be convenient added some
+/// sort of (small) document to a password.
+///
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SecretAttachment {
   name: String,
@@ -108,21 +116,52 @@ pub struct SecretAttachment {
   content: ZeroingBytes,
 }
 
+/// SecretVersion holds all information of a specific version of a secret.
+///
+/// Under the hood t-rust-less only stores SecretVersion's, a Secret is no more (or less)
+/// than a group-by view over all SecretVersion's. As a rule a SecretVersion shall never be
+/// overwritten or modified once stored. To change a Secret just add a new SecretVersion for it.
+///
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SecretVersion {
+  /// Identifier of the secret this version belongs to.
+  /// This should be opaque (i.e. not reveal anything about the content whatsoever), e.g. a
+  /// random string of sufficient length or some sort of UUID will do fine.
+  ///
+  /// By the way, as UUID was mentioned: A time-based UUID will reveal the MAC address of the
+  /// creator of the Secret as well as when it was created. If you are fine was that, ok,
+  /// otherwise do not use this kind of UUID.
   pub secret_id: String,
+  /// General type of the Secret (in this version)
   pub secret_type: SecretType,
+  /// Timestamp of this version. All SecretVersion's of a Secret a sorted by their timestamps,
+  /// the last one will be considered the current version.
   pub timestamp: DateTime<Utc>,
+  /// Name/title of the Secret (in this version)
   pub name: ZeroingString,
+  /// List or arbitrary tags for filtering (or just displaying)
   #[serde(default)]
   pub tags: Vec<ZeroingString>,
+  /// List of URLs the Secret might be associated with (most commonly the login page where
+  /// the Secret is needed)
   #[serde(default)]
   pub urls: Vec<ZeroingString>,
+  /// Generic list of secret properties. The `secret_type` defines a list of commonly used
+  /// property-names for that type.
   pub properties: BTreeMap<String, ZeroingString>,
+  /// List of attachments.
   #[serde(default)]
   pub attachments: Vec<SecretAttachment>,
+  /// If this version of the Secret should be marked as deleted.
+  /// As a rule of thumb it is a very bad idea to just delete secret. Maybe it was deleted by
+  /// accident, or you might need it for other reasons you have not thought of. Also just
+  /// deleting a Secret does not make it unseen. The information that someone (or yourself) has
+  /// once seen this secret might be as valuable as the secret itself.
   #[serde(default)]
   pub deleted: bool,
+  /// List of recipients that may see this version of the Secret.
+  /// Again: Once published, it cannot be made unseen. The only safe way to remove a recipient is
+  /// to change the Secret and create a new version without the recipient.
   #[serde(default)]
   pub recipients: Vec<ZeroingString>,
 }
@@ -142,6 +181,9 @@ pub struct PasswordStrength {
   score: u32,
 }
 
+/// Convenient wrapper for the current version of a Secret.
+///
+/// The is the default view when retrieving a specific Secret.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Secret {
   pub id: String,
