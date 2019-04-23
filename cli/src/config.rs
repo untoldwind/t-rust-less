@@ -3,13 +3,21 @@ use serde_derive::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
+use t_rust_less_lib::secrets_store::{open_secrets_store, SecretsStore};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
   pub store_url: String,
   pub client_id: String,
   pub autolock_timeout: Duration,
+}
+
+impl Config {
+  pub fn open_secrets_store(&self) -> Arc<SecretsStore> {
+    open_secrets_store(&self.store_url, &self.client_id, self.autolock_timeout).ok_or_exit("Open store")
+  }
 }
 
 pub fn default_store_dir() -> PathBuf {

@@ -21,6 +21,7 @@ dirs = "1"
 toml = "0"
 url = "1"
 crossterm_style = "0"
+serde_json = "1"
 
 [features]
 termion_backend = ["termion", "cursive/termion-backend"]

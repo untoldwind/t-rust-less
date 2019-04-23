@@ -6,10 +6,10 @@ use cursive::views::{Dialog, DummyView, EditView, LinearLayout, TextView};
 use cursive::Cursive;
 
 use crate::commands::add_identity::add_identity_dialog;
+use crate::commands::generate_id;
 use crate::commands::tui::create_tui;
 use crate::config::{default_autolock_timeout, default_store_dir, write_config, Config};
 use cursive::event::Key;
-use rand::{distributions, thread_rng, Rng};
 use std::fs;
 use std::time::Duration;
 use t_rust_less_lib::secrets_store::open_secrets_store;
@@ -93,7 +93,7 @@ fn store_config(s: &mut Cursive) {
   ));
   let client_id = match s.user_data::<Config>() {
     Some(previous) => previous.client_id.clone(),
-    _ => generate_client_id(),
+    _ => generate_id(64),
   };
 
   if store_path.is_empty() {
@@ -145,13 +145,4 @@ fn expand_path(path: &str) -> String {
     Some(home_dir) => path.replace("~", &home_dir.to_string_lossy()),
     None => path.to_string(),
   }
-}
-
-fn generate_client_id() -> String {
-  let mut rng = thread_rng();
-
-  rng
-    .sample_iter(&distributions::Alphanumeric)
-    .take(64)
-    .collect::<String>()
 }

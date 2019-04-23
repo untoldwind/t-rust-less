@@ -18,3 +18,14 @@ pub use self::list_identities::*;
 pub use self::lock::*;
 pub use self::status::*;
 pub use self::unlock::*;
+
+use rand::{distributions, thread_rng, Rng};
+
+fn generate_id(length: usize) -> String {
+  let mut rng = thread_rng();
+
+  rng
+    .sample_iter(&distributions::Alphanumeric)
+    .take(length)
+    .collect::<String>()
+}

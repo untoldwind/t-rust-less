@@ -9,7 +9,7 @@ borders = "simple"
     background = "#000000"
 
     shadow     = ["#000000", "black"]
-    view       = "black"
+    view       = "#222222"
 
     primary   = "#FFFFFF"
     secondary = "#dddddd"

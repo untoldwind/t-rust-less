@@ -2,11 +2,9 @@ use crate::config::Config;
 use crate::error::ExtResult;
 use atty::Stream;
 use crossterm_style::{style, Color};
-use t_rust_less_lib::secrets_store::open_secrets_store;
 
 pub fn status(config: Config) {
-  let secrets_store =
-    open_secrets_store(&config.store_url, &config.client_id, config.autolock_timeout).ok_or_exit("Open store");
+  let secrets_store = config.open_secrets_store();
   let status = secrets_store.status().ok_or_exit("Get status");
 
   if atty::is(Stream::Stdout) {

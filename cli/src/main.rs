@@ -48,6 +48,17 @@ fn main() {
     Some(config) => {
       if matches.subcommand_matches("status").is_some() {
         commands::status(config);
+        return;
+      }
+      if let Some(sub_matches) = matches.subcommand_matches("identities") {
+        if sub_matches.subcommand_matches("add").is_some() {
+          commands::add_identity(config);
+          return;
+        }
+        if sub_matches.subcommand_matches("list").is_some() {
+          commands::list_identities(config);
+          return;
+        }
       }
     }
     None => uninitialized(),

@@ -13,6 +13,7 @@ pub fn app() -> App<'static, 'static> {
     .subcommand(SubCommand::with_name("init").about("Initialize configuration and store (if necessary"))
     .subcommand(
       SubCommand::with_name("identities")
+        .alias("ids")
         .about("Control identities of a store")
         .subcommand(SubCommand::with_name("list").alias("ls").about("List identities"))
         .subcommand(SubCommand::with_name("add").about("Add a new identity")),
