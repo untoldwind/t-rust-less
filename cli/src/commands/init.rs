@@ -35,8 +35,11 @@ pub fn init(maybe_config: Option<Config>) {
 
   let mut siv = create_tui();
 
-  maybe_config.map(|config| siv.set_user_data(config));
-  siv.add_global_callback(Key::Esc, |s| s.quit());
+  if let Some(config) = maybe_config {
+    siv.set_user_data(config)
+  }
+
+  siv.add_global_callback(Key::Esc, Cursive::quit);
 
   siv.add_layer(
     Dialog::around(
@@ -56,7 +59,7 @@ pub fn init(maybe_config: Option<Config>) {
             .with_id("autolock_timeout"),
         ),
     )
-    .button("Abort", |s| s.quit())
+    .button("Abort", Cursive::quit)
     .button("Store", store_config)
     .title("t-rust-less configuration")
     .padding_left(5)
@@ -81,14 +84,8 @@ macro_rules! try_with_dialog {
 }
 
 fn store_config(s: &mut Cursive) {
-  let store_path = expand_path(
-    s.call_on_id("store_dir", |e: &mut EditView| e.get_content())
-      .unwrap()
-      .to_string(),
-  );
-  let autolock_timeout_secs = s
-    .call_on_id("autolock_timeout", |e: &mut EditView| e.get_content())
-    .unwrap();
+  let store_path = expand_path(&s.find_id::<EditView>("store_dir").unwrap().get_content());
+  let autolock_timeout_secs = s.find_id::<EditView>("store_dir").unwrap().get_content();
   let autolock_timeout = Duration::from_secs(try_with_dialog!(
     autolock_timeout_secs.parse::<u64>(),
     s,
@@ -143,10 +140,10 @@ fn collapse_path(path: String) -> String {
   }
 }
 
-fn expand_path(path: String) -> String {
+fn expand_path(path: &str) -> String {
   match dirs::home_dir() {
     Some(home_dir) => path.replace("~", &home_dir.to_string_lossy()),
-    None => path,
+    None => path.to_string(),
   }
 }
 

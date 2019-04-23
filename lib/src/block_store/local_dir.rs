@@ -133,15 +133,12 @@ impl BlockStore for LocalDirBlockStore {
     let ring_dir = self.base_dir.write()?.join("rings");
     DirBuilder::new().recursive(true).create(&ring_dir)?;
 
-    match maybe_current {
-      Ok(current) => {
-        let mut backup_file = File::create(ring_dir.join(format!("{}.bak", ring_id)))?;
+    if let Ok(current) = maybe_current {
+      let mut backup_file = File::create(ring_dir.join(format!("{}.bak", ring_id)))?;
 
-        backup_file.write_all(Word::words_to_bytes(&current))?;
-        backup_file.flush()?;
-        backup_file.sync_all()?;
-      }
-      _ => (),
+      backup_file.write_all(Word::words_to_bytes(&current))?;
+      backup_file.flush()?;
+      backup_file.sync_all()?;
     }
 
     let mut ring_file = File::create(ring_dir.join(ring_id))?;

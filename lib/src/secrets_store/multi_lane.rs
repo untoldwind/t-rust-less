@@ -5,7 +5,7 @@ use capnp::{message, serialize, Word};
 
 use crate::api::{Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
 use crate::block_store::{BlockStore, Change, Operation, StoreError};
-use crate::memguard::weak::{ZeroingBytesExt, ZeroingHHeapAllocator, ZeroingStringExt};
+use crate::memguard::weak::{ZeroingBytesExt, ZeroingHeapAllocator, ZeroingStringExt};
 use crate::memguard::SecretBytes;
 use crate::secrets_store::cipher::{
   Cipher, KeyDerivation, PrivateKey, PublicKey, OPEN_SSL_RSA_AES_GCM, RUST_ARGON2_ID, RUST_X25519CHA_CHA20POLY1305,
@@ -17,6 +17,7 @@ use crate::secrets_store_capnp::{block, ring, KeyType};
 use chrono::DateTime;
 use log::{info, warn};
 use rand::{thread_rng, RngCore};
+use std::collections::HashMap;
 
 struct User {
   identity: Identity,
@@ -71,7 +72,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     let mut unlocked_user = self.unlocked_user.write()?;
 
     if unlocked_user.is_some() {
-      return Err(SecretStoreError::AlreadUnlocked);
+      return Err(SecretStoreError::AlreadyUnlocked);
     }
 
     let raw = self.block_store.get_ring(identity_id)?;
@@ -145,7 +146,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     if self.block_store.list_ring_ids()?.iter().any(|id| id == &identity.id) {
       return Err(SecretStoreError::Conflict);
     }
-    let mut ring_message = message::Builder::new(ZeroingHHeapAllocator::new());
+    let mut ring_message = message::Builder::new(ZeroingHeapAllocator::default());
     let mut new_ring = ring_message.init_root::<ring::Builder>();
 
     new_ring.set_id(&identity.id);
@@ -193,7 +194,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     let maybe_unlocked_user = self.unlocked_user.read()?;
     let unlocked_user = maybe_unlocked_user.as_ref().ok_or(SecretStoreError::Locked)?;
 
-    let mut ring_message = message::Builder::new(ZeroingHHeapAllocator::new());
+    let mut ring_message = message::Builder::new(ZeroingHeapAllocator::default());
     let mut new_ring = ring_message.init_root::<ring::Builder>();
 
     new_ring.set_id(&unlocked_user.identity.id);
@@ -253,7 +254,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     if !secret_version
       .recipients
       .iter()
-      .any(|recipient| recipient.as_ref() == &unlocked_user.identity.id)
+      .any(|recipient| unlocked_user.identity.id == recipient.as_str())
     {
       // User adding a secret version to the store is always a recipient
       secret_version
@@ -282,8 +283,20 @@ impl SecretsStore for MultiLaneSecretsStore {
   fn get(&self, secret_id: &str) -> SecretStoreResult<Secret> {
     let maybe_unlocked_user = self.unlocked_user.read()?;
     let unlocked_user = maybe_unlocked_user.as_ref().ok_or(SecretStoreError::Locked)?;
+    let (block_id, has_versions) = unlocked_user
+      .index
+      .current_blocks
+      .get(secret_id)
+      .ok_or(SecretStoreError::NotFound)?;
+    let current = self.get_secret_version(&block_id)?.ok_or(SecretStoreError::NotFound)?;
 
-    unimplemented!()
+    Ok(Secret {
+      id: current.secret_id.clone(),
+      secret_type: current.secret_type,
+      current,
+      has_versions: *has_versions,
+      password_strengths: HashMap::new(),
+    })
   }
 }
 
@@ -397,7 +410,7 @@ impl MultiLaneSecretsStore {
     mut secret_content: SecretBytes,
   ) -> SecretStoreResult<Vec<Word>> {
     let recipients_for_cipher = self.find_recipients(recipients)?;
-    let mut block_message = message::Builder::new(ZeroingHHeapAllocator::new());
+    let mut block_message = message::Builder::new(ZeroingHeapAllocator::default());
     let mut block = block_message.init_root::<block::Builder>();
     let mut headers = block.reborrow().init_headers(recipients_for_cipher.len() as u32);
 
@@ -452,8 +465,8 @@ impl MultiLaneSecretsStore {
         if recipient.get_id()? == identity_id {
           continue 'outer;
         }
-        return Ok(false);
       }
+      return Ok(false);
     }
     Ok(true)
   }

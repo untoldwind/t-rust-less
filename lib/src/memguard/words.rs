@@ -89,6 +89,10 @@ impl SecretWords {
     }
   }
 
+  pub fn is_empty(&self) -> bool {
+    self.size == 0
+  }
+
   pub fn len(&self) -> usize {
     self.size
   }
@@ -97,12 +101,12 @@ impl SecretWords {
     self.capacity
   }
 
-  pub fn borrow<'a>(&'a self) -> Ref<'a> {
+  pub fn borrow(&self) -> Ref {
     self.lock_read();
     Ref { words: self }
   }
 
-  pub fn borrow_mut<'a>(&'a mut self) -> RefMut<'a> {
+  pub fn borrow_mut(&mut self) -> RefMut {
     self.lock_write();
     RefMut { words: self }
   }
@@ -338,26 +342,6 @@ pub struct SecureHHeapAllocator {
   allocation_strategy: AllocationStrategy,
 }
 
-impl SecureHHeapAllocator {
-  pub fn new() -> SecureHHeapAllocator {
-    SecureHHeapAllocator {
-      owned_memory: Vec::new(),
-      next_size: SUGGESTED_FIRST_SEGMENT_WORDS,
-      allocation_strategy: SUGGESTED_ALLOCATION_STRATEGY,
-    }
-  }
-
-  pub fn first_segment_words(mut self, value: u32) -> SecureHHeapAllocator {
-    self.next_size = value;
-    self
-  }
-
-  pub fn allocation_strategy(mut self, value: AllocationStrategy) -> SecureHHeapAllocator {
-    self.allocation_strategy = value;
-    self
-  }
-}
-
 unsafe impl Allocator for SecureHHeapAllocator {
   fn allocate_segment(&mut self, minimum_size: u32) -> (*mut Word, u32) {
     let size = ::std::cmp::max(minimum_size, self.next_size);
@@ -365,13 +349,20 @@ unsafe impl Allocator for SecureHHeapAllocator {
     let ptr = new_words.as_mut_ptr();
     self.owned_memory.push(new_words);
 
-    match self.allocation_strategy {
-      AllocationStrategy::GrowHeuristically => {
-        self.next_size += size;
-      }
-      _ => {}
+    if let AllocationStrategy::GrowHeuristically = self.allocation_strategy {
+      self.next_size += size;
     }
     (ptr, size as u32)
+  }
+}
+
+impl Default for SecureHHeapAllocator {
+  fn default() -> Self {
+    SecureHHeapAllocator {
+      owned_memory: Vec::new(),
+      next_size: SUGGESTED_FIRST_SEGMENT_WORDS,
+      allocation_strategy: SUGGESTED_ALLOCATION_STRATEGY,
+    }
   }
 }
 

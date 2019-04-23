@@ -32,7 +32,7 @@ impl Context {
         .get_setup()
         .roots()
         .nth(screen as usize)
-        .ok_or(ClipboardError("Invalid screen".to_string()))?;
+        .ok_or_else(|| ClipboardError("Invalid screen".to_string()))?;
       xcb::create_window(
         &connection,
         xcb::COPY_FROM_PARENT as u8,
@@ -108,14 +108,14 @@ fn run<T>(context: Context, mut selection_provider: T)
 where
   T: SelectionProvider,
 {
-  if !xcb::set_selection_owner_checked(
+  if xcb::set_selection_owner_checked(
     &context.connection,
     context.window,
     context.atoms.clipboard,
     xcb::CURRENT_TIME,
   )
   .request_check()
-  .is_ok()
+  .is_err()
   {
     return;
   }

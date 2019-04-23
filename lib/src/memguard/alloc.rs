@@ -110,6 +110,7 @@ pub unsafe fn _mprotect(ptr: *mut u8, len: usize, prot: Prot::Ty) -> bool {
 
 /// Secure `mprotect`.
 #[cfg(any(unix, windows))]
+#[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn mprotect<T>(memptr: NonNull<T>, prot: Prot::Ty) -> bool {
   let memptr = memptr.as_ptr() as *mut u8;
 
@@ -134,6 +135,7 @@ unsafe fn unprotected_ptr_from_user_ptr(memptr: *const u8) -> *mut u8 {
   unprotected_ptr_u as *mut u8
 }
 
+#[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn malloc(size: usize) -> NonNull<u8> {
   ALLOC_INIT.call_once(|| alloc_init());
 
@@ -149,16 +151,12 @@ pub unsafe fn malloc(size: usize) -> NonNull<u8> {
   let unprotected_ptr = base_ptr.offset(PAGE_SIZE as isize * 2);
 
   // mprotect ptr
-  _mprotect(base_ptr.offset(PAGE_SIZE as isize), PAGE_SIZE, Prot::NoAccess);
-  _mprotect(
-    unprotected_ptr.offset(unprotected_size as isize),
-    PAGE_SIZE,
-    Prot::NoAccess,
-  );
+  _mprotect(base_ptr.add(PAGE_SIZE), PAGE_SIZE, Prot::NoAccess);
+  _mprotect(unprotected_ptr.add(unprotected_size), PAGE_SIZE, Prot::NoAccess);
   memory::mlock(unprotected_ptr, unprotected_size);
 
   let canary_ptr = unprotected_ptr.offset(unprotected_size as isize - size_with_canary as isize);
-  let user_ptr = canary_ptr.offset(CANARY_SIZE as isize);
+  let user_ptr = canary_ptr.add(CANARY_SIZE);
   ptr::copy_nonoverlapping(CANARY.as_ptr(), canary_ptr, CANARY_SIZE);
   ptr::write_unaligned(base_ptr as *mut usize, unprotected_size);
   _mprotect(base_ptr, PAGE_SIZE, Prot::ReadOnly);
@@ -169,6 +167,7 @@ pub unsafe fn malloc(size: usize) -> NonNull<u8> {
 }
 
 /// Secure `free`.
+#[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn free<T>(memptr: NonNull<T>) {
   let memptr = memptr.as_ptr() as *mut u8;
 

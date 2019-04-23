@@ -1,6 +1,6 @@
 use crate::api::{SecretEntry, SecretEntryMatch, SecretList, SecretListFilter, SecretType, SecretVersion};
 use crate::block_store::{Change, ChangeLog, Operation};
-use crate::memguard::weak::{ZeroingHHeapAllocator, ZeroingString, ZeroingStringExt};
+use crate::memguard::weak::{ZeroingHeapAllocator, ZeroingString, ZeroingStringExt};
 use crate::memguard::SecretWords;
 use crate::secrets_store::SecretStoreResult;
 use crate::secrets_store_capnp::index;
@@ -9,10 +9,22 @@ use chrono::prelude::*;
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 
+struct EffectiveChanges {
+  new_heads: HashMap<String, Change>,
+  added_versions: HashMap<String, HashMap<String, SecretVersion>>,
+  deleted_blocks: HashSet<String>,
+}
+
+impl EffectiveChanges {
+  fn is_empty(&self) -> bool {
+    self.added_versions.is_empty() && self.deleted_blocks.is_empty()
+  }
+}
+
 pub struct Index {
   pub(super) data: SecretWords,
   heads: HashMap<String, Change>,
-  current_blocks: HashMap<String, (String, bool)>,
+  pub(super) current_blocks: HashMap<String, (String, bool)>,
 }
 
 impl Index {
@@ -56,22 +68,27 @@ impl Index {
   where
     F: Fn(&str) -> SecretStoreResult<Option<SecretVersion>>,
   {
-    let (new_heads, added_versions, deleted_blocks) = self.collect_changes(change_logs, &version_accessor)?;
+    let effective_changes = self.collect_changes(change_logs, &version_accessor)?;
 
-    if added_versions.is_empty() && deleted_blocks.is_empty() {
+    if effective_changes.is_empty() {
       return Ok(false); // No change that affects us
     }
 
-    let to_keep = self.collect_entries_to_keep(&deleted_blocks)?;
-    let additions = added_versions.keys().filter(|id| !to_keep.contains(*id)).count();
-    let mut index_message = message::Builder::new(ZeroingHHeapAllocator::new());
+    let to_keep = self.collect_entries_to_keep(&effective_changes.deleted_blocks)?;
+    let additions = effective_changes
+      .added_versions
+      .keys()
+      .filter(|id| !to_keep.contains(*id))
+      .count();
+    let mut current_blocks = HashMap::new();
+    let mut index_message = message::Builder::new(ZeroingHeapAllocator::default());
     {
       let index_borrow = self.data.borrow();
       let reader = serialize::read_message_from_words(&index_borrow, message::ReaderOptions::new())?;
       let old_index = reader.get_root::<index::Reader>()?;
       let mut new_index = index_message.init_root::<index::Builder>();
 
-      Self::update_heads(new_index.reborrow(), &new_heads);
+      Self::update_heads(new_index.reborrow(), &effective_changes.new_heads);
       let mut entry_pos = 0;
       let mut new_entries = new_index.init_entries((to_keep.len() + additions) as u32);
 
@@ -82,43 +99,50 @@ impl Index {
         }
         let new_block_ids = Self::merge_block_ids(
           old_entry.reborrow(),
-          added_versions.get(secret_id).map(|m| m.keys()),
-          &deleted_blocks,
+          effective_changes.added_versions.get(secret_id).map(HashMap::keys),
+          &effective_changes.deleted_blocks,
         )?;
 
-        if deleted_blocks.contains(old_entry.get_current_block_id()?) {
-          Self::recreate_entry(
+        if effective_changes
+          .deleted_blocks
+          .contains(old_entry.get_current_block_id()?)
+        {
+          let (current_block_id, has_versions) = Self::recreate_entry(
             new_entries.reborrow().get(entry_pos),
             new_block_ids,
-            added_versions.get(secret_id),
+            effective_changes.added_versions.get(secret_id),
             &version_accessor,
           )?;
           entry_pos += 1;
+          current_blocks.insert(secret_id.to_string(), (current_block_id, has_versions));
         } else {
           new_entries.set_with_caveats(entry_pos, old_entry)?;
-          Self::update_entry(
+          let (current_block_id, has_versions) = Self::update_entry(
             new_entries.reborrow().get(entry_pos),
             new_block_ids,
-            added_versions.get(secret_id),
+            effective_changes.added_versions.get(secret_id),
           )?;
           entry_pos += 1;
+          current_blocks.insert(secret_id.to_string(), (current_block_id, has_versions));
         }
       }
-      for (secret_id, added_version) in added_versions {
+      for (secret_id, added_version) in effective_changes.added_versions {
         if to_keep.contains(&secret_id) {
           continue;
         }
-        Self::update_entry(
+        let (current_block_id, has_versions) = Self::update_entry(
           new_entries.reborrow().get(entry_pos),
           added_version.keys().cloned().collect(),
           Some(&added_version),
         )?;
         entry_pos += 1;
+        current_blocks.insert(secret_id.to_string(), (current_block_id, has_versions));
       }
     }
 
     self.data = SecretWords::from(serialize::write_message_to_words(&index_message));
-    self.heads = new_heads;
+    self.heads = effective_changes.new_heads;
+    self.current_blocks = current_blocks;
 
     Ok(true)
   }
@@ -155,7 +179,7 @@ impl Index {
   fn update_heads(index: index::Builder, heads: &HashMap<String, Change>) {
     let mut new_heads = index.init_heads(heads.len() as u32);
 
-    for (idx, (node_id, change)) in heads.into_iter().enumerate() {
+    for (idx, (node_id, change)) in heads.iter().enumerate() {
       let mut new_head = new_heads.reborrow().get(idx as u32);
 
       new_head.set_node_id(&node_id);
@@ -194,11 +218,7 @@ impl Index {
     &mut self,
     change_logs: &[ChangeLog],
     version_accessor: F,
-  ) -> SecretStoreResult<(
-    HashMap<String, Change>,
-    HashMap<String, HashMap<String, SecretVersion>>,
-    HashSet<String>,
-  )>
+  ) -> SecretStoreResult<EffectiveChanges>
   where
     F: Fn(&str) -> SecretStoreResult<Option<SecretVersion>>,
   {
@@ -214,7 +234,7 @@ impl Index {
           Operation::Add => {
             if let Some(secret_version) = version_accessor(&change.block)? {
               let secret_id = secret_version.secret_id.clone();
-              let mut by_blocks = added_versions.remove(&secret_id).unwrap_or_else(|| HashMap::new());
+              let mut by_blocks = added_versions.remove(&secret_id).unwrap_or_else(HashMap::new);
               by_blocks.insert(change.block.clone(), secret_version);
               added_versions.insert(secret_id, by_blocks);
             }
@@ -237,7 +257,11 @@ impl Index {
       }
     }
 
-    Ok((new_heads, added_versions, deleted_blocks))
+    Ok(EffectiveChanges {
+      new_heads,
+      added_versions,
+      deleted_blocks,
+    })
   }
 
   fn merge_block_ids<I, S>(
@@ -271,10 +295,12 @@ impl Index {
     mut new_block_ids: HashSet<String>,
     maybe_added_versions: Option<&HashMap<String, SecretVersion>>,
     version_accessor: F,
-  ) -> SecretStoreResult<()>
+  ) -> SecretStoreResult<(String, bool)>
   where
     F: Fn(&str) -> SecretStoreResult<Option<SecretVersion>>,
   {
+    let mut current_block_id = new_entry.reborrow().get_current_block_id()?.to_string();
+
     for block_id in new_block_ids.clone() {
       let maybe_version = match maybe_added_versions.and_then(|a| a.get(&block_id)) {
         None => version_accessor(&block_id)?,
@@ -286,6 +312,7 @@ impl Index {
             || new_entry.reborrow().get_timestamp() < version.timestamp.timestamp_millis()
           {
             Self::overwrite_entry(new_entry.reborrow(), &block_id, &version)?;
+            current_block_id = block_id.clone();
           }
         }
         None => {
@@ -299,14 +326,16 @@ impl Index {
       &new_block_ids,
     )?;
 
-    Ok(())
+    Ok((current_block_id, new_block_ids.len() > 1))
   }
 
   fn update_entry(
     mut new_entry: index::entry::Builder,
     mut new_block_ids: HashSet<String>,
     maybe_added_versions: Option<&HashMap<String, SecretVersion>>,
-  ) -> SecretStoreResult<()> {
+  ) -> SecretStoreResult<(String, bool)> {
+    let mut current_block_id = new_entry.reborrow().get_current_block_id()?.to_string();
+
     for block_id in new_block_ids.clone() {
       let maybe_version = maybe_added_versions.and_then(|a| a.get(&block_id));
       match maybe_version {
@@ -315,6 +344,7 @@ impl Index {
             || new_entry.reborrow().get_timestamp() < version.timestamp.timestamp_millis()
           {
             Self::overwrite_entry(new_entry.reborrow(), &block_id, version)?;
+            current_block_id = block_id.clone();
           }
         }
         None => {
@@ -328,7 +358,7 @@ impl Index {
       &new_block_ids,
     )?;
 
-    Ok(())
+    Ok((current_block_id, new_block_ids.len() > 1))
   }
 
   fn overwrite_entry(
@@ -439,7 +469,7 @@ impl Index {
 
 impl Default for Index {
   fn default() -> Self {
-    let mut index_message = message::Builder::new(ZeroingHHeapAllocator::new());
+    let mut index_message = message::Builder::new(ZeroingHeapAllocator::default());
     index_message.init_root::<index::Builder>();
     let index_data = serialize::write_message_to_words(&index_message);
 

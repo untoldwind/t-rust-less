@@ -54,7 +54,7 @@ impl Padding for NonZeroPadding {
     {
       let mut padded_writer = padded_data.borrow_mut();
 
-      padded_writer.write_all(&pad_bytes[..first_zero + 1])?;
+      padded_writer.write_all(&pad_bytes[..=first_zero])?;
       padded_writer.write_all(&data)?;
       padded_writer.write_all(&pad_bytes[first_zero..])?;
     }
@@ -65,7 +65,7 @@ impl Padding for NonZeroPadding {
   fn unpad_data(padded: &[u8]) -> SecretStoreResult<&[u8]> {
     match padded.iter().position(|b| *b == 0) {
       Some(first_zero) => match padded[first_zero + 1..].iter().position(|b| *b == 0) {
-        Some(next_zero) => Ok(&padded[first_zero + 1..first_zero + next_zero + 1]),
+        Some(next_zero) => Ok(&padded[first_zero + 1..=first_zero + next_zero]),
         None => Err(SecretStoreError::Padding),
       },
       None => Ok(padded),

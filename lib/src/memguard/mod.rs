@@ -5,4 +5,4 @@ pub mod weak;
 mod words;
 
 pub use self::bytes::SecretBytes;
-pub use self::words::SecretWords;
+pub use self::words::{SecretWords, SecureHHeapAllocator};

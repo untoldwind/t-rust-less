@@ -154,44 +154,43 @@ impl ZeroingStringExt for String {
 }
 
 #[derive(Debug)]
-pub struct ZeroingHHeapAllocator {
+pub struct ZeroingHeapAllocator {
   owned_memory: Vec<ZeroingWords>,
   next_size: u32,
   allocation_strategy: AllocationStrategy,
 }
 
-impl ZeroingHHeapAllocator {
-  pub fn new() -> ZeroingHHeapAllocator {
-    ZeroingHHeapAllocator {
-      owned_memory: Vec::new(),
-      next_size: SUGGESTED_FIRST_SEGMENT_WORDS,
-      allocation_strategy: SUGGESTED_ALLOCATION_STRATEGY,
-    }
-  }
-
-  pub fn first_segment_words(mut self, value: u32) -> ZeroingHHeapAllocator {
+impl ZeroingHeapAllocator {
+  pub fn first_segment_words(mut self, value: u32) -> ZeroingHeapAllocator {
     self.next_size = value;
     self
   }
 
-  pub fn allocation_strategy(mut self, value: AllocationStrategy) -> ZeroingHHeapAllocator {
+  pub fn allocation_strategy(mut self, value: AllocationStrategy) -> ZeroingHeapAllocator {
     self.allocation_strategy = value;
     self
   }
 }
 
-unsafe impl Allocator for ZeroingHHeapAllocator {
+impl Default for ZeroingHeapAllocator {
+  fn default() -> Self {
+    ZeroingHeapAllocator {
+      owned_memory: Vec::new(),
+      next_size: SUGGESTED_FIRST_SEGMENT_WORDS,
+      allocation_strategy: SUGGESTED_ALLOCATION_STRATEGY,
+    }
+  }
+}
+
+unsafe impl Allocator for ZeroingHeapAllocator {
   fn allocate_segment(&mut self, minimum_size: u32) -> (*mut Word, u32) {
     let size = ::std::cmp::max(minimum_size, self.next_size);
     let mut new_words = ZeroingWords::allocate_zeroed_vec(size as usize);
     let ptr = new_words.as_mut_ptr();
     self.owned_memory.push(new_words);
 
-    match self.allocation_strategy {
-      AllocationStrategy::GrowHeuristically => {
-        self.next_size += size;
-      }
-      _ => {}
+    if let AllocationStrategy::GrowHeuristically = self.allocation_strategy {
+      self.next_size += size;
     }
     (ptr, size as u32)
   }

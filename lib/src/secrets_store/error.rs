@@ -6,7 +6,7 @@ pub enum SecretStoreError {
   Locked,
   Forbidden,
   InvalidPassphrase,
-  AlreadUnlocked,
+  AlreadyUnlocked,
   Conflict,
   KeyDerivation(String),
   Cipher(String),
@@ -19,6 +19,7 @@ pub enum SecretStoreError {
   Json(String),
   InvalidRecipient(String),
   MissingPrivateKey(String),
+  NotFound,
 }
 
 impl fmt::Display for SecretStoreError {
@@ -27,7 +28,7 @@ impl fmt::Display for SecretStoreError {
       SecretStoreError::Locked => write!(f, "Store is locked")?,
       SecretStoreError::Forbidden => write!(f, "Forbidden user")?,
       SecretStoreError::InvalidPassphrase => write!(f, "Invalid passphrase")?,
-      SecretStoreError::AlreadUnlocked => write!(f, "Already unlocked")?,
+      SecretStoreError::AlreadyUnlocked => write!(f, "Already unlocked")?,
       SecretStoreError::Conflict => write!(f, "Conflicting ids/id already taken")?,
       SecretStoreError::KeyDerivation(error) => write!(f, "Key derivation error: {}", error)?,
       SecretStoreError::Cipher(error) => write!(f, "Cipher error: {}", error)?,
@@ -40,6 +41,7 @@ impl fmt::Display for SecretStoreError {
       SecretStoreError::Json(error) => write!(f, "Json error: {}", error)?,
       SecretStoreError::InvalidRecipient(error) => write!(f, "Invalid recipient: {}", error)?,
       SecretStoreError::MissingPrivateKey(cipher) => write!(f, "Missing private key for cipher: {}", cipher)?,
+      SecretStoreError::NotFound => write!(f, "Secret not found")?,
     }
     Ok(())
   }

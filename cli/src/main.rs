@@ -39,16 +39,17 @@ fn main() {
 
   let maybe_config = read_config();
 
-  if let Some(_) = matches.subcommand_matches("init") {
+  if matches.subcommand_matches("init").is_some() {
     commands::init(maybe_config);
-  } else {
-    match maybe_config {
-      Some(config) => {
-        if let Some(_) = matches.subcommand_matches("status") {
-          commands::status(config);
-        }
+    return;
+  }
+
+  match maybe_config {
+    Some(config) => {
+      if matches.subcommand_matches("status").is_some() {
+        commands::status(config);
       }
-      None => uninitialized(),
     }
+    None => uninitialized(),
   }
 }

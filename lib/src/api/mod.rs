@@ -29,7 +29,7 @@ pub struct Identity {
 ///
 /// This only serves as a hint for an UI.
 ///
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum SecretType {
   Login,
@@ -144,7 +144,7 @@ pub struct PasswordStrength {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Secret {
-  pub id: ZeroingString,
+  pub id: String,
   #[serde(rename = "type")]
   pub secret_type: SecretType,
   pub current: SecretVersion,

@@ -104,6 +104,10 @@ impl SecretBytes {
     }
   }
 
+  pub fn is_empty(&self) -> bool {
+    self.size == 0
+  }
+
   pub fn len(&self) -> usize {
     self.size
   }
@@ -112,12 +116,12 @@ impl SecretBytes {
     self.capacity
   }
 
-  pub fn borrow<'a>(&'a self) -> Ref<'a> {
+  pub fn borrow(&self) -> Ref {
     self.lock_read();
     Ref { bytes: self }
   }
 
-  pub fn borrow_mut<'a>(&'a mut self) -> RefMut<'a> {
+  pub fn borrow_mut(&mut self) -> RefMut {
     self.lock_write();
     RefMut { bytes: self }
   }
@@ -307,11 +311,7 @@ impl<'a> io::Write for RefMut<'a> {
     let transfer = available.min(buf.len());
 
     unsafe {
-      copy_nonoverlapping(
-        buf.as_ptr(),
-        self.bytes.ptr.as_ptr().offset(self.bytes.size as isize),
-        transfer,
-      );
+      copy_nonoverlapping(buf.as_ptr(), self.bytes.ptr.as_ptr().add(self.bytes.size), transfer);
     }
     self.bytes.size += transfer;
 
