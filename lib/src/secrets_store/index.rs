@@ -21,22 +21,22 @@ impl EffectiveChanges {
   }
 }
 
-pub struct Index {
-  pub(super) data: SecretWords,
+pub struct BlockIndex {
   heads: HashMap<String, Change>,
   pub(super) current_blocks: HashMap<String, (String, bool)>,
+}
+
+pub struct Index {
+  pub(super) data: SecretWords,
+  pub(super) block_index: BlockIndex,
 }
 
 impl Index {
   pub fn from_secured_raw(raw: &[u8]) -> SecretStoreResult<Index> {
     let data = SecretWords::from_secured(raw);
-    let (heads, current_blocks) = Self::read_current_head_and_blocks(&data)?;
+    let block_index = Self::read_block_index(&data)?;
 
-    Ok(Index {
-      data,
-      heads,
-      current_blocks,
-    })
+    Ok(Index { data, block_index })
   }
 
   pub fn filter_entries(&self, filter: SecretListFilter) -> SecretStoreResult<SecretList> {
@@ -141,15 +141,13 @@ impl Index {
     }
 
     self.data = SecretWords::from(serialize::write_message_to_words(&index_message));
-    self.heads = effective_changes.new_heads;
-    self.current_blocks = current_blocks;
+    self.block_index.heads = effective_changes.new_heads;
+    self.block_index.current_blocks = current_blocks;
 
     Ok(true)
   }
 
-  fn read_current_head_and_blocks(
-    index_data: &SecretWords,
-  ) -> SecretStoreResult<(HashMap<String, Change>, HashMap<String, (String, bool)>)> {
+  fn read_block_index(index_data: &SecretWords) -> SecretStoreResult<BlockIndex> {
     let index_borrow = index_data.borrow();
     let reader = serialize::read_message_from_words(&index_borrow, message::ReaderOptions::new())?;
     let index = reader.get_root::<index::Reader>()?;
@@ -173,7 +171,7 @@ impl Index {
       current_blocks.insert(secret_id.to_string(), (current_block_id.to_string(), hash_versions));
     }
 
-    Ok((heads, current_blocks))
+    Ok(BlockIndex { heads, current_blocks })
   }
 
   fn update_heads(index: index::Builder, heads: &HashMap<String, Change>) {
@@ -227,7 +225,7 @@ impl Index {
     let mut deleted_blocks = HashSet::new();
 
     for change_log in change_logs {
-      let changes = change_log.changes_since(self.heads.get(&change_log.node));
+      let changes = change_log.changes_since(self.block_index.heads.get(&change_log.node));
 
       for change in changes {
         match change.op {
@@ -475,8 +473,10 @@ impl Default for Index {
 
     Index {
       data: index_data.into(),
-      heads: HashMap::new(),
-      current_blocks: HashMap::new(),
+      block_index: BlockIndex {
+        heads: HashMap::new(),
+        current_blocks: HashMap::new(),
+      },
     }
   }
 }

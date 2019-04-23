@@ -40,6 +40,22 @@ pub enum SecretType {
   Other,
 }
 
+impl SecretType {
+  /// Get the commonly used property name that may contain a password.
+  ///
+  /// The values of these properties are automatically estimated for the strengths.
+  pub fn password_properties(&self) -> &[&str] {
+    match self {
+      SecretType::Login => &["password"],
+      SecretType::Note => &[],
+      SecretType::Licence => &[],
+      SecretType::Wlan => &["password"],
+      SecretType::Password => &["password"],
+      SecretType::Other => &[],
+    }
+  }
+}
+
 /// A combination of filter criterias to search for a secret.
 ///
 /// All criterias are supposed to be combined by AND (i.e. all criterias have
@@ -168,17 +184,16 @@ pub struct SecretVersion {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PasswordEstimate {
-  password: ZeroingString,
-  inputs: Vec<String>,
+  pub password: ZeroingString,
+  pub inputs: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PasswordStrength {
-  entropy: f64,
-  crack_time: f64,
-  #[serde(rename = "crackTimeDisplay")]
-  crack_time_display: String,
-  score: u32,
+  pub entropy: f64,
+  pub crack_time: u64,
+  pub crack_time_display: String,
+  pub score: u8,
 }
 
 /// Convenient wrapper for the current version of a Secret.

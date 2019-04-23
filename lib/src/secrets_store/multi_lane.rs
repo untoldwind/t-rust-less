@@ -10,6 +10,7 @@ use crate::memguard::SecretBytes;
 use crate::secrets_store::cipher::{
   Cipher, KeyDerivation, PrivateKey, PublicKey, OPEN_SSL_RSA_AES_GCM, RUST_ARGON2_ID, RUST_X25519CHA_CHA20POLY1305,
 };
+use crate::secrets_store::estimate::{PasswordEstimator, ZxcvbnEstimator};
 use crate::secrets_store::index::Index;
 use crate::secrets_store::padding::{NonZeroPadding, Padding, RandomFrontBack};
 use crate::secrets_store::{SecretStoreError, SecretStoreResult, SecretsStore};
@@ -25,6 +26,11 @@ struct User {
   private_keys: Vec<(KeyType, PrivateKey)>,
   autolock_at: SystemTime,
   index: Index,
+}
+
+struct RecipientsForCipher<'a> {
+  cipher: &'static Cipher,
+  recipient_keys: Vec<(&'a str, PublicKey)>,
 }
 
 pub struct MultiLaneSecretsStore {
@@ -285,17 +291,26 @@ impl SecretsStore for MultiLaneSecretsStore {
     let unlocked_user = maybe_unlocked_user.as_ref().ok_or(SecretStoreError::Locked)?;
     let (block_id, has_versions) = unlocked_user
       .index
+      .block_index
       .current_blocks
       .get(secret_id)
       .ok_or(SecretStoreError::NotFound)?;
     let current = self.get_secret_version(&block_id)?.ok_or(SecretStoreError::NotFound)?;
+    let mut password_strengths = HashMap::with_capacity(current.secret_type.password_properties().len());
 
+    for property in current.secret_type.password_properties() {
+      if let Some(value) = current.properties.get(*property) {
+        let strength = ZxcvbnEstimator::estimate_strength(value, &[&current.name, &unlocked_user.identity.name]);
+
+        password_strengths.insert(property.to_string(), strength);
+      }
+    }
     Ok(Secret {
       id: current.secret_id.clone(),
       secret_type: current.secret_type,
       current,
       has_versions: *has_versions,
-      password_strengths: HashMap::new(),
+      password_strengths,
     })
   }
 }
@@ -327,14 +342,14 @@ impl MultiLaneSecretsStore {
     })
   }
 
-  fn find_recipients<'a, T: AsRef<str>>(
-    &self,
-    recipients: &'a [T],
-  ) -> SecretStoreResult<Vec<(&'static Cipher, Vec<(&'a str, PublicKey)>)>> {
-    let mut recipient_keys: Vec<(&'static Cipher, Vec<(&'a str, PublicKey)>)> = self
+  fn find_recipients<'a, T: AsRef<str>>(&self, recipients: &'a [T]) -> SecretStoreResult<Vec<RecipientsForCipher<'a>>> {
+    let mut recipients_for_cipher: Vec<RecipientsForCipher<'a>> = self
       .ciphers
       .iter()
-      .map(|cipher| (*cipher, Vec::with_capacity(recipients.len())))
+      .map(|cipher| RecipientsForCipher {
+        cipher: *cipher,
+        recipient_keys: Vec::with_capacity(recipients.len()),
+      })
       .collect();
 
     for recipient in recipients {
@@ -347,7 +362,7 @@ impl MultiLaneSecretsStore {
       let ring = reader.get_root::<ring::Reader>()?;
       let user_public_keys = ring.get_public_keys()?;
 
-      for (cipher, keys) in recipient_keys.iter_mut() {
+      for RecipientsForCipher { cipher, recipient_keys } in recipients_for_cipher.iter_mut() {
         let key_type = cipher.key_type();
         let user_public_key = user_public_keys
           .iter()
@@ -356,11 +371,11 @@ impl MultiLaneSecretsStore {
             SecretStoreError::InvalidRecipient(format!("{} does not have required key type", identity_id))
           })?;
 
-        keys.push((identity_id, user_public_key.get_key()?.to_vec()))
+        recipient_keys.push((identity_id, user_public_key.get_key()?.to_vec()))
       }
     }
 
-    Ok(recipient_keys)
+    Ok(recipients_for_cipher)
   }
 
   fn read_index(&self, identity_id: &str, private_keys: &[(KeyType, PrivateKey)]) -> SecretStoreResult<Index> {
@@ -414,8 +429,8 @@ impl MultiLaneSecretsStore {
     let mut block = block_message.init_root::<block::Builder>();
     let mut headers = block.reborrow().init_headers(recipients_for_cipher.len() as u32);
 
-    for (idx, (cipher, recipients)) in recipients_for_cipher.into_iter().enumerate() {
-      let mut content = cipher.encrypt(&recipients, &secret_content, headers.reborrow().get(idx as u32))?;
+    for (idx, RecipientsForCipher { cipher, recipient_keys }) in recipients_for_cipher.into_iter().enumerate() {
+      let mut content = cipher.encrypt(&recipient_keys, &secret_content, headers.reborrow().get(idx as u32))?;
 
       secret_content = SecretBytes::from(content.as_mut());
     }

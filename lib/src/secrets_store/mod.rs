@@ -5,6 +5,7 @@ use std::time::Duration;
 mod auto_locker;
 mod cipher;
 mod error;
+mod estimate;
 mod index;
 mod multi_lane;
 mod padding;
