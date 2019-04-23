@@ -7,7 +7,7 @@ Some major changes:
 * `t-rust-less` is a ground up rewrite in rust (as the name suggests)
 * ... which allows a much better control over memory and protecting/cleaning up sensitive data.
 * For the most part `trustless` tried to be compatible with `gpg`, `t-rust-less` drops this idea entirely
-  in favor of adding more modern ciphers and key-derivations to the mix.
+  in favor of adding some modern ciphers and key-derivations to the mix.
 * ... which essentially means that a `trustless` store will not be compatible with a `t-rust-less` whatsoever.
   Sorry, but an `export` -> `import` will be required.
 
