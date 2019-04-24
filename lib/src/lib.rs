@@ -6,6 +6,7 @@ pub mod block_store;
 pub mod clipboard;
 pub mod memguard;
 pub mod secrets_store;
+pub mod service;
 
 #[allow(dead_code)]
 #[allow(clippy::wrong_self_convention)]

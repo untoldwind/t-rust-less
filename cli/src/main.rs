@@ -1,7 +1,9 @@
 use crate::config::{config_file, read_config};
+use crate::error::ExtResult;
 use atty::Stream;
 use crossterm_style::{style, Color};
 use log::error;
+use t_rust_less_lib::service::create_service;
 
 mod cli;
 mod commands;
@@ -36,6 +38,8 @@ fn main() {
   }
   log_builder.target(env_logger::Target::Stderr);
   log_builder.init();
+
+  let service = create_service().ok_or_exit("Failed opening servier");
 
   let maybe_config = read_config();
 
