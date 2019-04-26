@@ -150,8 +150,13 @@ impl BlockStore for LocalDirBlockStore {
   }
 
   fn change_logs(&self) -> StoreResult<Vec<ChangeLog>> {
+    debug!("Try retrieve change logs");
     let base_dir = self.base_dir.read()?;
-    let commit_dir = read_dir(base_dir.join("logs"))?;
+    let commit_dir = match read_dir(base_dir.join("logs")) {
+      Ok(dir) => dir,
+      Err(ref err) if err.kind() == io::ErrorKind::NotFound => return Ok(vec![]),
+      Err(err) => return Err(err.into()),
+    };
     let mut change_logs: Vec<ChangeLog> = vec![];
 
     for maybe_entry in commit_dir {
@@ -168,15 +173,20 @@ impl BlockStore for LocalDirBlockStore {
     Ok(change_logs)
   }
 
-  fn get_index(&self, node: &str) -> StoreResult<Option<Vec<Word>>> {
+  fn get_index(&self, index_id: &str) -> StoreResult<Option<Vec<Word>>> {
+    debug!("Try getting index  {}", index_id);
     let base_dir = self.base_dir.read()?;
-    Self::read_optional_file(base_dir.join("indexes").join(node))
+    Self::read_optional_file(base_dir.join("indexes").join(&self.node_id).join(index_id))
   }
 
-  fn store_index(&self, node: &str, raw: &[Word]) -> StoreResult<()> {
+  fn store_index(&self, index_id: &str, raw: &[Word]) -> StoreResult<()> {
+    debug!("Try storing index  {}", index_id);
     let base_dir = self.base_dir.write()?;
-    DirBuilder::new().recursive(true).create(base_dir.join("indexes"))?;
-    let mut index_file = File::create(base_dir.join("indexes").join(node))?;
+    let index_file_path = base_dir.join("indexes").join(&self.node_id).join(index_id);
+    DirBuilder::new()
+      .recursive(true)
+      .create(index_file_path.parent().unwrap())?;
+    let mut index_file = File::create(index_file_path)?;
 
     index_file.write_all(Word::words_to_bytes(raw))?;
     index_file.flush()?;

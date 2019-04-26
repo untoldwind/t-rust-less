@@ -144,6 +144,7 @@ fn store_config(s: &mut Cursive) {
     s.pop_layer();
 
     add_identity_dialog(s, secrets_store, "Create initial identity");
+    return;
   }
 
   s.quit();

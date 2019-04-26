@@ -12,12 +12,6 @@ use t_rust_less_lib::memguard::SecretBytes;
 use t_rust_less_lib::secrets_store::SecretsStore;
 
 pub fn unlock_store(secrets_store: &Arc<SecretsStore>, name: &str) {
-  let status = secrets_store.status().ok_or_exit("Get status");
-
-  if !status.locked {
-    return;
-  }
-
   if !atty::is(Stream::Stdout) {
     println!("Please use a terminal");
     process::exit(1);
@@ -56,11 +50,12 @@ fn unlock_dialog(secrets_store: &Arc<SecretsStore>, name: &str, identities: Vec<
                 .into_iter()
                 .map(|i| (format!("{} <{}>", i.name, i.email), i.id)),
             )
-            .with_id("identity"),
+            .with_id("identity")
+            .fixed_width(50),
         )
         .child(DummyView {})
         .child(TextView::new("Passphrase"))
-        .child(EditView::new().secret().fixed_width(50).with_id("passphrase")),
+        .child(EditView::new().secret().with_id("passphrase")),
     )
     .title(format!("Unlock store {}", name))
     .button("Abort", Cursive::quit)
@@ -77,6 +72,7 @@ fn unlock_dialog(secrets_store: &Arc<SecretsStore>, name: &str, identities: Vec<
 fn do_unlock_store(s: &mut Cursive) {
   let secrets_store = s.user_data::<Arc<SecretsStore>>().unwrap().clone();
   let maybe_identity = s.find_id::<SelectView>("identity").unwrap().selection();
+  let passphrase = SecretBytes::from_secured(s.find_id::<EditView>("passphrase").unwrap().get_content().as_bytes());
   let identity_id = match maybe_identity {
     Some(id) => id,
     _ => {
@@ -84,10 +80,11 @@ fn do_unlock_store(s: &mut Cursive) {
       return;
     }
   };
-  let passphrase_content = s.find_id::<EditView>("passphrase").unwrap().get_content();
-  let passphrase = SecretBytes::from_secured(passphrase_content.as_bytes());
 
-  secrets_store.unlock(&identity_id, passphrase);
+  if let Err(error) = secrets_store.unlock(&identity_id, passphrase) {
+    s.add_layer(Dialog::info(format!("Unable to unlock store:\n{}", error)));
+    return;
+  }
 
   s.quit()
 }
