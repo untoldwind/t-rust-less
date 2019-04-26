@@ -8,25 +8,39 @@ use cursive::Cursive;
 use crate::commands::add_identity::add_identity_dialog;
 use crate::commands::generate_id;
 use crate::commands::tui::create_tui;
-use crate::config::{default_autolock_timeout, default_store_dir, write_config, Config};
+use crate::config::{default_autolock_timeout, default_store_dir};
+use crate::error::exit_with_error;
 use cursive::event::Key;
 use std::fs;
+use std::sync::Arc;
 use std::time::Duration;
-use t_rust_less_lib::secrets_store::open_secrets_store;
+use t_rust_less_lib::service::{ServiceError, StoreConfig, TrustlessService};
 use url::Url;
 
-pub fn init(maybe_config: Option<Config>) {
+pub fn init(service: Arc<TrustlessService>, maybe_store_name: Option<String>) {
   if !atty::is(Stream::Stdout) {
     println!("Please use a terminal");
     process::exit(1);
   }
 
+  let store_name = maybe_store_name.unwrap_or_else(|| "t-rust-less-store".to_string());
+  let maybe_config = match service.get_store_config(&store_name) {
+    Ok(config) => Some(config),
+    Err(ServiceError::StoreNotFound(_)) => None,
+    Err(err) => {
+      exit_with_error(
+        format!("Checking exsting configuration for store {}: ", store_name),
+        err,
+      );
+      unreachable!()
+    }
+  };
   let store_path = match maybe_config {
     Some(ref config) => match Url::parse(&config.store_url) {
       Ok(url) => url.path().to_string(),
-      _ => default_store_dir().to_string_lossy().to_string(),
+      _ => default_store_dir(&store_name).to_string_lossy().to_string(),
     },
-    _ => default_store_dir().to_string_lossy().to_string(),
+    _ => default_store_dir(&store_name).to_string_lossy().to_string(),
   };
   let autolock_timeout_secs = match maybe_config {
     Some(ref config) => config.autolock_timeout.as_secs(),
@@ -35,15 +49,15 @@ pub fn init(maybe_config: Option<Config>) {
 
   let mut siv = create_tui();
 
-  if let Some(config) = maybe_config {
-    siv.set_user_data(config)
-  }
-
+  siv.set_user_data(service);
   siv.add_global_callback(Key::Esc, Cursive::quit);
 
   siv.add_layer(
     Dialog::around(
       LinearLayout::vertical()
+        .child(TextView::new("Store name"))
+        .child(EditView::new().content(store_name).disabled().with_id("store_name"))
+        .child(DummyView {})
         .child(TextView::new("Store directory"))
         .child(
           EditView::new()
@@ -84,6 +98,8 @@ macro_rules! try_with_dialog {
 }
 
 fn store_config(s: &mut Cursive) {
+  let service = s.user_data::<Arc<TrustlessService>>().unwrap().clone();
+  let store_name = s.find_id::<EditView>("store_name").unwrap().get_content();
   let store_path = expand_path(&s.find_id::<EditView>("store_dir").unwrap().get_content());
   let autolock_timeout_secs = s.find_id::<EditView>("store_dir").unwrap().get_content();
   let autolock_timeout = Duration::from_secs(try_with_dialog!(
@@ -91,9 +107,13 @@ fn store_config(s: &mut Cursive) {
     s,
     "Autolock timeout has to be a positive integer:\n{}"
   ));
-  let client_id = match s.user_data::<Config>() {
-    Some(previous) => previous.client_id.clone(),
-    _ => generate_id(64),
+  let client_id = match service.get_store_config(&store_name) {
+    Ok(previous) => previous.client_id.clone(),
+    Err(ServiceError::StoreNotFound(_)) => generate_id(64),
+    Err(err) => {
+      s.add_layer(Dialog::info(format!("Failed checking previous config.\n{}", err)));
+      return;
+    }
   };
 
   if store_path.is_empty() {
@@ -105,21 +125,22 @@ fn store_config(s: &mut Cursive) {
   let store_url = Url::from_directory_path(store_path).unwrap();
   let secrets_store_url = format!("multilane+{}", store_url.to_string());
 
-  let secrets_store = try_with_dialog!(
-    open_secrets_store(&secrets_store_url, &client_id, autolock_timeout),
-    s,
-    "Unable to open store {}:\n{}",
-    secrets_store_url
-  );
-  let identities = try_with_dialog!(secrets_store.identities(), s, "Unable to query identities:\n{}");
-
-  let config = Config {
+  let config = StoreConfig {
+    name: store_name.to_string(),
     client_id,
     store_url: secrets_store_url,
     autolock_timeout,
   };
 
-  try_with_dialog!(write_config(&config), s, "Failed to store config:\n{}");
+  try_with_dialog!(service.set_store_config(config), s, "Failed to store config:\n{}");
+
+  let secrets_store = try_with_dialog!(
+    service.open_store(&store_name),
+    s,
+    "Unable to open store {}:\n{}",
+    store_name
+  );
+  let identities = try_with_dialog!(secrets_store.identities(), s, "Unable to query identities:\n{}");
 
   if identities.is_empty() {
     s.pop_layer();

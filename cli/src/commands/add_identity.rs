@@ -1,6 +1,6 @@
 use crate::commands::generate_id;
 use crate::commands::tui::create_tui;
-use crate::config::Config;
+use crate::error::ExtResult;
 use atty::Stream;
 use cursive::event::Key;
 use cursive::traits::{Boxable, Identifiable};
@@ -11,6 +11,7 @@ use std::sync::Arc;
 use t_rust_less_lib::api::Identity;
 use t_rust_less_lib::memguard::SecretBytes;
 use t_rust_less_lib::secrets_store::SecretsStore;
+use t_rust_less_lib::service::TrustlessService;
 
 pub fn add_identity_dialog(siv: &mut Cursive, secrets_store: Arc<SecretsStore>, title: &str) {
   siv.set_user_data(secrets_store);
@@ -39,13 +40,15 @@ pub fn add_identity_dialog(siv: &mut Cursive, secrets_store: Arc<SecretsStore>, 
   )
 }
 
-pub fn add_identity(config: Config) {
+pub fn add_identity(service: Arc<TrustlessService>, store_name: String) {
   if !atty::is(Stream::Stdout) {
     println!("Please use a terminal");
     process::exit(1);
   }
 
-  let secrets_store = config.open_secrets_store();
+  let secrets_store = service
+    .open_store(&store_name)
+    .ok_or_exit(format!("Failed opening store {}: ", store_name));
   let mut siv = create_tui();
 
   siv.add_global_callback(Key::Esc, Cursive::quit);

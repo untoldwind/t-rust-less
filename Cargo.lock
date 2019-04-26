@@ -1327,6 +1327,7 @@ name = "t-rust-less-cli"
 version = "0.1.0"
 dependencies = [
  "atty 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "crossterm_style 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cursive 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",

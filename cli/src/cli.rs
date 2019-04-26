@@ -10,6 +10,13 @@ pub fn app() -> App<'static, 'static> {
         .long("debug")
         .help("Enable debug logs"),
     )
+    .arg(
+      Arg::with_name("store")
+        .long("store")
+        .value_name("name")
+        .number_of_values(1)
+        .help("Select store to use"),
+    )
     .subcommand(SubCommand::with_name("init").about("Initialize configuration and store (if necessary"))
     .subcommand(
       SubCommand::with_name("identities")
