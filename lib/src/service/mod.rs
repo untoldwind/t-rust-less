@@ -4,7 +4,7 @@ mod config;
 mod error;
 mod local;
 
-pub use self::config::{StoreConfig, config_file};
+pub use self::config::{config_file, StoreConfig};
 pub use self::error::*;
 
 use crate::secrets_store::SecretsStore;

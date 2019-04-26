@@ -1,4 +1,4 @@
-use clap::{App, Arg, SubCommand, AppSettings};
+use clap::{App, AppSettings, Arg, SubCommand};
 
 pub fn app() -> App<'static, 'static> {
   App::new("t-rust-less")
@@ -27,9 +27,16 @@ pub fn app() -> App<'static, 'static> {
         .subcommand(SubCommand::with_name("add").about("Add a new identity")),
     )
     .subcommand(SubCommand::with_name("status").about("Show current status of the password store"))
-    .subcommand(SubCommand::with_name("import").about("Import secrets entries").arg(
-      Arg::with_name("v1").long("v1").help("Import V1 format (from original trustless)")
-    ))
+    .subcommand(
+      SubCommand::with_name("import")
+        .about("Import secrets entries")
+        .arg(
+          Arg::with_name("v1")
+            .long("v1")
+            .help("Import V1 format (from original trustless)"),
+        )
+        .arg(Arg::with_name("file").help("File to import. If not set import will read from stdin")),
+    )
     .subcommand(SubCommand::with_name("export").about("Export an entire store"))
     .subcommand(SubCommand::with_name("lock").about("Lock the store"))
     .subcommand(SubCommand::with_name("unlock").about("Unlock the store"))

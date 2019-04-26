@@ -21,7 +21,8 @@ pub struct Config {
 
 pub fn config_file() -> PathBuf {
   let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-  dirs::config_dir().map(|configs| configs.join("t-rust-less"))
+  dirs::config_dir()
+    .map(|configs| configs.join("t-rust-less"))
     .unwrap_or_else(|| home_dir.join(".t-rust-less"))
     .join("config.toml")
 }

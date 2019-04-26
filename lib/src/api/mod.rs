@@ -37,6 +37,7 @@ pub enum SecretType {
   Licence,
   Wlan,
   Password,
+  #[serde(other)]
   Other,
 }
 

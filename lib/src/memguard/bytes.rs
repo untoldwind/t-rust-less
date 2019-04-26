@@ -69,6 +69,11 @@ impl SecretBytes {
     }
   }
 
+  pub fn with_capacity_for_chars(capacity_for_chars: usize) -> SecretBytes {
+    // UTF-8 chars may be 4 bytes long
+    Self::with_capacity(capacity_for_chars * 4)
+  }
+
   pub fn zeroed(size: usize) -> SecretBytes {
     unsafe {
       let ptr = alloc::malloc(size);
@@ -245,6 +250,19 @@ pub struct Ref<'a> {
   bytes: &'a SecretBytes,
 }
 
+impl<'a> Ref<'a> {
+  pub fn as_bytes(&self) -> &[u8] {
+    unsafe { slice::from_raw_parts(self.bytes.ptr.as_ptr(), self.bytes.size) }
+  }
+
+  pub fn as_str(&self) -> &str {
+    unsafe {
+      let bytes = slice::from_raw_parts(self.bytes.ptr.as_ptr(), self.bytes.size);
+      std::str::from_utf8_unchecked(bytes)
+    }
+  }
+}
+
 impl<'a> Drop for Ref<'a> {
   fn drop(&mut self) {
     self.bytes.unlock_read()
@@ -255,18 +273,55 @@ impl<'a> Deref for Ref<'a> {
   type Target = [u8];
 
   fn deref(&self) -> &Self::Target {
-    unsafe { slice::from_raw_parts(self.bytes.ptr.as_ptr(), self.bytes.size) }
+    self.as_bytes()
   }
 }
 
 impl<'a> AsRef<[u8]> for Ref<'a> {
   fn as_ref(&self) -> &[u8] {
-    unsafe { slice::from_raw_parts(self.bytes.ptr.as_ptr(), self.bytes.size) }
+    self.as_bytes()
   }
 }
 
 pub struct RefMut<'a> {
   bytes: &'a mut SecretBytes,
+}
+
+impl<'a> RefMut<'a> {
+  pub fn clear(&mut self) {
+    unsafe {
+      memory::memzero(self.bytes.ptr.as_ptr(), self.bytes.capacity);
+      self.bytes.size = 0;
+    }
+  }
+
+  pub fn append_char(&mut self, ch: char) {
+    let ch_len = ch.len_utf8();
+
+    assert!(ch_len + self.bytes.size <= self.bytes.capacity);
+
+    unsafe {
+      let bytes_with_extra = slice::from_raw_parts_mut(self.bytes.ptr.as_ptr(), self.bytes.size + ch_len);
+      ch.encode_utf8(&mut bytes_with_extra[self.bytes.size..]);
+    }
+    self.bytes.size += ch_len;
+  }
+
+  pub fn remove_char(&mut self) {
+    unsafe {
+      let bytes = slice::from_raw_parts_mut(self.bytes.ptr.as_ptr(), self.bytes.size);
+      let tail_len = match std::str::from_utf8_unchecked(&bytes).chars().last() {
+        Some(ch) => ch.len_utf8(),
+        None => return,
+      };
+      assert!(tail_len <= self.bytes.size);
+      for b in &mut bytes[self.bytes.size - tail_len..] {
+        *b = 0
+      }
+
+      self.bytes.size -= tail_len;
+    }
+  }
 }
 
 impl<'a> Drop for RefMut<'a> {
@@ -434,5 +489,45 @@ mod tests {
 
     assert_that(&random.len()).is_equal_to(32);
     assert_that(&random.borrow().as_ref().len()).is_equal_to(32);
+  }
+
+  #[test]
+  fn test_str_like_ops() {
+    let mut secret = SecretBytes::with_capacity_for_chars(20);
+
+    assert_that(&secret.len()).is_equal_to(0);
+    assert_that(&secret.capacity()).is_equal_to(80);
+
+    secret.borrow_mut().append_char('a');
+    assert_that(&secret.len()).is_equal_to(1);
+    secret.borrow_mut().append_char('ä');
+    assert_that(&secret.len()).is_equal_to(3);
+    assert_that(&secret.borrow().as_str().chars().count()).is_equal_to(2);
+    secret.borrow_mut().append_char('€');
+    assert_that(&secret.len()).is_equal_to(6);
+    assert_that(&secret.borrow().as_str().chars().count()).is_equal_to(3);
+    secret.borrow_mut().append_char('ß');
+    assert_that(&secret.len()).is_equal_to(8);
+    assert_that(&secret.borrow().as_str().chars().count()).is_equal_to(4);
+    assert_that(&secret.borrow().as_str()).is_equal_to("aä€ß");
+
+    secret.borrow_mut().remove_char();
+    assert_that(&secret.len()).is_equal_to(6);
+    assert_that(&secret.borrow().as_str().chars().count()).is_equal_to(3);
+    assert_that(&secret.borrow().as_str()).is_equal_to("aä€");
+
+    secret.borrow_mut().remove_char();
+    assert_that(&secret.len()).is_equal_to(3);
+    assert_that(&secret.borrow().as_str().chars().count()).is_equal_to(2);
+    assert_that(&secret.borrow().as_str()).is_equal_to("aä");
+
+    secret.borrow_mut().remove_char();
+    assert_that(&secret.len()).is_equal_to(1);
+
+    secret.borrow_mut().remove_char();
+    assert_that(&secret.len()).is_equal_to(0);
+
+    secret.borrow_mut().remove_char();
+    assert_that(&secret.len()).is_equal_to(0);
   }
 }

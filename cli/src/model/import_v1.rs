@@ -6,23 +6,19 @@ use t_rust_less_lib::memguard::weak::ZeroingString;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SecretV1 {
-  id: String,
+  pub id: String,
   #[serde(rename = "type")]
-  secret_type: SecretType,
-  versions: Vec<SecretVersionV1>,
+  pub secret_type: SecretType,
+  pub versions: Vec<SecretVersionV1>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SecretVersionV1 {
   pub timestamp: DateTime<Utc>,
   pub name: ZeroingString,
-  #[serde(default)]
-  pub tags: Vec<ZeroingString>,
-  #[serde(default)]
-  pub urls: Vec<ZeroingString>,
+  pub tags: Option<Vec<ZeroingString>>,
+  pub urls: Option<Vec<ZeroingString>>,
   pub properties: BTreeMap<String, ZeroingString>,
-  #[serde(default)]
-  pub attachments: Vec<SecretAttachment>,
-  #[serde(default)]
+  pub attachments: Option<Vec<SecretAttachment>>,
   pub deleted: bool,
 }

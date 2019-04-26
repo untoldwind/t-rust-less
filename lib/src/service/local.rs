@@ -70,7 +70,7 @@ impl TrustlessService for LocalTrustlessService {
     let store = open_secrets_store(
       &store_config.store_url,
       &store_config.client_id,
-  Duration::from_secs(    store_config.autolock_timeout_secs),
+      Duration::from_secs(store_config.autolock_timeout_secs),
     )?;
 
     opened_stores.insert(name.to_string(), store.clone());

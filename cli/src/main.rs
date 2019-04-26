@@ -9,7 +9,8 @@ mod cli;
 mod commands;
 mod config;
 mod error;
-mod model;
+pub mod model;
+pub mod view;
 
 fn uninitialized() {
   if atty::is(Stream::Stdout) {
@@ -62,20 +63,28 @@ fn main() {
     }
   };
 
-  if matches.subcommand_matches("status").is_some() {
-    commands::status(service, store_name);
-    return;
-  }
-  if let Some(sub_matches) = matches.subcommand_matches("identities") {
-    if sub_matches.subcommand_matches("add").is_some() {
-      commands::add_identity(service, store_name);
-      return;
+  match matches.subcommand() {
+    ("status", _) => commands::status(service, store_name),
+    ("identities", Some(sub_matches)) => match sub_matches.subcommand() {
+      ("add", _) => commands::add_identity(service, store_name),
+      ("list", _) => commands::list_identities(service, store_name),
+      (command, _) => {
+        println!("Command {} not implemented", command);
+        process::exit(1)
+      }
+    },
+    ("import", Some(sub_matches)) => {
+      let file_name = sub_matches.value_of("file");
+      if sub_matches.is_present("v1") {
+        commands::import_v1(service, store_name, file_name);
+      } else {
+        println!("Only v1 import supported yet");
+        process::exit(1)
+      }
     }
-    if sub_matches.subcommand_matches("list").is_some() {
-      commands::list_identities(service, store_name);
-      return;
+    (command, _) => {
+      println!("Command {} not implemented", command);
+      process::exit(1)
     }
   }
-
-
 }
