@@ -4,37 +4,26 @@ use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::path::PathBuf;
-use std::time::Duration;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct StoreConfig {
   pub name: String,
   pub store_url: String,
   pub client_id: String,
-  pub autolock_timeout: Duration,
+  pub autolock_timeout_secs: u64,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Config {
-  pub stores: HashMap<String, StoreConfig>,
   pub default_store: Option<String>,
-}
-
-pub fn default_store_dir() -> PathBuf {
-  let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-
-  dirs::document_dir().unwrap_or(home_dir).join("t-rust-less-store")
-}
-
-pub fn default_autolock_timeout() -> Duration {
-  Duration::from_secs(300)
+  pub stores: HashMap<String, StoreConfig>,
 }
 
 pub fn config_file() -> PathBuf {
   let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-  dirs::config_dir()
+  dirs::config_dir().map(|configs| configs.join("t-rust-less"))
     .unwrap_or_else(|| home_dir.join(".t-rust-less"))
-    .join("t-rust-less.toml")
+    .join("config.toml")
 }
 
 pub fn read_config() -> ServiceResult<Option<Config>> {

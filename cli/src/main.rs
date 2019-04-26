@@ -1,10 +1,9 @@
-use crate::config::config_file;
 use crate::error::ExtResult;
 use atty::Stream;
 use crossterm_style::{style, Color};
 use log::error;
 use std::process;
-use t_rust_less_lib::service::create_service;
+use t_rust_less_lib::service::{config_file, create_service};
 
 mod cli;
 mod commands;
@@ -77,4 +76,6 @@ fn main() {
       return;
     }
   }
+
+
 }

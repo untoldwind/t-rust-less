@@ -13,7 +13,6 @@ use crate::error::exit_with_error;
 use cursive::event::Key;
 use std::fs;
 use std::sync::Arc;
-use std::time::Duration;
 use t_rust_less_lib::service::{ServiceError, StoreConfig, TrustlessService};
 use url::Url;
 
@@ -43,7 +42,7 @@ pub fn init(service: Arc<TrustlessService>, maybe_store_name: Option<String>) {
     _ => default_store_dir(&store_name).to_string_lossy().to_string(),
   };
   let autolock_timeout_secs = match maybe_config {
-    Some(ref config) => config.autolock_timeout.as_secs(),
+    Some(ref config) => config.autolock_timeout_secs,
     _ => default_autolock_timeout().as_secs(),
   };
 
@@ -101,12 +100,12 @@ fn store_config(s: &mut Cursive) {
   let service = s.user_data::<Arc<TrustlessService>>().unwrap().clone();
   let store_name = s.find_id::<EditView>("store_name").unwrap().get_content();
   let store_path = expand_path(&s.find_id::<EditView>("store_dir").unwrap().get_content());
-  let autolock_timeout_secs = s.find_id::<EditView>("store_dir").unwrap().get_content();
-  let autolock_timeout = Duration::from_secs(try_with_dialog!(
-    autolock_timeout_secs.parse::<u64>(),
+  let autolock_timeout = s.find_id::<EditView>("autolock_timeout").unwrap().get_content();
+  let autolock_timeout_secs = try_with_dialog!(
+    autolock_timeout.parse::<u64>(),
     s,
     "Autolock timeout has to be a positive integer:\n{}"
-  ));
+  );
   let client_id = match service.get_store_config(&store_name) {
     Ok(previous) => previous.client_id.clone(),
     Err(ServiceError::StoreNotFound(_)) => generate_id(64),
@@ -124,12 +123,11 @@ fn store_config(s: &mut Cursive) {
 
   let store_url = Url::from_directory_path(store_path).unwrap();
   let secrets_store_url = format!("multilane+{}", store_url.to_string());
-
   let config = StoreConfig {
     name: store_name.to_string(),
     client_id,
     store_url: secrets_store_url,
-    autolock_timeout,
+    autolock_timeout_secs,
   };
 
   try_with_dialog!(service.set_store_config(config), s, "Failed to store config:\n{}");

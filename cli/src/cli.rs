@@ -1,9 +1,10 @@
-use clap::{App, Arg, SubCommand};
+use clap::{App, Arg, SubCommand, AppSettings};
 
 pub fn app() -> App<'static, 'static> {
   App::new("t-rust-less")
     .version("0.1")
     .about("Manages passwords")
+    .setting(AppSettings::ArgRequiredElseHelp)
     .arg(
       Arg::with_name("debug")
         .short("D")
@@ -17,7 +18,7 @@ pub fn app() -> App<'static, 'static> {
         .number_of_values(1)
         .help("Select store to use"),
     )
-    .subcommand(SubCommand::with_name("init").about("Initialize configuration and store (if necessary"))
+    .subcommand(SubCommand::with_name("init").about("Initialize configuration and store (if necessary)"))
     .subcommand(
       SubCommand::with_name("identities")
         .alias("ids")
@@ -26,7 +27,9 @@ pub fn app() -> App<'static, 'static> {
         .subcommand(SubCommand::with_name("add").about("Add a new identity")),
     )
     .subcommand(SubCommand::with_name("status").about("Show current status of the password store"))
-    .subcommand(SubCommand::with_name("import").about("Import secrets entries"))
+    .subcommand(SubCommand::with_name("import").about("Import secrets entries").arg(
+      Arg::with_name("v1").long("v1").help("Import V1 format (from original trustless)")
+    ))
     .subcommand(SubCommand::with_name("export").about("Export an entire store"))
     .subcommand(SubCommand::with_name("lock").about("Lock the store"))
     .subcommand(SubCommand::with_name("unlock").about("Unlock the store"))
