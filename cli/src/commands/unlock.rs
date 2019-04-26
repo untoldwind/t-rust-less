@@ -10,6 +10,19 @@ use std::sync::Arc;
 use t_rust_less_lib::api::Identity;
 use t_rust_less_lib::memguard::SecretBytes;
 use t_rust_less_lib::secrets_store::SecretsStore;
+use t_rust_less_lib::service::TrustlessService;
+
+pub fn unlock(service: Arc<TrustlessService>, store_name: String) {
+  let secrets_store = service
+      .open_store(&store_name)
+      .ok_or_exit(format!("Failed opening store {}: ", store_name));
+
+  let status = secrets_store.status().ok_or_exit("Get status");
+
+  if status.locked {
+    unlock_store(&secrets_store, &store_name);
+  }
+}
 
 pub fn unlock_store(secrets_store: &Arc<SecretsStore>, name: &str) {
   if !atty::is(Stream::Stdout) {

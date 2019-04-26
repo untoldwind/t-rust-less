@@ -115,7 +115,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     }
     let mut index = self.read_index(identity_id, &private_keys)?;
     let change_logs = self.block_store.change_logs()?;
-    let index_updated = index.process_change_logs(&change_logs, |block_id| self.get_secret_version(block_id))?;
+    let index_updated = index.process_change_logs(&change_logs, |block_id| self.get_secret_version(identity_id, &private_keys, block_id))?;
 
     if index_updated {
       info!("Index has been updated");
@@ -295,7 +295,7 @@ impl SecretsStore for MultiLaneSecretsStore {
       .current_blocks
       .get(secret_id)
       .ok_or(SecretStoreError::NotFound)?;
-    let current = self.get_secret_version(&block_id)?.ok_or(SecretStoreError::NotFound)?;
+    let current = self.get_secret_version(&unlocked_user.identity.id, &unlocked_user.private_keys, &block_id)?.ok_or(SecretStoreError::NotFound)?;
     let mut password_strengths = HashMap::with_capacity(current.secret_type.password_properties().len());
 
     for property in current.secret_type.password_properties() {
@@ -402,13 +402,10 @@ impl MultiLaneSecretsStore {
     Ok(self.block_store.store_index(identity_id, &block_content)?)
   }
 
-  fn get_secret_version(&self, block_id: &str) -> SecretStoreResult<Option<SecretVersion>> {
-    let maybe_unlocked_user = self.unlocked_user.read()?;
-    let unlocked_user = maybe_unlocked_user.as_ref().ok_or(SecretStoreError::Locked)?;
-
+  fn get_secret_version(&self, identity_id: &str, private_keys: &[(KeyType, PrivateKey)], block_id: &str) -> SecretStoreResult<Option<SecretVersion>> {
     let block_words = self.block_store.get_block(block_id)?;
 
-    match self.decrypt_block(&unlocked_user.identity.id, &unlocked_user.private_keys, block_words)? {
+    match self.decrypt_block(identity_id, &private_keys, block_words)? {
       Some(padded_content) => {
         let borrowed = padded_content.borrow();
         let version = serde_json::from_slice(NonZeroPadding::unpad_data(&borrowed)?)?;

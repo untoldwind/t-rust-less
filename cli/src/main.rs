@@ -73,6 +73,7 @@ fn main() {
         process::exit(1)
       }
     },
+    ("unlock", _) => commands::unlock(service, store_name),
     ("import", Some(sub_matches)) => {
       let file_name = sub_matches.value_of("file");
       if sub_matches.is_present("v1") {
