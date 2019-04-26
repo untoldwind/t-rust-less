@@ -451,15 +451,13 @@ impl MultiLaneSecretsStore {
     }
 
     let mut content = SecretBytes::from_secured(index_block.get_content()?);
-    for cipher in &self.ciphers {
-      let header = match cipher.find_matching_header(&headers)? {
-        Some(header) => header,
-        None => continue,
-      };
+    for idx in (0..headers.len()).rev() {
+      let header = headers.get(idx);
+      let cipher = self.find_cipher(header.get_type()?).ok_or_else(|| SecretStoreError::Cipher("Unknown cipher".to_string()))?;
       let private_key = private_keys
-        .iter()
-        .find(|p| p.0 == cipher.key_type())
-        .ok_or_else(|| SecretStoreError::MissingPrivateKey(cipher.name()))?;
+          .iter()
+          .find(|p| p.0 == cipher.key_type())
+          .ok_or_else(|| SecretStoreError::MissingPrivateKey(cipher.name()))?;
 
       let next_content = cipher.decrypt((identity_id, &private_key.1), header, &content.borrow())?;
       content = next_content;
