@@ -40,5 +40,4 @@ pub fn app() -> App<'static, 'static> {
     .subcommand(SubCommand::with_name("export").about("Export an entire store"))
     .subcommand(SubCommand::with_name("lock").about("Lock the store"))
     .subcommand(SubCommand::with_name("unlock").about("Unlock the store"))
-    .subcommand(SubCommand::with_name("daemon").about("Start background daemon"))
 }

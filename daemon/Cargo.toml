@@ -1,0 +1,21 @@
+[package]
+name = "t-rust-less-daemon"
+version = "0.1.0"
+authors = ["Untoldwind <landru@untoldwind.net>"]
+build = "build.rs"
+edition = "2018"
+
+[dependencies]
+log = "0"
+env_logger = "0"
+clap = { version = "2", default-features = false, features = ["suggestions", "color"]}
+t-rust-less-lib = { path = "../lib" }
+capnp = "0"
+capnp-rpc = "0"
+dirs = "1"
+
+[target.'cfg(unix)'.dependencies]
+tokio-uds = "0"
+
+[build-dependencies]
+clap = { version = "2", default-features = false, features = ["suggestions", "color"]}

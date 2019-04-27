@@ -1,5 +1,4 @@
 mod add_identity;
-mod daemon;
 mod export;
 mod import;
 mod init;
@@ -10,7 +9,6 @@ pub mod tui;
 mod unlock;
 
 pub use self::add_identity::*;
-pub use self::daemon::*;
 pub use self::export::*;
 pub use self::import::*;
 pub use self::init::*;

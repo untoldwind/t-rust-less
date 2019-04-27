@@ -14,7 +14,6 @@ openssl = { version = "0", features = ["vendored"] }
 byteorder = "1.2.4"
 chrono = { version = "0", features = ["serde"] }
 url = "1"
-circular = "0"
 num-derive = "0"
 num-traits = "0"
 sha2 = "0"

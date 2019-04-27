@@ -13,3 +13,9 @@ pub mod service;
 mod secrets_store_capnp {
   include!(concat!(env!("OUT_DIR"), "/src/secrets_store/secrets_store_capnp.rs"));
 }
+
+#[allow(dead_code)]
+#[allow(clippy::wrong_self_convention)]
+pub mod service_capnp {
+  include!(concat!(env!("OUT_DIR"), "/src/service/service_capnp.rs"));
+}
