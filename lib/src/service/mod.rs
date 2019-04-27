@@ -31,7 +31,7 @@ pub fn create_service() -> ServiceResult<Arc<TrustlessService>> {
   #[cfg(unix)]
   {
     if let Some(remote) = self::unix::try_remote_service()? {
-      return Ok(Arc::new(remote))
+      return Ok(Arc::new(remote));
     }
   }
   Ok(Arc::new(self::local::LocalTrustlessService::new()?))

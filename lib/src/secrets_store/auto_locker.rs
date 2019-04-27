@@ -11,7 +11,7 @@ pub struct Autolocker<T> {
 
 impl<T> Autolocker<T>
 where
-  T: SecretsStore + 'static,
+  T: SecretsStore + Sync + Send + 'static,
 {
   pub fn spawn_for(secrets_store: &Arc<T>) {
     let auto_locker = Autolocker {

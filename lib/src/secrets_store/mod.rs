@@ -19,7 +19,7 @@ pub use self::error::{SecretStoreError, SecretStoreResult};
 use crate::block_store::open_block_store;
 use crate::memguard::SecretBytes;
 
-pub trait SecretsStore: Send + Sync {
+pub trait SecretsStore {
   fn status(&self) -> SecretStoreResult<Status>;
 
   fn lock(&self) -> SecretStoreResult<()>;

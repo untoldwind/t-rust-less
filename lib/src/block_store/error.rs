@@ -1,7 +1,8 @@
+use serde_derive::{Deserialize, Serialize};
 use std::convert::From;
 use std::fmt;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StoreError {
   InvalidBlock(String),
   InvalidStoreUrl(String),

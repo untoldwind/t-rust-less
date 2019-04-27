@@ -1,7 +1,8 @@
 use crate::block_store::StoreError;
+use serde_derive::{Deserialize, Serialize};
 use std::fmt;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SecretStoreError {
   Locked,
   Forbidden,
@@ -53,7 +54,6 @@ error_convert_from!(argon2::Error, SecretStoreError, Cipher(display));
 error_convert_from!(openssl::error::ErrorStack, SecretStoreError, Cipher(display));
 error_convert_from!(std::io::Error, SecretStoreError, IO(display));
 error_convert_from!(chacha20_poly1305_aead::DecryptError, SecretStoreError, Cipher(display));
-error_convert_from!(capnp::Error, SecretStoreError, IO(display));
 error_convert_from!(capnp::NotInSchema, SecretStoreError, IO(display));
 error_convert_from!(serde_json::Error, SecretStoreError, Json(display));
 error_convert_from!(StoreError, SecretStoreError, BlockStore(direct));
@@ -61,5 +61,32 @@ error_convert_from!(StoreError, SecretStoreError, BlockStore(direct));
 impl<T> From<std::sync::PoisonError<T>> for SecretStoreError {
   fn from(error: std::sync::PoisonError<T>) -> Self {
     SecretStoreError::Mutex(format!("{}", error))
+  }
+}
+
+impl From<capnp::Error> for SecretStoreError {
+  fn from(error: capnp::Error) -> Self {
+    match error.kind {
+      capnp::ErrorKind::Failed => match serde_json::from_str::<SecretStoreError>(&error.description) {
+        Ok(service_error) => service_error,
+        _ => SecretStoreError::IO(format!("{}", error)),
+      },
+      _ => SecretStoreError::IO(format!("{}", error)),
+    }
+  }
+}
+
+impl Into<capnp::Error> for SecretStoreError {
+  fn into(self) -> capnp::Error {
+    match serde_json::to_string(&self) {
+      Ok(json) => capnp::Error {
+        kind: capnp::ErrorKind::Failed,
+        description: json,
+      },
+      _ => capnp::Error {
+        kind: capnp::ErrorKind::Failed,
+        description: format!("{}", self),
+      },
+    }
   }
 }
