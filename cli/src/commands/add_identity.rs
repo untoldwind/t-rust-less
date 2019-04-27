@@ -1,6 +1,7 @@
 use crate::commands::generate_id;
 use crate::commands::tui::create_tui;
 use crate::error::ExtResult;
+use crate::view::PasswordView;
 use atty::Stream;
 use cursive::event::Key;
 use cursive::traits::{Boxable, Identifiable};
@@ -9,7 +10,6 @@ use cursive::Cursive;
 use std::process;
 use std::sync::Arc;
 use t_rust_less_lib::api::Identity;
-use t_rust_less_lib::memguard::SecretBytes;
 use t_rust_less_lib::secrets_store::SecretsStore;
 use t_rust_less_lib::service::TrustlessService;
 
@@ -28,11 +28,11 @@ pub fn add_identity_dialog(siv: &mut Cursive, secrets_store: Arc<SecretsStore>, 
         .child(EditView::new().with_id("email").fixed_width(50))
         .child(DummyView {})
         .child(TextView::new("Passphrase"))
-        .child(EditView::new().secret().with_id("passphrase")),
+        .child(PasswordView::new(100).with_id("passphrase")),
     )
     .title(title)
-    .button("Abort", Cursive::quit)
     .button("Create", create_identity)
+    .button("Abort", Cursive::quit)
     .padding_left(5)
     .padding_right(5)
     .padding_top(1)
@@ -64,10 +64,7 @@ fn create_identity(s: &mut Cursive) {
     name: s.find_id::<EditView>("name").unwrap().get_content().to_string(),
     email: s.find_id::<EditView>("email").unwrap().get_content().to_string(),
   };
-  // TODO: EditView is anything but secured. Still have to figure out how to remove
-  //       the most curcial information from memory. Potentially have to create own
-  //       EditView for this.
-  let passphrase = SecretBytes::from_secured(s.find_id::<EditView>("passphrase").unwrap().get_content().as_bytes());
+  let passphrase = s.find_id::<PasswordView>("passphrase").unwrap().get_content();
 
   if identity.id.is_empty() {
     s.add_layer(Dialog::info("Id must not be empty"));

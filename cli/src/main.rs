@@ -65,6 +65,7 @@ fn main() {
 
   match matches.subcommand() {
     ("status", _) => commands::status(service, store_name),
+    ("list", _) => commands::list_secrets(service, store_name),
     ("identities", Some(sub_matches)) => match sub_matches.subcommand() {
       ("add", _) => commands::add_identity(service, store_name),
       ("list", _) => commands::list_identities(service, store_name),

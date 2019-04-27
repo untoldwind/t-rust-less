@@ -97,6 +97,10 @@ impl PasswordView {
     self.with(|v| v.set_on_submit(callback))
   }
 
+  pub fn get_content(&mut self) -> SecretBytes {
+    self.content.clone()
+  }
+
   fn append(&mut self, ch: char) {
     if ch.len_utf8() + self.content.len() > self.content.capacity() {
       // Ignore all chars beyond limit

@@ -1,14 +1,14 @@
 use crate::commands::tui::create_tui;
 use crate::error::ExtResult;
+use crate::view::PasswordView;
 use atty::Stream;
 use cursive::event::Key;
 use cursive::traits::{Boxable, Identifiable};
-use cursive::views::{Dialog, DummyView, EditView, LinearLayout, SelectView, TextView};
+use cursive::views::{Dialog, DummyView, LinearLayout, SelectView, TextView};
 use cursive::Cursive;
 use std::process;
 use std::sync::Arc;
 use t_rust_less_lib::api::Identity;
-use t_rust_less_lib::memguard::SecretBytes;
 use t_rust_less_lib::secrets_store::SecretsStore;
 use t_rust_less_lib::service::TrustlessService;
 
@@ -68,16 +68,18 @@ fn unlock_dialog(secrets_store: &Arc<SecretsStore>, name: &str, identities: Vec<
         )
         .child(DummyView {})
         .child(TextView::new("Passphrase"))
-        .child(EditView::new().secret().with_id("passphrase")),
+        .child(PasswordView::new(100).on_submit(do_unlock_store).with_id("passphrase")),
     )
     .title(format!("Unlock store {}", name))
-    .button("Abort", Cursive::quit)
     .button("Unlock", do_unlock_store)
+    .button("Abort", Cursive::quit)
     .padding_left(5)
     .padding_right(5)
     .padding_top(1)
     .padding_bottom(1),
   );
+
+  siv.focus_id("passphrase").unwrap();
 
   siv.run();
 }
@@ -85,7 +87,7 @@ fn unlock_dialog(secrets_store: &Arc<SecretsStore>, name: &str, identities: Vec<
 fn do_unlock_store(s: &mut Cursive) {
   let secrets_store = s.user_data::<Arc<SecretsStore>>().unwrap().clone();
   let maybe_identity = s.find_id::<SelectView>("identity").unwrap().selection();
-  let passphrase = SecretBytes::from_secured(s.find_id::<EditView>("passphrase").unwrap().get_content().as_bytes());
+  let passphrase = s.find_id::<PasswordView>("passphrase").unwrap().get_content();
   let identity_id = match maybe_identity {
     Some(id) => id,
     _ => {

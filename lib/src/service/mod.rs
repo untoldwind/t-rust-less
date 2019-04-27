@@ -2,7 +2,11 @@ use std::sync::Arc;
 
 mod config;
 mod error;
-mod local;
+pub mod local;
+mod remote;
+
+#[cfg(unix)]
+pub mod unix;
 
 pub use self::config::{config_file, StoreConfig};
 pub use self::error::*;
@@ -24,6 +28,11 @@ pub trait TrustlessService {
 }
 
 pub fn create_service() -> ServiceResult<Arc<TrustlessService>> {
-  // TODO: Some magic to figure out if we are remote or local (atm there is only local anyway
+  #[cfg(unix)]
+  {
+    if let Some(remote) = self::unix::try_remote_service()? {
+      return Ok(Arc::new(remote))
+    }
+  }
   Ok(Arc::new(self::local::LocalTrustlessService::new()?))
 }

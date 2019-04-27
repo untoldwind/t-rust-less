@@ -7,6 +7,7 @@ pub enum ServiceError {
   IO(String),
   Mutex(String),
   StoreNotFound(String),
+  Capnp(String),
 }
 
 impl fmt::Display for ServiceError {
@@ -16,6 +17,7 @@ impl fmt::Display for ServiceError {
       ServiceError::IO(error) => write!(f, "IO: {}", error)?,
       ServiceError::Mutex(error) => write!(f, "Mutex: {}", error)?,
       ServiceError::StoreNotFound(name) => write!(f, "Store with name {} not found", name)?,
+      ServiceError::Capnp(error) => write!(f, "Remote protocol error: {}", error)?,
     }
     Ok(())
   }
@@ -26,6 +28,7 @@ pub type ServiceResult<T> = Result<T, ServiceError>;
 error_convert_from!(std::io::Error, ServiceError, IO(display));
 error_convert_from!(toml::de::Error, ServiceError, IO(display));
 error_convert_from!(SecretStoreError, ServiceError, SecretsStore(direct));
+error_convert_from!(capnp::Error, ServiceError, Capnp(display));
 
 impl<T> From<std::sync::PoisonError<T>> for ServiceError {
   fn from(error: std::sync::PoisonError<T>) -> Self {
