@@ -6,7 +6,7 @@ fn main() {
     .expect("compiling schema");
 
   capnpc::CompilerCommand::new()
-    .file("src/service/service.capnp")
+    .file("src/api/api.capnp")
     .edition(capnpc::RustEdition::Rust2018)
     .run()
     .expect("compiling schema");

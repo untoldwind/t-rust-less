@@ -1,5 +1,7 @@
 @0x89ae7248ac2e8067;
 
+using Api = import "../api/api.capnp";
+
 enum KeyDerivationType {
     argon2 @0;
 }
@@ -69,24 +71,9 @@ struct Index {
         blockId @2 : Text;
     }
 
-    enum SecretType {
-        login @0;
-        note @1;
-        licence @2;
-        wlan @3;
-        password @4;
-        other @5;
-    }
-
     struct Entry {
-        id @0 : Text;
-        timestamp @1 : Int64;
-        name @2 : Text;
-        type @3 : SecretType;
-        tags @4 : List(Text);
-        urls @5 : List(Text);
-        deleted @6 : Bool;
-        blockIds @7 : List(Text);
-        currentBlockId @8 : Text;
+        entry @0 : Api.SecretEntry;
+        blockIds @1 : List(Text);
+        currentBlockId @2 : Text;
     }
 }

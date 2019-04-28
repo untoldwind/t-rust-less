@@ -12,7 +12,7 @@ mod unix;
 use unix::run_server;
 
 use log::info;
-use t_rust_less_lib::service_capnp::service;
+use t_rust_less_lib::api_capnp::service;
 
 fn main() {
   let matches = cli::app().get_matches();

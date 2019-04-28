@@ -1,9 +1,9 @@
 use crate::error::ExtResult;
 use crate::secrets_store_impl::SecretsStoreImpl;
 use capnp::capability::Promise;
+use t_rust_less_lib::api_capnp::{secrets_store, service};
 use t_rust_less_lib::service::local::LocalTrustlessService;
 use t_rust_less_lib::service::TrustlessService;
-use t_rust_less_lib::service_capnp::{secrets_store, service};
 
 pub struct ServiceImpl {
   service: LocalTrustlessService,

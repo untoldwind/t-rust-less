@@ -1,15 +1,13 @@
-use crate::api::{Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
+use crate::api::{Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status, read_option};
+use crate::api_capnp::{secrets_store, service};
 use crate::memguard::SecretBytes;
 use crate::secrets_store::{SecretStoreResult, SecretsStore};
 use crate::service::{ServiceResult, StoreConfig, TrustlessService};
-use crate::service_capnp::{identity, option, secrets_store, service};
 use futures::Future;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 use tokio::runtime::current_thread;
-use chrono::Utc;
-use chrono::offset::TimeZone;
 
 pub struct RemoteTrustlessService {
   client: service::Client,
@@ -34,9 +32,8 @@ impl TrustlessService for RemoteTrustlessService {
         .get()?
         .get_store_names()?
         .into_iter()
-        .flatten()
-        .map(|name| name.to_string())
-        .collect::<Vec<String>>();
+        .map(|name| name.map(|n| n.to_string()))
+        .collect::<capnp::Result<Vec<String>>>()?;
       Ok(names)
     }))?;
 
@@ -102,36 +99,53 @@ impl SecretsStore for RemoteSecretsStore {
     let mut runtime = self.runtime.borrow_mut();
     let request = self.client.status_request();
     let result = runtime.block_on(request.send().promise.and_then(|response| {
-      let status = response.get()?.get_status()?;
-
-      Ok(Status {
-        locked: status.get_locked(),
-        unlocked_by: read_option(status.get_unlocked_by()?)?.map(read_identity).transpose()?,
-        autolock_at: {
-          let autolock_at = status.get_autolock_at();
-          if autolock_at == std::i64::MIN {
-            None
-          } else {
-            Some(Utc.timestamp_millis(autolock_at))
-          }
-        },
-        version: status.get_version()?.to_string(),
-      })
+      Ok(Status::from_reader(response.get()?.get_status()?)?)
     }))?;
 
     Ok(result)
   }
 
   fn lock(&self) -> SecretStoreResult<()> {
-    unimplemented!()
+    let mut runtime = self.runtime.borrow_mut();
+    let request = self.client.lock_request();
+
+    runtime.block_on(request.send().promise.and_then(|response| {
+      response.get()?;
+
+      Ok(())
+    }))?;
+
+    Ok(())
   }
 
   fn unlock(&self, identity_id: &str, passphrase: SecretBytes) -> SecretStoreResult<()> {
-    unimplemented!()
+    let mut runtime = self.runtime.borrow_mut();
+    let mut request = self.client.unlock_request();
+    request.get().set_passphrase(&passphrase.borrow());
+
+    runtime.block_on(request.send().promise.and_then(|response| {
+      response.get()?;
+
+      Ok(())
+    }))?;
+
+    Ok(())
   }
 
   fn identities(&self) -> SecretStoreResult<Vec<Identity>> {
-    unimplemented!()
+    let mut runtime = self.runtime.borrow_mut();
+    let request = self.client.identities_request();
+    let result = runtime.block_on(request.send().promise.and_then(|response| {
+      let names = response
+        .get()?
+        .get_identities()?
+        .into_iter()
+        .map(Identity::from_reader)
+        .collect::<capnp::Result<Vec<Identity>>>()?;
+      Ok(names)
+    }))?;
+
+    Ok(result)
   }
 
   fn add_identity(&self, identity: Identity, passphrase: SecretBytes) -> SecretStoreResult<()> {
@@ -153,22 +167,4 @@ impl SecretsStore for RemoteSecretsStore {
   fn get(&self, secret_id: &str) -> SecretStoreResult<Secret> {
     unimplemented!()
   }
-}
-
-fn read_option<T>(reader: option::Reader<T>) -> capnp::Result<Option<<T as capnp::traits::Owned<'_>>::Reader>>
-where
-  T: for<'c> capnp::traits::Owned<'c>,
-{
-  match reader.which()? {
-    option::Some(inner) => Ok(Some(inner?)),
-    option::None(_) => Ok(None),
-  }
-}
-
-fn read_identity(reader: identity::Reader) -> capnp::Result<Identity> {
-  Ok(Identity {
-    id: reader.get_id()?.to_string(),
-    name: reader.get_name()?.to_string(),
-    email: reader.get_email()?.to_string(),
-  })
 }

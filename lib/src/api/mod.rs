@@ -1,8 +1,9 @@
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 
-use crate::memguard::weak::{ZeroingBytes, ZeroingString};
-use chrono::{DateTime, Utc};
+use crate::api_capnp::{self, identity, secret_entry, option, status};
+use crate::memguard::weak::{ZeroingBytes, ZeroingString, ZeroingStringExt};
+use chrono::{DateTime, TimeZone, Utc};
 use serde_derive::{Deserialize, Serialize};
 
 /// Status information of a secrets store
@@ -15,6 +16,41 @@ pub struct Status {
   pub version: String,
 }
 
+impl Status {
+  pub fn from_reader(reader: status::Reader) -> capnp::Result<Self> {
+    Ok(Status {
+      locked: reader.get_locked(),
+      unlocked_by: read_option(reader.get_unlocked_by()?)?
+          .map(Identity::from_reader)
+          .transpose()?,
+      autolock_at: {
+        let autolock_at = reader.get_autolock_at();
+        if autolock_at == std::i64::MIN {
+          None
+        } else {
+          Some(Utc.timestamp_millis(autolock_at))
+        }
+      },
+      version: reader.get_version()?.to_string(),
+    })
+  }
+
+  pub fn to_builder(&self, mut builder: status::Builder) -> capnp::Result<()> {
+    builder.set_locked(self.locked);
+    match &self.unlocked_by {
+      Some(identity) => identity.to_builder(builder.reborrow().get_unlocked_by()?.init_some()),
+      None => builder.reborrow().get_unlocked_by()?.set_none(()),
+    }
+    match &self.autolock_at {
+      Some(autolock_at) => builder.set_autolock_at(autolock_at.timestamp_millis()),
+      None => builder.set_autolock_at(std::i64::MIN),
+    }
+    builder.set_version(&self.version);
+
+    Ok(())
+  }
+}
+
 /// An Identity that might be able to unlock a
 /// secrets store and be a recipient of secrets.
 ///
@@ -23,6 +59,22 @@ pub struct Identity {
   pub id: String,
   pub name: String,
   pub email: String,
+}
+
+impl Identity {
+  pub fn from_reader(reader: identity::Reader) -> capnp::Result<Self> {
+    Ok(Identity {
+      id: reader.get_id()?.to_string(),
+      name: reader.get_name()?.to_string(),
+      email: reader.get_email()?.to_string(),
+    })
+  }
+
+  pub fn to_builder(&self, mut builder: identity::Builder) {
+    builder.set_id(&self.id);
+    builder.set_name(&self.name);
+    builder.set_email(&self.email);
+  }
 }
 
 /// General type of a secret.
@@ -53,6 +105,28 @@ impl SecretType {
       SecretType::Wlan => &["password"],
       SecretType::Password => &["password"],
       SecretType::Other => &[],
+    }
+  }
+
+  pub fn from_reader(api: api_capnp::SecretType) -> Self {
+    match api {
+      api_capnp::SecretType::Login => SecretType::Login,
+      api_capnp::SecretType::Licence => SecretType::Licence,
+      api_capnp::SecretType::Wlan => SecretType::Wlan,
+      api_capnp::SecretType::Note => SecretType::Note,
+      api_capnp::SecretType::Password => SecretType::Password,
+      api_capnp::SecretType::Other => SecretType::Other,
+    }
+  }
+
+  pub fn to_builder(&self) -> api_capnp::SecretType {
+    match self {
+      SecretType::Login => api_capnp::SecretType::Login,
+      SecretType::Licence => api_capnp::SecretType::Licence,
+      SecretType::Note => api_capnp::SecretType::Note,
+      SecretType::Wlan => api_capnp::SecretType::Wlan,
+      SecretType::Password => api_capnp::SecretType::Password,
+      SecretType::Other => api_capnp::SecretType::Other,
     }
   }
 }
@@ -91,6 +165,44 @@ pub struct SecretEntry {
   pub urls: Vec<ZeroingString>,
   pub timestamp: DateTime<Utc>,
   pub deleted: bool,
+}
+
+impl SecretEntry {
+  pub fn from_reader(reader: secret_entry::Reader) -> capnp::Result<Self> {
+    Ok(SecretEntry {
+      id: reader.get_id()?.to_string(),
+      timestamp: Utc.timestamp_millis(reader.get_timestamp()),
+      name: reader.get_name()?.to_zeroing(),
+      secret_type: SecretType::from_reader(reader.get_type()?),
+      tags: reader
+        .get_tags()?
+        .into_iter()
+        .map(|t| t.map(|t| t.to_zeroing()))
+        .collect::<capnp::Result<Vec<ZeroingString>>>()?,
+      urls: reader
+        .get_urls()?
+        .into_iter()
+        .map(|u| u.map(|u| u.to_zeroing()))
+        .collect::<capnp::Result<Vec<ZeroingString>>>()?,
+      deleted: reader.get_deleted(),
+    })
+  }
+
+  pub fn to_builder(&self, mut builder: secret_entry::Builder) {
+    builder.set_id(&self.id);
+    builder.set_timestamp(self.timestamp.timestamp_millis());
+    builder.set_name(&self.name);
+    builder.set_type(self.secret_type.to_builder());
+    let mut tags = builder.reborrow().init_tags(self.tags.len() as u32);
+    for (idx, tag) in self.tags.iter().enumerate() {
+      tags.set(idx as u32, tag)
+    }
+    let mut urls = builder.reborrow().init_urls(self.urls.len() as u32);
+    for (idx, url) in self.urls.iter().enumerate() {
+      urls.set(idx as u32, url)
+    }
+    builder.set_deleted(self.deleted);
+  }
 }
 
 /// Representation of a filter match to a SecretEntry.
@@ -208,4 +320,14 @@ pub struct Secret {
   pub current: SecretVersion,
   pub has_versions: bool,
   pub password_strengths: HashMap<String, PasswordStrength>,
+}
+
+pub fn read_option<T>(reader: option::Reader<T>) -> capnp::Result<Option<<T as capnp::traits::Owned<'_>>::Reader>>
+  where
+      T: for<'c> capnp::traits::Owned<'c>,
+{
+  match reader.which()? {
+    option::Some(inner) => Ok(Some(inner?)),
+    option::None(_) => Ok(None),
+  }
 }

@@ -1,6 +1,6 @@
+use crate::api_capnp::service;
 use crate::service::remote::RemoteTrustlessService;
 use crate::service::ServiceResult;
-use crate::service_capnp::service;
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
 use futures::Future;
 use std::path::PathBuf;

@@ -1,5 +1,24 @@
 @0x981c355b6da046c4; 
 
+enum SecretType {
+    login @0;
+    note @1;
+    licence @2;
+    wlan @3;
+    password @4;
+    other @5;
+}
+
+struct SecretEntry {
+    id @0 : Text;
+    timestamp @1 : Int64;
+    name @2 : Text;
+    type @3 : SecretType;
+    tags @4 : List(Text);
+    urls @5 : List(Text);
+    deleted @6 : Bool;
+}
+
 struct StoreConfig {
     name @0 : Text;
     storeUrl @1 : Text;

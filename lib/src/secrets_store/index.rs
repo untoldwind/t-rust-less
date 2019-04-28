@@ -1,11 +1,11 @@
-use crate::api::{SecretEntry, SecretEntryMatch, SecretList, SecretListFilter, SecretType, SecretVersion};
+use crate::api::{SecretEntry, SecretEntryMatch, SecretList, SecretListFilter, SecretVersion};
+use crate::api_capnp::secret_entry;
 use crate::block_store::{Change, ChangeLog, Operation};
-use crate::memguard::weak::{ZeroingHeapAllocator, ZeroingString, ZeroingStringExt};
+use crate::memguard::weak::{ZeroingHeapAllocator, ZeroingStringExt};
 use crate::memguard::SecretWords;
 use crate::secrets_store::SecretStoreResult;
 use crate::secrets_store_capnp::index;
 use capnp::{message, serialize, text_list};
-use chrono::prelude::*;
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 
@@ -46,7 +46,8 @@ impl Index {
     let mut entries = Vec::new();
     let mut all_tags = HashSet::new();
 
-    for entry in index.get_entries()? {
+    for index_entry in index.get_entries()? {
+      let entry = index_entry.get_entry()?;
       for maybe_tag in entry.get_tags()? {
         let tag = maybe_tag?;
         if !all_tags.contains(tag) {
@@ -92,20 +93,21 @@ impl Index {
       let mut entry_pos = 0;
       let mut new_entries = new_index.init_entries((to_keep.len() + additions) as u32);
 
-      for old_entry in old_index.get_entries()? {
+      for old_index_entry in old_index.get_entries()? {
+        let old_entry = old_index_entry.get_entry()?;
         let secret_id = old_entry.get_id()?;
         if !to_keep.contains(secret_id) {
           continue;
         }
         let new_block_ids = Self::merge_block_ids(
-          old_entry.reborrow(),
+          old_index_entry.reborrow(),
           effective_changes.added_versions.get(secret_id).map(HashMap::keys),
           &effective_changes.deleted_blocks,
         )?;
 
         if effective_changes
           .deleted_blocks
-          .contains(old_entry.get_current_block_id()?)
+          .contains(old_index_entry.get_current_block_id()?)
         {
           let (current_block_id, has_versions) = Self::recreate_entry(
             new_entries.reborrow().get(entry_pos),
@@ -116,7 +118,7 @@ impl Index {
           entry_pos += 1;
           current_blocks.insert(secret_id.to_string(), (current_block_id, has_versions));
         } else {
-          new_entries.set_with_caveats(entry_pos, old_entry)?;
+          new_entries.set_with_caveats(entry_pos, old_index_entry)?;
           let (current_block_id, has_versions) = Self::update_entry(
             new_entries.reborrow().get(entry_pos),
             new_block_ids,
@@ -163,10 +165,11 @@ impl Index {
       let block = head.get_block_id()?.to_string();
       heads.insert(node_id, Change { op, block });
     }
-    for entry in index.get_entries()? {
+    for index_entry in index.get_entries()? {
+      let entry = index_entry.get_entry()?;
       let secret_id = entry.get_id()?;
-      let current_block_id = entry.get_current_block_id()?;
-      let hash_versions = entry.get_block_ids()?.len() > 1;
+      let current_block_id = index_entry.get_current_block_id()?;
+      let hash_versions = index_entry.get_block_ids()?.len() > 1;
 
       current_blocks.insert(secret_id.to_string(), (current_block_id.to_string(), hash_versions));
     }
@@ -195,10 +198,11 @@ impl Index {
     let index = reader.get_root::<index::Reader>()?;
     let mut to_keep = HashSet::new();
 
-    for entry in index.get_entries()? {
+    for index_entry in index.get_entries()? {
+      let entry = index_entry.get_entry()?;
       let secret_id = entry.get_id()?;
       let mut remainging_count = 0;
-      for maybe_block_id in entry.get_block_ids()? {
+      for maybe_block_id in index_entry.get_block_ids()? {
         let block_id = maybe_block_id?;
         if !deleted_blocks.contains(block_id) {
           remainging_count += 1
@@ -307,7 +311,7 @@ impl Index {
       match maybe_version {
         Some(version) => {
           if new_entry.reborrow().get_current_block_id()?.is_empty()
-            || new_entry.reborrow().get_timestamp() < version.timestamp.timestamp_millis()
+            || new_entry.reborrow().get_entry()?.get_timestamp() < version.timestamp.timestamp_millis()
           {
             Self::overwrite_entry(new_entry.reborrow(), &block_id, &version)?;
             current_block_id = block_id.clone();
@@ -339,7 +343,7 @@ impl Index {
       match maybe_version {
         Some(version) => {
           if new_entry.reborrow().get_current_block_id()?.is_empty()
-            || new_entry.reborrow().get_timestamp() < version.timestamp.timestamp_millis()
+            || new_entry.reborrow().get_entry()?.get_timestamp() < version.timestamp.timestamp_millis()
           {
             Self::overwrite_entry(new_entry.reborrow(), &block_id, version)?;
             current_block_id = block_id.clone();
@@ -360,39 +364,34 @@ impl Index {
   }
 
   fn overwrite_entry(
-    mut new_entry: index::entry::Builder,
+    mut new_index_entry: index::entry::Builder,
     block_id: &str,
     version: &SecretVersion,
   ) -> SecretStoreResult<()> {
+    let mut new_entry = new_index_entry.reborrow().get_entry()?;
     new_entry.set_id(&version.secret_id);
     new_entry.set_timestamp(version.timestamp.timestamp_millis());
     new_entry.set_name(&version.name);
-    match version.secret_type {
-      SecretType::Login => new_entry.set_type(index::SecretType::Login),
-      SecretType::Licence => new_entry.set_type(index::SecretType::Licence),
-      SecretType::Note => new_entry.set_type(index::SecretType::Note),
-      SecretType::Wlan => new_entry.set_type(index::SecretType::Wlan),
-      SecretType::Password => new_entry.set_type(index::SecretType::Password),
-      SecretType::Other => new_entry.set_type(index::SecretType::Other),
-    }
+    new_entry.set_type(version.secret_type.to_builder());
     Self::set_text_list(new_entry.reborrow().init_tags(version.tags.len() as u32), &version.tags)?;
     Self::set_text_list(new_entry.reborrow().init_urls(version.urls.len() as u32), &version.urls)?;
     new_entry.set_deleted(version.deleted);
-    new_entry.set_current_block_id(block_id);
+    new_index_entry.set_current_block_id(block_id);
 
     Ok(())
   }
 
   fn match_entry(
-    entry: index::entry::Reader,
+    entry_reader: secret_entry::Reader,
     filter: &SecretListFilter,
   ) -> SecretStoreResult<Option<SecretEntryMatch>> {
-    if filter.deleted != entry.get_deleted() {
+    let entry = SecretEntry::from_reader(entry_reader)?;
+    if filter.deleted != entry.deleted {
       return Ok(None);
     }
 
     let (name_score, name_highlights) = match &filter.name {
-      Some(name_filter) => match sublime_fuzzy::best_match(name_filter, entry.get_name()?) {
+      Some(name_filter) => match sublime_fuzzy::best_match(name_filter, &entry.name) {
         Some(fuzzy_match) => (fuzzy_match.score(), fuzzy_match.matches().clone()),
         _ => return Ok(None),
       },
@@ -400,10 +399,10 @@ impl Index {
     };
 
     let url_highlights = vec![];
-    let tags = Self::read_text_list(entry.get_tags()?)?;
     let tags_highlights = match &filter.tag {
       Some(tag_filter) => {
-        let highlights: Vec<usize> = tags
+        let highlights: Vec<usize> = entry
+          .tags
           .iter()
           .positions(|tag| tag.as_str() == tag_filter.as_str())
           .collect();
@@ -415,28 +414,12 @@ impl Index {
       None => vec![],
     };
 
-    let secret_type = match entry.get_type()? {
-      index::SecretType::Login => SecretType::Login,
-      index::SecretType::Licence => SecretType::Licence,
-      index::SecretType::Wlan => SecretType::Wlan,
-      index::SecretType::Note => SecretType::Note,
-      index::SecretType::Password => SecretType::Password,
-      index::SecretType::Other => SecretType::Other,
-    };
-    if !filter.secret_type.iter().all(|filter| filter == &secret_type) {
+    if !filter.secret_type.iter().all(|filter| filter == &entry.secret_type) {
       return Ok(None);
     }
 
     Ok(Some(SecretEntryMatch {
-      entry: SecretEntry {
-        id: entry.get_id()?.to_string(),
-        timestamp: Utc.timestamp_millis(entry.get_timestamp()),
-        name: entry.get_name()?.to_zeroing(),
-        secret_type,
-        tags,
-        urls: Self::read_text_list(entry.get_urls()?)?,
-        deleted: entry.get_deleted(),
-      },
+      entry,
       name_score,
       name_highlights,
       url_highlights,
@@ -453,15 +436,6 @@ impl Index {
       text_list.set(idx as u32, capnp::text::new_reader(text.as_ref().as_bytes())?);
     }
     Ok(())
-  }
-
-  fn read_text_list(text_list: text_list::Reader) -> SecretStoreResult<Vec<ZeroingString>> {
-    let mut result = Vec::with_capacity(text_list.len() as usize);
-
-    for maybe_text in text_list {
-      result.push(maybe_text?.to_zeroing())
-    }
-    Ok(result)
   }
 }
 
