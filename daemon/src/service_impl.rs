@@ -1,19 +1,17 @@
-use crate::error::ExtResult;
 use crate::secrets_store_impl::SecretsStoreImpl;
 use capnp::capability::Promise;
+use std::sync::Arc;
 use t_rust_less_lib::api_capnp::{secrets_store, service};
 use t_rust_less_lib::service::local::LocalTrustlessService;
 use t_rust_less_lib::service::TrustlessService;
 
 pub struct ServiceImpl {
-  service: LocalTrustlessService,
+  service: Arc<LocalTrustlessService>,
 }
 
 impl ServiceImpl {
-  pub fn new() -> Self {
-    ServiceImpl {
-      service: LocalTrustlessService::new().ok_or_exit("Open local store"),
-    }
+  pub fn new(service: Arc<LocalTrustlessService>) -> Self {
+    ServiceImpl { service }
   }
 }
 

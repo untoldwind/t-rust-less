@@ -1,4 +1,4 @@
-use crate::api::{Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status, read_option};
+use crate::api::{read_option, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
 use crate::api_capnp::{secrets_store, service};
 use crate::memguard::SecretBytes;
 use crate::secrets_store::{SecretStoreResult, SecretsStore};
@@ -98,9 +98,12 @@ impl SecretsStore for RemoteSecretsStore {
   fn status(&self) -> SecretStoreResult<Status> {
     let mut runtime = self.runtime.borrow_mut();
     let request = self.client.status_request();
-    let result = runtime.block_on(request.send().promise.and_then(|response| {
-      Ok(Status::from_reader(response.get()?.get_status()?)?)
-    }))?;
+    let result = runtime.block_on(
+      request
+        .send()
+        .promise
+        .and_then(|response| Ok(Status::from_reader(response.get()?.get_status()?)?)),
+    )?;
 
     Ok(result)
   }

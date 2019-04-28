@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 
-use crate::api_capnp::{self, identity, secret_entry, option, status};
+use crate::api_capnp::{self, identity, option, secret_entry, status};
 use crate::memguard::weak::{ZeroingBytes, ZeroingString, ZeroingStringExt};
 use chrono::{DateTime, TimeZone, Utc};
 use serde_derive::{Deserialize, Serialize};
@@ -21,8 +21,8 @@ impl Status {
     Ok(Status {
       locked: reader.get_locked(),
       unlocked_by: read_option(reader.get_unlocked_by()?)?
-          .map(Identity::from_reader)
-          .transpose()?,
+        .map(Identity::from_reader)
+        .transpose()?,
       autolock_at: {
         let autolock_at = reader.get_autolock_at();
         if autolock_at == std::i64::MIN {
@@ -323,8 +323,8 @@ pub struct Secret {
 }
 
 pub fn read_option<T>(reader: option::Reader<T>) -> capnp::Result<Option<<T as capnp::traits::Owned<'_>>::Reader>>
-  where
-      T: for<'c> capnp::traits::Owned<'c>,
+where
+  T: for<'c> capnp::traits::Owned<'c>,
 {
   match reader.which()? {
     option::Some(inner) => Ok(Some(inner?)),

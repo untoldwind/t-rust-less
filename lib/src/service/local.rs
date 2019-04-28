@@ -2,6 +2,8 @@ use crate::secrets_store::{open_secrets_store, SecretsStore};
 use crate::service::config::{read_config, write_config, Config};
 use crate::service::error::{ServiceError, ServiceResult};
 use crate::service::{StoreConfig, TrustlessService};
+use chrono::Utc;
+use log::{error, info};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
@@ -19,6 +21,35 @@ impl LocalTrustlessService {
       config: RwLock::new(config),
       opened_stores: RwLock::new(HashMap::new()),
     })
+  }
+
+  pub fn check_autolock(&self) {
+    let opened_stores = match self.opened_stores.read() {
+      Ok(opened_stores) => opened_stores,
+      Err(err) => {
+        error!("Failed locking opened stores: {}", err);
+        return;
+      }
+    };
+
+    for (name, secrets_store) in opened_stores.iter() {
+      let status = match secrets_store.status() {
+        Ok(status) => status,
+        Err(error) => {
+          error!("Autolocker was unable to query status: {}", error);
+          continue;
+        }
+      };
+
+      if let Some(autolock_at) = status.autolock_at {
+        if autolock_at < Utc::now() {
+          info!("Autolocking {}", name);
+          if let Err(error) = secrets_store.lock() {
+            error!("Autolocker was unable to lock store: {}", error);
+          }
+        }
+      }
+    }
   }
 }
 

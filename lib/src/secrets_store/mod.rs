@@ -2,7 +2,6 @@ use crate::api::{Identity, Secret, SecretList, SecretListFilter, SecretVersion, 
 use std::sync::Arc;
 use std::time::Duration;
 
-mod auto_locker;
 mod cipher;
 mod error;
 mod estimate;
@@ -51,7 +50,6 @@ pub fn open_secrets_store(
     "multilane" => Arc::new(multi_lane::MultiLaneSecretsStore::new(block_store, autolock_timeout)),
     _ => return Err(SecretStoreError::InvalidStoreUrl(url.to_string())),
   };
-  auto_locker::Autolocker::spawn_for(&secrets_store);
 
   Ok(secrets_store)
 }

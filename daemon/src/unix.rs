@@ -3,15 +3,18 @@ use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
 use futures::{Future, Stream};
 use log::{error, info};
 use std::fs;
+use std::time::Duration;
 use t_rust_less_lib::service::unix::daemon_socket_path;
 use tokio::io::AsyncRead;
 use tokio::runtime::current_thread;
+use tokio::timer::Interval;
 use tokio_signal::unix::{Signal, SIGINT, SIGTERM};
 use tokio_uds::UnixListener;
 
-pub fn run_server<F>(handler_factory: F)
+pub fn run_server<F, A>(handler_factory: F, check_autolock: A)
 where
   F: Fn() -> capnp::capability::Client,
+  A: Fn() -> (),
 {
   let socket_path = daemon_socket_path();
 
@@ -46,8 +49,12 @@ where
       current_thread::spawn(rpc_system.map_err(|e| error!("{:?}", e)));
       Ok(())
     });
+    let autolocker = Interval::new_interval(Duration::from_secs(1)).for_each(|_| {
+      check_autolock();
+      Ok(())
+    });
 
-    if current_thread::block_on_all(stream.into_future().select2(done)).is_err() {
+    if current_thread::block_on_all(stream.into_future().select2(done).select2(autolocker)).is_err() {
       error!("Server loop failed");
     }
   }
