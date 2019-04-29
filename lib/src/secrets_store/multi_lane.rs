@@ -291,14 +291,16 @@ impl SecretsStore for MultiLaneSecretsStore {
   fn get(&self, secret_id: &str) -> SecretStoreResult<Secret> {
     let maybe_unlocked_user = self.unlocked_user.read()?;
     let unlocked_user = maybe_unlocked_user.as_ref().ok_or(SecretStoreError::Locked)?;
-    let (block_id, has_versions) = unlocked_user
-      .index
-      .block_index
-      .current_blocks
-      .get(secret_id)
-      .ok_or(SecretStoreError::NotFound)?;
+    let versions = unlocked_user.index.find_versions(secret_id)?;
+
+    assert!(!versions.is_empty());
+
     let current = self
-      .get_secret_version(&unlocked_user.identity.id, &unlocked_user.private_keys, &block_id)?
+      .get_secret_version(
+        &unlocked_user.identity.id,
+        &unlocked_user.private_keys,
+        &versions.first().unwrap().block_id,
+      )?
       .ok_or(SecretStoreError::NotFound)?;
     let mut password_strengths = HashMap::with_capacity(current.secret_type.password_properties().len());
 
@@ -313,7 +315,7 @@ impl SecretsStore for MultiLaneSecretsStore {
       id: current.secret_id.clone(),
       secret_type: current.secret_type,
       current,
-      has_versions: *has_versions,
+      versions,
       password_strengths,
     })
   }

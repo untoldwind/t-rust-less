@@ -60,6 +60,12 @@ impl ZeroingBytesExt for Vec<u8> {
   }
 }
 
+impl ZeroingBytesExt for &[u8] {
+  fn to_zeroing(self) -> ZeroingBytes {
+    ZeroingBytes(self.to_vec())
+  }
+}
+
 #[derive(Clone, Debug)]
 pub struct ZeroingWords(Vec<Word>);
 

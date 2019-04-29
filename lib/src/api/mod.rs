@@ -1,7 +1,8 @@
 use crate::api_capnp::{
-  self, identity, option, secret_entry, secret_entry_match, secret_list, secret_list_filter, secret_version, status,
+  self, identity, option, secret, secret_entry, secret_entry_match, secret_list, secret_list_filter, secret_version,
+  status,
 };
-use crate::memguard::weak::{ZeroingBytes, ZeroingString, ZeroingStringExt};
+use crate::memguard::weak::{ZeroingBytes, ZeroingBytesExt, ZeroingString, ZeroingStringExt};
 use capnp::{struct_list, text_list};
 use chrono::{DateTime, TimeZone, Utc};
 use serde_derive::{Deserialize, Serialize};
@@ -326,7 +327,11 @@ pub struct SecretAttachment {
 
 impl SecretAttachment {
   pub fn from_reader(reader: secret_version::attachment::Reader) -> capnp::Result<Self> {
-    unimplemented!()
+    Ok(SecretAttachment {
+      name: reader.get_name()?.to_string(),
+      mime_type: reader.get_mime_type()?.to_string(),
+      content: reader.get_content()?.to_zeroing(),
+    })
   }
 }
 
@@ -411,6 +416,17 @@ impl SecretVersion {
         .collect::<capnp::Result<Vec<ZeroingString>>>()?,
     })
   }
+
+  pub fn to_entry_builder(&self, mut builder: secret_entry::Builder) -> capnp::Result<()> {
+    builder.set_id(&self.secret_id);
+    builder.set_timestamp(self.timestamp.timestamp_millis());
+    builder.set_name(&self.name);
+    builder.set_type(self.secret_type.to_builder());
+    set_text_list(builder.reborrow().init_tags(self.tags.len() as u32), &self.tags)?;
+    set_text_list(builder.reborrow().init_urls(self.urls.len() as u32), &self.urls)?;
+    builder.set_deleted(self.deleted);
+    Ok(())
+  }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -427,6 +443,26 @@ pub struct PasswordStrength {
   pub score: u8,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SecretVersionRef {
+  pub block_id: String,
+  pub timestamp: DateTime<Utc>,
+}
+
+impl SecretVersionRef {
+  pub fn from_reader(reader: secret::version_ref::Reader) -> capnp::Result<Self> {
+    Ok(SecretVersionRef {
+      block_id: reader.get_block_id()?.to_string(),
+      timestamp: Utc.timestamp_millis(reader.get_timestamp()),
+    })
+  }
+
+  pub fn to_builder(&self, mut builder: secret::version_ref::Builder) {
+    builder.set_block_id(&self.block_id);
+    builder.set_timestamp(self.timestamp.timestamp_millis());
+  }
+}
+
 /// Convenient wrapper for the current version of a Secret.
 ///
 /// The is the default view when retrieving a specific Secret.
@@ -436,7 +472,7 @@ pub struct Secret {
   #[serde(rename = "type")]
   pub secret_type: SecretType,
   pub current: SecretVersion,
-  pub has_versions: bool,
+  pub versions: Vec<SecretVersionRef>,
   pub password_strengths: HashMap<String, PasswordStrength>,
 }
 
@@ -450,7 +486,7 @@ where
   }
 }
 
-pub fn set_text_list<I, S>(mut text_list: text_list::Builder, texts: I) -> capnp::Result<()>
+fn set_text_list<I, S>(mut text_list: text_list::Builder, texts: I) -> capnp::Result<()>
 where
   I: IntoIterator<Item = S>,
   S: AsRef<str>,

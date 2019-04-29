@@ -114,6 +114,7 @@ struct PasswordStrength {
     score @3 : UInt8;
 }
 
+
 struct Secret {
     id @0 : Text;
     type @1 : SecretType;
@@ -124,6 +125,11 @@ struct Secret {
     struct Estimate {
         key @0 : Text;
         strength @1 : PasswordStrength;
+    }
+
+    struct VersionRef {
+        blockId @0 : Text;
+        timestamp @1 : Int64;
     }
 }
 

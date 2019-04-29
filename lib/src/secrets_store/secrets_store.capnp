@@ -73,7 +73,6 @@ struct Index {
 
     struct Entry {
         entry @0 : Api.SecretEntry;
-        blockIds @1 : List(Text);
-        currentBlockId @2 : Text;
+        versionRefs @1 : List(Api.Secret.VersionRef);
     }
 }
