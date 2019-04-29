@@ -255,7 +255,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     unlocked_user.index.filter_entries(filter)
   }
 
-  fn add(&self, mut secret_version: SecretVersion) -> SecretStoreResult<()> {
+  fn add(&self, mut secret_version: SecretVersion) -> SecretStoreResult<String> {
     let maybe_unlocked_user = self.unlocked_user.read()?;
     let unlocked_user = maybe_unlocked_user.as_ref().ok_or(SecretStoreError::Locked)?;
 
@@ -282,10 +282,10 @@ impl SecretsStore for MultiLaneSecretsStore {
     let block_id = self.block_store.add_block(&block_content)?;
     self.block_store.commit(&[Change {
       op: Operation::Add,
-      block: block_id,
+      block: block_id.clone(),
     }])?;
 
-    Ok(())
+    Ok(block_id)
   }
 
   fn get(&self, secret_id: &str) -> SecretStoreResult<Secret> {
@@ -436,9 +436,9 @@ impl MultiLaneSecretsStore {
     let mut headers = block.reborrow().init_headers(recipients_for_cipher.len() as u32);
 
     for (idx, RecipientsForCipher { cipher, recipient_keys }) in recipients_for_cipher.into_iter().enumerate() {
-      let mut content = cipher.encrypt(&recipient_keys, &secret_content, headers.reborrow().get(idx as u32))?;
+      let content = cipher.encrypt(&recipient_keys, &secret_content, headers.reborrow().get(idx as u32))?;
 
-      secret_content = SecretBytes::from(content.as_mut());
+      secret_content = SecretBytes::from(content);
     }
     block.set_content(&secret_content.borrow());
 

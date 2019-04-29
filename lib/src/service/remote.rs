@@ -163,7 +163,7 @@ impl SecretsStore for RemoteSecretsStore {
     unimplemented!()
   }
 
-  fn add(&self, secret_version: SecretVersion) -> SecretStoreResult<()> {
+  fn add(&self, secret_version: SecretVersion) -> SecretStoreResult<String> {
     unimplemented!()
   }
 

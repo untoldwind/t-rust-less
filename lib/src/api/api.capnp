@@ -17,7 +17,7 @@ struct Option(T) {
 interface Service {
     listStores @0 () -> (storeNames : List(Text));
     setStoreConfig @1 (storeConfig : StoreConfig);
-    getStoreConfig @2 () -> (storeConfig : StoreConfig);
+    getStoreConfig @2 (storeName : Text) -> (storeConfig : StoreConfig);
     getDefaultStore @3 () -> (defaultStore : Option(Text));
     setDefaultStore @4 (defaultStore : Text);
     openStore @5 (storeName : Text) -> (store: SecretsStore);
@@ -130,11 +130,11 @@ struct Secret {
 interface SecretsStore {
     status @0 () -> (status: Status);
     lock @1 ();
-    unlock @2 (passphrase: Data);
+    unlock @2 (identityId: Text, passphrase: Data);
     identities @3 () -> (identities: List(Identity));
     addIdentity @4 (identity: Identity, passphrase: Data);
     changePassphrase @5 (passphrase: Data);
     list @6 (filter: SecretListFilter) -> (list: SecretList);
-    add @7 (version: SecretVersion);
+    add @7 (version: SecretVersion) -> (blockId: Text);
     get @8 (secret: Secret);
 }

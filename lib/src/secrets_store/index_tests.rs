@@ -1,4 +1,4 @@
-use crate::api::{SecretType, SecretVersion};
+use crate::api::{SecretProperties, SecretType, SecretVersion};
 use crate::block_store::{Change, ChangeLog, Operation};
 use crate::memguard::weak::ZeroingStringExt;
 use crate::secrets_store::index::Index;
@@ -6,7 +6,7 @@ use chrono::prelude::*;
 use data_encoding::HEXLOWER;
 use sha2::{Digest, Sha256};
 use spectral::prelude::*;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 
 #[derive(Default)]
 struct TestStore {
@@ -39,7 +39,7 @@ impl TestStore {
       secret_type: SecretType::Login,
       timestamp: Utc.timestamp(1000 + 1000 * version_id, 0),
       name: format!("{}_{}", secret_id, version_id).to_zeroing(),
-      properties: BTreeMap::new(),
+      properties: SecretProperties::new(),
       tags: vec![],
       urls: vec![],
       deleted: false,

@@ -1,11 +1,11 @@
-use crate::api::{SecretEntry, SecretEntryMatch, SecretList, SecretListFilter, SecretVersion};
+use crate::api::{set_text_list, SecretEntry, SecretEntryMatch, SecretList, SecretListFilter, SecretVersion};
 use crate::api_capnp::secret_entry;
 use crate::block_store::{Change, ChangeLog, Operation};
 use crate::memguard::weak::{ZeroingHeapAllocator, ZeroingStringExt};
 use crate::memguard::SecretWords;
 use crate::secrets_store::SecretStoreResult;
 use crate::secrets_store_capnp::index;
-use capnp::{message, serialize, text_list};
+use capnp::{message, serialize};
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 
@@ -323,7 +323,7 @@ impl Index {
       }
     }
 
-    Self::set_text_list(
+    set_text_list(
       new_entry.reborrow().init_block_ids(new_block_ids.len() as u32),
       &new_block_ids,
     )?;
@@ -355,7 +355,7 @@ impl Index {
       }
     }
 
-    Self::set_text_list(
+    set_text_list(
       new_entry.reborrow().init_block_ids(new_block_ids.len() as u32),
       &new_block_ids,
     )?;
@@ -373,8 +373,8 @@ impl Index {
     new_entry.set_timestamp(version.timestamp.timestamp_millis());
     new_entry.set_name(&version.name);
     new_entry.set_type(version.secret_type.to_builder());
-    Self::set_text_list(new_entry.reborrow().init_tags(version.tags.len() as u32), &version.tags)?;
-    Self::set_text_list(new_entry.reborrow().init_urls(version.urls.len() as u32), &version.urls)?;
+    set_text_list(new_entry.reborrow().init_tags(version.tags.len() as u32), &version.tags)?;
+    set_text_list(new_entry.reborrow().init_urls(version.urls.len() as u32), &version.urls)?;
     new_entry.set_deleted(version.deleted);
     new_index_entry.set_current_block_id(block_id);
 
@@ -425,17 +425,6 @@ impl Index {
       url_highlights,
       tags_highlights,
     }))
-  }
-
-  fn set_text_list<I, S>(mut text_list: text_list::Builder, texts: I) -> SecretStoreResult<()>
-  where
-    I: IntoIterator<Item = S>,
-    S: AsRef<str>,
-  {
-    for (idx, text) in texts.into_iter().enumerate() {
-      text_list.set(idx as u32, capnp::text::new_reader(text.as_ref().as_bytes())?);
-    }
-    Ok(())
   }
 }
 

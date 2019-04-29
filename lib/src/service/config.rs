@@ -1,3 +1,4 @@
+use crate::api_capnp::store_config;
 use crate::service::ServiceResult;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -11,6 +12,24 @@ pub struct StoreConfig {
   pub store_url: String,
   pub client_id: String,
   pub autolock_timeout_secs: u64,
+}
+
+impl StoreConfig {
+  pub fn from_reader(reader: store_config::Reader) -> capnp::Result<StoreConfig> {
+    Ok(StoreConfig {
+      name: reader.get_name()?.to_string(),
+      store_url: reader.get_store_url()?.to_string(),
+      client_id: reader.get_client_id()?.to_string(),
+      autolock_timeout_secs: reader.get_autolock_timeout_secs(),
+    })
+  }
+
+  pub fn to_builder(&self, mut builder: store_config::Builder) {
+    builder.set_name(&self.name);
+    builder.set_store_url(&self.store_url);
+    builder.set_client_id(&self.client_id);
+    builder.set_autolock_timeout_secs(self.autolock_timeout_secs);
+  }
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]

@@ -28,7 +28,7 @@ where
   assert_that(&public_key.len()).is_greater_than_or_equal_to(30);
 
   let mut rng = thread_rng();
-  let mut seal_key_raw = rng
+  let seal_key_raw = rng
     .sample_iter(&distributions::Standard)
     .take(cipher.seal_key_length())
     .collect::<Vec<u8>>();
@@ -36,7 +36,7 @@ where
     .sample_iter(&distributions::Standard)
     .take(cipher.seal_min_nonce_length())
     .collect::<Vec<u8>>();
-  let seal_key = SecretBytes::from(seal_key_raw.as_mut());
+  let seal_key = SecretBytes::from(seal_key_raw);
 
   let crypted_private = cipher.seal_private_key(&seal_key, &nonce, &private_key).unwrap();
   let decrypted_private = cipher.open_private_key(&seal_key, &nonce, &crypted_private).unwrap();

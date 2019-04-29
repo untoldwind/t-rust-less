@@ -1,10 +1,9 @@
 use super::{open_secrets_store, SecretStoreError, SecretStoreResult, SecretsStore};
-use crate::api::{Identity, SecretType, SecretVersion};
+use crate::api::{Identity, SecretProperties, SecretType, SecretVersion};
 use crate::memguard::weak::ZeroingStringExt;
 use crate::memguard::SecretBytes;
 use chrono::Utc;
 use spectral::prelude::*;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -87,7 +86,7 @@ fn add_secrets_versions(secrets_store: &SecretsStore, ids_with_passphrase: &[(Id
     name: "First secret".to_string().to_zeroing(),
     tags: vec![],
     urls: vec![],
-    properties: BTreeMap::new(),
+    properties: SecretProperties::new(),
     attachments: vec![],
     deleted: false,
     recipients: ids_with_passphrase
@@ -120,9 +119,9 @@ fn add_identity(
 }
 
 fn secret_from_str(s: &str) -> SecretBytes {
-  let mut raw = s.as_bytes().to_vec();
+  let raw = s.as_bytes().to_vec();
 
-  SecretBytes::from(raw.as_mut())
+  SecretBytes::from(raw)
 }
 
 #[test]

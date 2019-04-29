@@ -3,7 +3,7 @@ use capnp::capability::Promise;
 use std::sync::Arc;
 use t_rust_less_lib::api_capnp::{secrets_store, service};
 use t_rust_less_lib::service::local::LocalTrustlessService;
-use t_rust_less_lib::service::TrustlessService;
+use t_rust_less_lib::service::{StoreConfig, TrustlessService};
 
 pub struct ServiceImpl {
   service: Arc<LocalTrustlessService>,
@@ -33,25 +33,37 @@ impl service::Server for ServiceImpl {
 
   fn set_store_config(
     &mut self,
-    _: service::SetStoreConfigParams,
+    params: service::SetStoreConfigParams,
     _: service::SetStoreConfigResults,
-  ) -> Promise<(), ::capnp::Error> {
-    Promise::err(::capnp::Error::unimplemented("method not implemented".to_string()))
+  ) -> Promise<(), capnp::Error> {
+    let store_config = stry!(params
+      .get()
+      .and_then(|p| p.get_store_config())
+      .and_then(StoreConfig::from_reader));
+
+    stry!(self.service.set_store_config(store_config));
+
+    Promise::ok(())
   }
 
   fn get_store_config(
     &mut self,
-    _: service::GetStoreConfigParams,
-    _: service::GetStoreConfigResults,
-  ) -> Promise<(), ::capnp::Error> {
-    Promise::err(::capnp::Error::unimplemented("method not implemented".to_string()))
+    params: service::GetStoreConfigParams,
+    mut results: service::GetStoreConfigResults,
+  ) -> Promise<(), capnp::Error> {
+    let store_name = stry!(params.get().and_then(|p| p.get_store_name()));
+    let store_config = stry!(self.service.get_store_config(store_name));
+
+    store_config.to_builder(stry!(results.get().get_store_config()));
+
+    Promise::ok(())
   }
 
   fn get_default_store(
     &mut self,
     _: service::GetDefaultStoreParams,
     mut results: service::GetDefaultStoreResults,
-  ) -> Promise<(), ::capnp::Error> {
+  ) -> Promise<(), capnp::Error> {
     let mut result = results.get().init_default_store();
 
     match stry!(self.service.get_default_store()) {
@@ -69,7 +81,7 @@ impl service::Server for ServiceImpl {
     &mut self,
     params: service::SetDefaultStoreParams,
     _: service::SetDefaultStoreResults,
-  ) -> Promise<(), ::capnp::Error> {
+  ) -> Promise<(), capnp::Error> {
     let default_store = stry!(stry!(params.get()).get_default_store());
 
     stry!(self.service.set_default_store(default_store));
@@ -81,7 +93,7 @@ impl service::Server for ServiceImpl {
     &mut self,
     params: service::OpenStoreParams,
     mut results: service::OpenStoreResults,
-  ) -> Promise<(), ::capnp::Error> {
+  ) -> Promise<(), capnp::Error> {
     let store_name = stry!(stry!(params.get()).get_store_name());
     let store = stry!(self.service.open_store(store_name));
 

@@ -110,7 +110,7 @@ impl PasswordView {
   }
 
   fn remove(&mut self) {
-    if self.content.len() == 0 {
+    if self.content.is_empty() {
       return;
     }
     self.content.borrow_mut().remove_char();

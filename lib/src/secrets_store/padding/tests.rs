@@ -55,7 +55,7 @@ fn test_non_zero_padding_quick() {
         *b = 255;
       }
     }
-    common_padding_tests::<NonZeroPadding>(SecretBytes::from(data.as_mut()));
+    common_padding_tests::<NonZeroPadding>(SecretBytes::from(data));
     true
   }
 
@@ -78,8 +78,8 @@ fn test_randon_front_back_padding() {
 #[test]
 fn test_randon_front_back_padding_quick() {
   #[allow(clippy::needless_pass_by_value)]
-  fn check_padding(mut data: Vec<u8>) -> bool {
-    common_padding_tests::<RandomFrontBack>(SecretBytes::from(data.as_mut()));
+  fn check_padding(data: Vec<u8>) -> bool {
+    common_padding_tests::<RandomFrontBack>(SecretBytes::from(data));
     true
   }
 

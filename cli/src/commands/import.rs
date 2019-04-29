@@ -42,7 +42,7 @@ pub fn import_v1(service: Arc<TrustlessService>, store_name: String, maybe_file_
     for v1_version in secret.versions {
       let version = SecretVersion {
         secret_id: secret.id.to_string(),
-        secret_type: secret.secret_type.clone(),
+        secret_type: secret.secret_type,
         timestamp: v1_version.timestamp,
         name: v1_version.name,
         tags: v1_version.tags.unwrap_or_default(),
@@ -53,7 +53,7 @@ pub fn import_v1(service: Arc<TrustlessService>, store_name: String, maybe_file_
         recipients: vec![],
       };
 
-      secrets_store.add(version).ok_or_exit("Add secret version")
+      secrets_store.add(version).ok_or_exit("Add secret version");
     }
   }
 }

@@ -30,7 +30,7 @@ pub trait SecretsStore {
 
   fn list(&self, filter: SecretListFilter) -> SecretStoreResult<SecretList>;
 
-  fn add(&self, secret_version: SecretVersion) -> SecretStoreResult<()>;
+  fn add(&self, secret_version: SecretVersion) -> SecretStoreResult<String>;
   fn get(&self, secret_id: &str) -> SecretStoreResult<Secret>;
 }
 

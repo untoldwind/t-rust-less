@@ -59,9 +59,9 @@ impl KeyDerivation for RustArgon2id {
       variant: p.variant,
     };
 
-    let mut raw = argon2::hash_raw(&passphrase.borrow(), nonce, &config)?;
+    let raw = argon2::hash_raw(&passphrase.borrow(), nonce, &config)?;
 
-    Ok(SecretBytes::from(raw.as_mut()))
+    Ok(SecretBytes::from(raw))
   }
 }
 
@@ -77,8 +77,7 @@ mod tests {
   fn test_derive_regression() {
     assert_that(&RUST_ARGON2_ID.min_nonce_len()).is_greater_than_or_equal_to(8);
 
-    let mut passphrase_raw: Vec<u8> = Vec::from(&b"The password"[..]);
-    let passphrase = SecretBytes::from(passphrase_raw.as_mut());
+    let passphrase = SecretBytes::from(Vec::from(&b"The password"[..]));
 
     // Regression: echo -n "The password" | argon2 12345678 -id -t 4 -m 16 -p 4 -v 13 -l 32
     assert_that!(HEXLOWER

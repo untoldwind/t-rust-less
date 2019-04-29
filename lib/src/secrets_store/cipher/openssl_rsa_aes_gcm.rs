@@ -24,8 +24,7 @@ impl Cipher for OpenSslRsaAesGcmCipher {
 
   fn generate_key_pair(&self) -> SecretStoreResult<(PublicKey, PrivateKey)> {
     let private = Rsa::generate(RSA_KEY_BITS)?;
-    let mut private_der_raw = private.private_key_to_der()?;
-    let private_der = SecretBytes::from(private_der_raw.as_mut());
+    let private_der = SecretBytes::from(private.private_key_to_der()?);
     let public_der = private.public_key_to_der()?;
 
     Ok((public_der, private_der))
@@ -64,7 +63,7 @@ impl Cipher for OpenSslRsaAesGcmCipher {
       return Err(SecretStoreError::Cipher("Data too short".to_string()));
     }
     let tag_offset = crypted_key.len() - TAG_LENGTH;
-    let mut decrypted = symm::decrypt_aead(
+    let decrypted = symm::decrypt_aead(
       symm::Cipher::aes_256_gcm(),
       &seal_key.borrow(),
       Some(&nonce[0..12]),
@@ -73,7 +72,7 @@ impl Cipher for OpenSslRsaAesGcmCipher {
       &crypted_key[tag_offset..],
     )?;
 
-    Ok(SecretBytes::from(decrypted.as_mut()))
+    Ok(SecretBytes::from(decrypted))
   }
 
   fn encrypt(
@@ -157,7 +156,7 @@ impl Cipher for OpenSslRsaAesGcmCipher {
       }
 
       let tag_offset = crypted.len() - TAG_LENGTH;
-      let mut decrypted = symm::decrypt_aead(
+      let decrypted = symm::decrypt_aead(
         symm::Cipher::aes_256_gcm(),
         &seal_key.borrow()[..32],
         Some(nonce),
@@ -165,7 +164,7 @@ impl Cipher for OpenSslRsaAesGcmCipher {
         &crypted[0..tag_offset],
         &crypted[tag_offset..],
       )?;
-      return Ok(SecretBytes::from(decrypted.as_mut()));
+      return Ok(SecretBytes::from(decrypted));
     }
     Err(SecretStoreError::NoRecipient)
   }

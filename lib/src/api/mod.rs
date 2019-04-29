@@ -1,10 +1,12 @@
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-
-use crate::api_capnp::{self, identity, option, secret_entry, status};
+use crate::api_capnp::{
+  self, identity, option, secret_entry, secret_entry_match, secret_list, secret_list_filter, secret_version, status,
+};
 use crate::memguard::weak::{ZeroingBytes, ZeroingString, ZeroingStringExt};
+use capnp::{struct_list, text_list};
 use chrono::{DateTime, TimeZone, Utc};
 use serde_derive::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 /// Status information of a secrets store
 ///
@@ -147,6 +149,21 @@ pub struct SecretListFilter {
   pub deleted: bool,
 }
 
+impl SecretListFilter {
+  pub fn from_reader(reader: secret_list_filter::Reader) -> capnp::Result<Self> {
+    Ok(SecretListFilter {
+      url: read_option(reader.get_url()?)?.map(|u| u.to_string()),
+      tag: read_option(reader.get_tag()?)?.map(|u| u.to_string()),
+      secret_type: match reader.get_type()?.which()? {
+        secret_list_filter::option_type::Some(reader) => Some(SecretType::from_reader(reader?)),
+        secret_list_filter::option_type::None(_) => None,
+      },
+      name: read_option(reader.get_name()?)?.map(|u| u.to_string()),
+      deleted: reader.get_deleted(),
+    })
+  }
+}
+
 /// SecretEntry contains all the information of a secrets that should be
 /// indexed.
 ///
@@ -223,6 +240,29 @@ pub struct SecretEntryMatch {
   pub tags_highlights: Vec<usize>,
 }
 
+impl SecretEntryMatch {
+  pub fn to_builder(&self, mut builder: secret_entry_match::Builder) {
+    self.entry.to_builder(builder.reborrow().init_entry());
+    builder.set_name_score(self.name_score as i64);
+    let mut name_highlights = builder
+      .reborrow()
+      .init_name_highlights(self.name_highlights.len() as u32);
+    for (idx, highlight) in self.name_highlights.iter().enumerate() {
+      name_highlights.set(idx as u32, *highlight as u64);
+    }
+    let mut url_highlights = builder
+      .reborrow()
+      .init_url_highlights(self.name_highlights.len() as u32);
+    for (idx, highlight) in self.url_highlights.iter().enumerate() {
+      url_highlights.set(idx as u32, *highlight as u64);
+    }
+    let mut tags_highlights = builder.init_tags_highlights(self.name_highlights.len() as u32);
+    for (idx, highlight) in self.tags_highlights.iter().enumerate() {
+      tags_highlights.set(idx as u32, *highlight as u64);
+    }
+  }
+}
+
 /// Convenient wrapper of a list of SecretEntryMatch'es.
 ///
 /// Also contains a unique list of tags of all secrets (e.g. to support autocompletion)
@@ -230,6 +270,45 @@ pub struct SecretEntryMatch {
 pub struct SecretList {
   pub all_tags: Vec<ZeroingString>,
   pub entries: Vec<SecretEntryMatch>,
+}
+
+impl SecretList {
+  pub fn to_builder(&self, mut builder: secret_list::Builder) -> capnp::Result<()> {
+    set_text_list(
+      builder.reborrow().init_all_tags(self.all_tags.len() as u32),
+      &self.all_tags,
+    )?;
+    let mut entries = builder.init_entries(self.entries.len() as u32);
+
+    for (idx, entry) in self.entries.iter().enumerate() {
+      entry.to_builder(entries.reborrow().get(idx as u32));
+    }
+
+    Ok(())
+  }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct SecretProperties(BTreeMap<String, ZeroingString>);
+
+impl SecretProperties {
+  pub fn new() -> Self {
+    SecretProperties(BTreeMap::new())
+  }
+
+  pub fn get(&self, name: &str) -> Option<&str> {
+    self.0.get(name).map(|s| s.as_str())
+  }
+
+  pub fn from_reader(reader: struct_list::Reader<secret_version::property::Owned>) -> capnp::Result<Self> {
+    let mut properties = BTreeMap::new();
+    for property in reader {
+      properties.insert(property.get_key()?.to_string(), property.get_value()?.to_zeroing());
+    }
+
+    Ok(SecretProperties(properties))
+  }
 }
 
 /// Some short of attachment to a secret.
@@ -243,6 +322,12 @@ pub struct SecretAttachment {
   name: String,
   mime_type: String,
   content: ZeroingBytes,
+}
+
+impl SecretAttachment {
+  pub fn from_reader(reader: secret_version::attachment::Reader) -> capnp::Result<Self> {
+    unimplemented!()
+  }
 }
 
 /// SecretVersion holds all information of a specific version of a secret.
@@ -277,7 +362,7 @@ pub struct SecretVersion {
   pub urls: Vec<ZeroingString>,
   /// Generic list of secret properties. The `secret_type` defines a list of commonly used
   /// property-names for that type.
-  pub properties: BTreeMap<String, ZeroingString>,
+  pub properties: SecretProperties,
   /// List of attachments.
   #[serde(default)]
   pub attachments: Vec<SecretAttachment>,
@@ -293,6 +378,39 @@ pub struct SecretVersion {
   /// to change the Secret and create a new version without the recipient.
   #[serde(default)]
   pub recipients: Vec<ZeroingString>,
+}
+
+impl SecretVersion {
+  pub fn from_reader(reader: secret_version::Reader) -> capnp::Result<Self> {
+    Ok(SecretVersion {
+      secret_id: reader.get_secret_id()?.to_string(),
+      secret_type: SecretType::from_reader(reader.get_type()?),
+      timestamp: Utc.timestamp_millis(reader.get_timestamp()),
+      name: reader.get_name()?.to_zeroing(),
+      tags: reader
+        .get_tags()?
+        .into_iter()
+        .map(|t| t.map(|t| t.to_zeroing()))
+        .collect::<capnp::Result<Vec<ZeroingString>>>()?,
+      urls: reader
+        .get_urls()?
+        .into_iter()
+        .map(|u| u.map(|u| u.to_zeroing()))
+        .collect::<capnp::Result<Vec<ZeroingString>>>()?,
+      properties: SecretProperties::from_reader(reader.get_properties()?)?,
+      attachments: reader
+        .get_attachments()?
+        .into_iter()
+        .map(SecretAttachment::from_reader)
+        .collect::<capnp::Result<Vec<SecretAttachment>>>()?,
+      deleted: reader.get_deleted(),
+      recipients: reader
+        .get_recipients()?
+        .into_iter()
+        .map(|u| u.map(|u| u.to_zeroing()))
+        .collect::<capnp::Result<Vec<ZeroingString>>>()?,
+    })
+  }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -330,4 +448,15 @@ where
     option::Some(inner) => Ok(Some(inner?)),
     option::None(_) => Ok(None),
   }
+}
+
+pub fn set_text_list<I, S>(mut text_list: text_list::Builder, texts: I) -> capnp::Result<()>
+where
+  I: IntoIterator<Item = S>,
+  S: AsRef<str>,
+{
+  for (idx, text) in texts.into_iter().enumerate() {
+    text_list.set(idx as u32, capnp::text::new_reader(text.as_ref().as_bytes())?);
+  }
+  Ok(())
 }
