@@ -319,6 +319,15 @@ impl SecretsStore for MultiLaneSecretsStore {
       password_strengths,
     })
   }
+
+  fn get_version(&self, block_id: &str) -> SecretStoreResult<SecretVersion> {
+    let maybe_unlocked_user = self.unlocked_user.read()?;
+    let unlocked_user = maybe_unlocked_user.as_ref().ok_or(SecretStoreError::Locked)?;
+
+    self
+      .get_secret_version(&unlocked_user.identity.id, &unlocked_user.private_keys, block_id)?
+      .ok_or(SecretStoreError::NotFound)
+  }
 }
 
 impl MultiLaneSecretsStore {

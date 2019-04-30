@@ -64,7 +64,7 @@ impl service::Server for ServiceImpl {
     _: service::GetDefaultStoreParams,
     mut results: service::GetDefaultStoreResults,
   ) -> Promise<(), capnp::Error> {
-    let mut result = results.get().init_default_store();
+    let mut result = results.get().init_store_name();
 
     match stry!(self.service.get_default_store()) {
       Some(default_store) => {
@@ -82,9 +82,9 @@ impl service::Server for ServiceImpl {
     params: service::SetDefaultStoreParams,
     _: service::SetDefaultStoreResults,
   ) -> Promise<(), capnp::Error> {
-    let default_store = stry!(stry!(params.get()).get_default_store());
+    let store_name = stry!(stry!(params.get()).get_store_name());
 
-    stry!(self.service.set_default_store(default_store));
+    stry!(self.service.set_default_store(store_name));
 
     Promise::ok(())
   }

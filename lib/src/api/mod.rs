@@ -1,6 +1,6 @@
 use crate::api_capnp::{
-  self, identity, option, secret, secret_entry, secret_entry_match, secret_list, secret_list_filter, secret_version,
-  status,
+  self, identity, option, password_strength, secret, secret_entry, secret_entry_match, secret_list, secret_list_filter,
+  secret_version, status,
 };
 use crate::memguard::weak::{ZeroingBytes, ZeroingBytesExt, ZeroingString, ZeroingStringExt};
 use capnp::{struct_list, text_list};
@@ -163,6 +163,37 @@ impl SecretListFilter {
       deleted: reader.get_deleted(),
     })
   }
+
+  pub fn to_builder(&self, mut builder: secret_list_filter::Builder) -> capnp::Result<()> {
+    match &self.url {
+      Some(url) => builder
+        .reborrow()
+        .init_url()
+        .set_some(capnp::text::new_reader(url.as_bytes())?)?,
+      None => builder.reborrow().init_url().set_none(()),
+    }
+    match &self.tag {
+      Some(tag) => builder
+        .reborrow()
+        .init_tag()
+        .set_some(capnp::text::new_reader(tag.as_bytes())?)?,
+      None => builder.reborrow().init_tag().set_none(()),
+    }
+    match &self.secret_type {
+      Some(secret_type) => builder.reborrow().init_type().set_some(secret_type.to_builder()),
+      None => builder.reborrow().init_type().set_none(()),
+    }
+    match &self.name {
+      Some(name) => builder
+        .reborrow()
+        .init_name()
+        .set_some(capnp::text::new_reader(name.as_bytes())?)?,
+      None => builder.reborrow().init_name().set_none(()),
+    }
+    builder.set_deleted(self.deleted);
+
+    Ok(())
+  }
 }
 
 /// SecretEntry contains all the information of a secrets that should be
@@ -242,6 +273,15 @@ pub struct SecretEntryMatch {
 }
 
 impl SecretEntryMatch {
+  pub fn from_reader(reader: secret_entry_match::Reader) -> capnp::Result<Self> {
+    Ok(SecretEntryMatch {
+      entry: SecretEntry::from_reader(reader.get_entry()?)?,
+      name_score: reader.get_name_score() as isize,
+      name_highlights: reader.get_name_highlights()?.into_iter().map(|h| h as usize).collect(),
+      url_highlights: reader.get_url_highlights()?.into_iter().map(|h| h as usize).collect(),
+      tags_highlights: reader.get_tags_highlights()?.into_iter().map(|h| h as usize).collect(),
+    })
+  }
   pub fn to_builder(&self, mut builder: secret_entry_match::Builder) {
     self.entry.to_builder(builder.reborrow().init_entry());
     builder.set_name_score(self.name_score as i64);
@@ -274,6 +314,21 @@ pub struct SecretList {
 }
 
 impl SecretList {
+  pub fn from_reader(reader: secret_list::Reader) -> capnp::Result<Self> {
+    Ok(SecretList {
+      all_tags: reader
+        .get_all_tags()?
+        .into_iter()
+        .map(|t| t.map(|t| t.to_zeroing()))
+        .collect::<capnp::Result<Vec<ZeroingString>>>()?,
+      entries: reader
+        .get_entries()?
+        .into_iter()
+        .map(SecretEntryMatch::from_reader)
+        .collect::<capnp::Result<Vec<SecretEntryMatch>>>()?,
+    })
+  }
+
   pub fn to_builder(&self, mut builder: secret_list::Builder) -> capnp::Result<()> {
     set_text_list(
       builder.reborrow().init_all_tags(self.all_tags.len() as u32),
@@ -302,6 +357,10 @@ impl SecretProperties {
     self.0.get(name).map(|s| s.as_str())
   }
 
+  pub fn len(&self) -> usize {
+    self.0.len()
+  }
+
   pub fn from_reader(reader: struct_list::Reader<secret_version::property::Owned>) -> capnp::Result<Self> {
     let mut properties = BTreeMap::new();
     for property in reader {
@@ -309,6 +368,15 @@ impl SecretProperties {
     }
 
     Ok(SecretProperties(properties))
+  }
+
+  pub fn to_builder(&self, mut builder: struct_list::Builder<secret_version::property::Owned>) {
+    for (idx, (key, value)) in self.0.iter().enumerate() {
+      let mut property = builder.reborrow().get(idx as u32);
+
+      property.set_key(key);
+      property.set_value(value);
+    }
   }
 }
 
@@ -332,6 +400,12 @@ impl SecretAttachment {
       mime_type: reader.get_mime_type()?.to_string(),
       content: reader.get_content()?.to_zeroing(),
     })
+  }
+
+  pub fn to_builder(&self, mut builder: secret_version::attachment::Builder) {
+    builder.set_name(&self.name);
+    builder.set_mime_type(&self.mime_type);
+    builder.set_content(&self.content);
   }
 }
 
@@ -417,6 +491,29 @@ impl SecretVersion {
     })
   }
 
+  pub fn to_builder(&self, mut builder: secret_version::Builder) -> capnp::Result<()> {
+    builder.set_secret_id(&self.secret_id);
+    builder.set_type(self.secret_type.to_builder());
+    builder.set_timestamp(self.timestamp.timestamp_millis());
+    builder.set_name(&self.name);
+    set_text_list(builder.reborrow().init_tags(self.tags.len() as u32), &self.tags)?;
+    set_text_list(builder.reborrow().init_urls(self.urls.len() as u32), &self.urls)?;
+    self
+      .properties
+      .to_builder(builder.reborrow().init_properties(self.properties.len() as u32));
+    let mut attachments = builder.reborrow().init_attachments(self.attachments.len() as u32);
+    for (idx, attachment) in self.attachments.iter().enumerate() {
+      attachment.to_builder(attachments.reborrow().get(idx as u32));
+    }
+    builder.set_deleted(self.deleted);
+    set_text_list(
+      builder.reborrow().init_recipients(self.recipients.len() as u32),
+      &self.recipients,
+    )?;
+
+    Ok(())
+  }
+
   pub fn to_entry_builder(&self, mut builder: secret_entry::Builder) -> capnp::Result<()> {
     builder.set_id(&self.secret_id);
     builder.set_timestamp(self.timestamp.timestamp_millis());
@@ -441,6 +538,23 @@ pub struct PasswordStrength {
   pub crack_time: u64,
   pub crack_time_display: String,
   pub score: u8,
+}
+
+impl PasswordStrength {
+  pub fn from_reader(reader: password_strength::Reader) -> capnp::Result<Self> {
+    Ok(PasswordStrength {
+      entropy: reader.get_entropy(),
+      crack_time: reader.get_crack_time(),
+      crack_time_display: reader.get_crack_time_display()?.to_string(),
+      score: reader.get_score(),
+    })
+  }
+  pub fn to_builder(&self, mut builder: password_strength::Builder) {
+    builder.set_entropy(self.entropy);
+    builder.set_crack_time(self.crack_time);
+    builder.set_crack_time_display(&self.crack_time_display);
+    builder.set_score(self.score);
+  }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -474,6 +588,51 @@ pub struct Secret {
   pub current: SecretVersion,
   pub versions: Vec<SecretVersionRef>,
   pub password_strengths: HashMap<String, PasswordStrength>,
+}
+
+impl Secret {
+  pub fn from_reader(reader: secret::Reader) -> capnp::Result<Self> {
+    Ok(Secret {
+      id: reader.get_id()?.to_string(),
+      secret_type: SecretType::from_reader(reader.get_type()?),
+      current: SecretVersion::from_reader(reader.get_current()?)?,
+      versions: reader
+        .get_versions()?
+        .into_iter()
+        .map(SecretVersionRef::from_reader)
+        .collect::<capnp::Result<Vec<SecretVersionRef>>>()?,
+      password_strengths: reader
+        .get_password_strengths()?
+        .into_iter()
+        .map(|estimate| {
+          Ok((
+            estimate.get_key()?.to_string(),
+            PasswordStrength::from_reader(estimate.get_strength()?)?,
+          ))
+        })
+        .collect::<capnp::Result<HashMap<String, PasswordStrength>>>()?,
+    })
+  }
+
+  pub fn to_builder(&self, mut builder: secret::Builder) -> capnp::Result<()> {
+    builder.set_id(&self.id);
+    builder.set_type(self.secret_type.to_builder());
+    self.current.to_builder(builder.reborrow().init_current())?;
+    let mut versions = builder.reborrow().init_versions(self.versions.len() as u32);
+    for (idx, version) in self.versions.iter().enumerate() {
+      version.to_builder(versions.reborrow().get(idx as u32));
+    }
+    let mut password_strengths = builder
+      .reborrow()
+      .init_password_strengths(self.password_strengths.len() as u32);
+    for (idx, (key, strength)) in self.password_strengths.iter().enumerate() {
+      let mut password_strength = password_strengths.reborrow().get(idx as u32);
+      password_strength.set_key(&key);
+      strength.to_builder(password_strength.init_strength());
+    }
+
+    Ok(())
+  }
 }
 
 pub fn read_option<T>(reader: option::Reader<T>) -> capnp::Result<Option<<T as capnp::traits::Owned<'_>>::Reader>>

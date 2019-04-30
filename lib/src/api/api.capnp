@@ -18,8 +18,8 @@ interface Service {
     listStores @0 () -> (storeNames : List(Text));
     setStoreConfig @1 (storeConfig : StoreConfig);
     getStoreConfig @2 (storeName : Text) -> (storeConfig : StoreConfig);
-    getDefaultStore @3 () -> (defaultStore : Option(Text));
-    setDefaultStore @4 (defaultStore : Text);
+    getDefaultStore @3 () -> (storeName : Option(Text));
+    setDefaultStore @4 (storeName : Text);
     openStore @5 (storeName : Text) -> (store: SecretsStore);
 }
 
@@ -119,7 +119,7 @@ struct Secret {
     id @0 : Text;
     type @1 : SecretType;
     current @2 : SecretVersion;
-    hasVersions @3 : Bool;
+    versions @3 : List(VersionRef);
     passwordStrengths @4 : List(Estimate);
 
     struct Estimate {
@@ -142,5 +142,6 @@ interface SecretsStore {
     changePassphrase @5 (passphrase: Data);
     list @6 (filter: SecretListFilter) -> (list: SecretList);
     add @7 (version: SecretVersion) -> (blockId: Text);
-    get @8 (secret: Secret);
+    get @8 (id: Text) -> (secret: Secret);
+    getVersion @9 (blockId: Text) -> (version: SecretVersion);
 }

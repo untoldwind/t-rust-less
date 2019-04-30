@@ -22,9 +22,8 @@ impl secrets_store::Server for SecretsStoreImpl {
     mut results: secrets_store::StatusResults,
   ) -> Promise<(), capnp::Error> {
     let status = stry!(self.secrets_store.status());
-    let result_status = stry!(results.get().get_status());
 
-    stry!(status.to_builder(result_status));
+    stry!(status.to_builder(results.get().init_status()));
 
     Promise::ok(())
   }
@@ -124,7 +123,31 @@ impl secrets_store::Server for SecretsStoreImpl {
     Promise::ok(())
   }
 
-  fn get(&mut self, _: secrets_store::GetParams, _: secrets_store::GetResults) -> Promise<(), capnp::Error> {
-    Promise::err(capnp::Error::unimplemented("method not implemented".to_string()))
+  fn get(
+    &mut self,
+    params: secrets_store::GetParams,
+    mut results: secrets_store::GetResults,
+  ) -> Promise<(), capnp::Error> {
+    let id = stry!(params.get().and_then(|p| p.get_id()));
+
+    let secret = stry!(self.secrets_store.get(id));
+
+    stry!(secret.to_builder(results.get().init_secret()));
+
+    Promise::ok(())
+  }
+
+  fn get_version(
+    &mut self,
+    params: secrets_store::GetVersionParams,
+    mut results: secrets_store::GetVersionResults,
+  ) -> Promise<(), capnp::Error> {
+    let block_id = stry!(params.get().and_then(|p| p.get_block_id()));
+
+    let secret_version = stry!(self.secrets_store.get_version(block_id));
+
+    stry!(secret_version.to_builder(results.get().init_version()));
+
+    Promise::ok(())
   }
 }

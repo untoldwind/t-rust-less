@@ -41,11 +41,30 @@ impl TrustlessService for RemoteTrustlessService {
   }
 
   fn set_store_config(&self, store_config: StoreConfig) -> ServiceResult<()> {
-    unimplemented!()
+    let mut runtime = self.runtime.borrow_mut();
+    let mut request = self.client.set_store_config_request();
+    store_config.to_builder(request.get().init_store_config());
+
+    runtime.block_on(request.send().promise.and_then(|response| {
+      response.get()?;
+
+      Ok(())
+    }))?;
+
+    Ok(())
   }
 
   fn get_store_config(&self, name: &str) -> ServiceResult<StoreConfig> {
-    unimplemented!()
+    let mut runtime = self.runtime.borrow_mut();
+    let mut request = self.client.get_store_config_request();
+    request.get().set_store_name(&name);
+    let result = runtime.block_on(request.send().promise.and_then(|response| {
+      let store_config = StoreConfig::from_reader(response.get()?.get_store_config()?)?;
+
+      Ok(store_config)
+    }))?;
+
+    Ok(result)
   }
 
   fn open_store(&self, name: &str) -> ServiceResult<Arc<SecretsStore>> {
@@ -69,14 +88,24 @@ impl TrustlessService for RemoteTrustlessService {
       request
         .send()
         .promise
-        .and_then(|response| Ok(read_option(response.get()?.get_default_store()?)?.map(|s| s.to_string()))),
+        .and_then(|response| Ok(read_option(response.get()?.get_store_name()?)?.map(|s| s.to_string()))),
     )?;
 
     Ok(result)
   }
 
   fn set_default_store(&self, name: &str) -> ServiceResult<()> {
-    unimplemented!()
+    let mut runtime = self.runtime.borrow_mut();
+    let mut request = self.client.set_default_store_request();
+    request.get().set_store_name(&name);
+
+    runtime.block_on(request.send().promise.and_then(|response| {
+      response.get()?;
+
+      Ok(())
+    }))?;
+
+    Ok(())
   }
 }
 
@@ -124,6 +153,7 @@ impl SecretsStore for RemoteSecretsStore {
   fn unlock(&self, identity_id: &str, passphrase: SecretBytes) -> SecretStoreResult<()> {
     let mut runtime = self.runtime.borrow_mut();
     let mut request = self.client.unlock_request();
+    request.get().set_identity_id(&identity_id);
     request.get().set_passphrase(&passphrase.borrow());
 
     runtime.block_on(request.send().promise.and_then(|response| {
@@ -152,22 +182,88 @@ impl SecretsStore for RemoteSecretsStore {
   }
 
   fn add_identity(&self, identity: Identity, passphrase: SecretBytes) -> SecretStoreResult<()> {
-    unimplemented!()
+    let mut runtime = self.runtime.borrow_mut();
+    let mut request = self.client.add_identity_request();
+
+    identity.to_builder(request.get().init_identity());
+    request.get().set_passphrase(&passphrase.borrow());
+    runtime.block_on(request.send().promise.and_then(|response| {
+      response.get()?;
+
+      Ok(())
+    }))?;
+
+    Ok(())
   }
 
   fn change_passphrase(&self, passphrase: SecretBytes) -> SecretStoreResult<()> {
-    unimplemented!()
+    let mut runtime = self.runtime.borrow_mut();
+    let mut request = self.client.change_passphrase_request();
+    request.get().set_passphrase(&passphrase.borrow());
+
+    runtime.block_on(request.send().promise.and_then(|response| {
+      response.get()?;
+
+      Ok(())
+    }))?;
+
+    Ok(())
   }
 
   fn list(&self, filter: SecretListFilter) -> SecretStoreResult<SecretList> {
-    unimplemented!()
+    let mut runtime = self.runtime.borrow_mut();
+    let mut request = self.client.list_request();
+    filter.to_builder(request.get().init_filter())?;
+
+    let result = runtime.block_on(request.send().promise.and_then(|response| {
+      let list = SecretList::from_reader(response.get()?.get_list()?)?;
+
+      Ok(list)
+    }))?;
+
+    Ok(result)
   }
 
   fn add(&self, secret_version: SecretVersion) -> SecretStoreResult<String> {
-    unimplemented!()
+    let mut runtime = self.runtime.borrow_mut();
+    let mut request = self.client.add_request();
+
+    secret_version.to_builder(request.get().init_version())?;
+    let result = runtime.block_on(
+      request
+        .send()
+        .promise
+        .and_then(|response| Ok(response.get()?.get_block_id()?.to_string())),
+    )?;
+
+    Ok(result)
   }
 
   fn get(&self, secret_id: &str) -> SecretStoreResult<Secret> {
-    unimplemented!()
+    let mut runtime = self.runtime.borrow_mut();
+    let mut request = self.client.get_request();
+    request.get().set_id(&secret_id);
+
+    let result = runtime.block_on(request.send().promise.and_then(|response| {
+      let secret = Secret::from_reader(response.get()?.get_secret()?)?;
+
+      Ok(secret)
+    }))?;
+
+    Ok(result)
+  }
+
+  fn get_version(&self, block_id: &str) -> SecretStoreResult<SecretVersion> {
+    let mut runtime = self.runtime.borrow_mut();
+    let mut request = self.client.get_version_request();
+    request.get().set_block_id(&block_id);
+
+    let result = runtime.block_on(request.send().promise.and_then(|response| {
+      let secret_version = SecretVersion::from_reader(response.get()?.get_version()?)?;
+
+      Ok(secret_version)
+    }))?;
+
+    Ok(result)
   }
 }

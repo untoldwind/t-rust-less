@@ -32,6 +32,7 @@ pub trait SecretsStore {
 
   fn add(&self, secret_version: SecretVersion) -> SecretStoreResult<String>;
   fn get(&self, secret_id: &str) -> SecretStoreResult<Secret>;
+  fn get_version(&self, block_id: &str) -> SecretStoreResult<SecretVersion>;
 }
 
 pub fn open_secrets_store(
