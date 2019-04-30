@@ -74,6 +74,7 @@ fn main() {
         process::exit(1)
       }
     },
+    ("lock", _) => commands::lock(service, store_name),
     ("unlock", _) => commands::unlock(service, store_name),
     ("import", Some(sub_matches)) => {
       let file_name = sub_matches.value_of("file");
