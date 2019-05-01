@@ -1,10 +1,12 @@
 use std::fmt;
 
+#[derive(Debug)]
 pub enum OTPError {
   InvalidUrl(String),
   InvalidScheme,
   InvalidType,
   InvalidAlgorithm,
+  InvalidSecret,
   MissingParameter(String),
 }
 
@@ -15,6 +17,7 @@ impl fmt::Display for OTPError {
       OTPError::InvalidScheme => write!(f, "Invalid url scheme. Expected otpauth")?,
       OTPError::InvalidType => write!(f, "Invalid OTP type. Only totp and hotp are supported")?,
       OTPError::InvalidAlgorithm => write!(f, "Invalid OTP algorithm. Only SHA1, SHA256, SHA512 are supported")?,
+      OTPError::InvalidSecret => write!(f, "Invalid secret")?,
       OTPError::MissingParameter(name) => write!(f, "Missing required parameter: {}", name)?,
     }
 

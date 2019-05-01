@@ -1,8 +1,17 @@
-use url::Url;
+use std::fmt;
+use url::{form_urlencoded, Url};
 
 mod error;
+mod hotp;
+mod totp;
+
+#[cfg(test)]
+mod tests;
 
 pub use self::error::*;
+use crate::memguard::weak::ZeroingBytes;
+use crate::otp::hotp::HOTPGenerator;
+use crate::otp::totp::TOTPGenerator;
 use std::str::FromStr;
 
 const OTP_URL_SCHEME: &str = "otpauth";
@@ -12,10 +21,51 @@ pub enum OTPType {
   HOTP { counter: u64 },
 }
 
+impl fmt::Display for OTPType {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    match self {
+      OTPType::TOTP { .. } => write!(f, "totp")?,
+      OTPType::HOTP { .. } => write!(f, "hotp")?,
+    }
+    Ok(())
+  }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OTPAlgorithm {
   SHA1,
   SHA256,
   SHA512,
+}
+
+impl fmt::Display for OTPAlgorithm {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    match self {
+      OTPAlgorithm::SHA1 => write!(f, "SHA1")?,
+      OTPAlgorithm::SHA256 => write!(f, "SHA256")?,
+      OTPAlgorithm::SHA512 => write!(f, "SHA512")?,
+    }
+    Ok(())
+  }
+}
+
+pub struct OTPSecret(ZeroingBytes);
+
+impl ToString for OTPSecret {
+  fn to_string(&self) -> String {
+    data_encoding::BASE32_NOPAD.encode(&self.0)
+  }
+}
+
+impl FromStr for OTPSecret {
+  type Err = OTPError;
+
+  fn from_str(s: &str) -> OTPResult<Self> {
+    match data_encoding::BASE32_NOPAD.decode(s.as_bytes()) {
+      Ok(bytes) => Ok(OTPSecret(ZeroingBytes::wrap(bytes))),
+      Err(_) => Err(OTPError::InvalidSecret),
+    }
+  }
 }
 
 pub struct OTPAuthUrl {
@@ -24,6 +74,7 @@ pub struct OTPAuthUrl {
   pub digits: u8,
   pub account_name: String,
   pub issuer: Option<String>,
+  pub secret: OTPSecret,
 }
 
 impl OTPAuthUrl {
@@ -67,6 +118,7 @@ impl OTPAuthUrl {
       Some(_) => return Err(OTPError::InvalidAlgorithm),
     };
     let digits = Self::find_parameter(&url, "digits")?.unwrap_or(6);
+    let secret = Self::find_required_parameter(&url, "secret")?;
 
     Ok(OTPAuthUrl {
       otp_type,
@@ -74,7 +126,56 @@ impl OTPAuthUrl {
       digits,
       account_name,
       issuer,
+      secret,
     })
+  }
+
+  pub fn to_url(&self) -> String {
+    let mut result = format!("{}://{}/", OTP_URL_SCHEME, self.otp_type.to_string());
+
+    if let Some(issuer) = &self.issuer {
+      result.extend(form_urlencoded::byte_serialize(issuer.as_bytes()));
+      result += ":"
+    }
+    result.extend(form_urlencoded::byte_serialize(self.account_name.as_bytes()));
+    result += "?secret=";
+    result += &self.secret.to_string();
+    match self.otp_type {
+      OTPType::TOTP { period } if period != 30 => result += &format!("&period={}", period),
+      OTPType::TOTP { .. } => (),
+      OTPType::HOTP { counter } => result += &format!("&counter={}", counter),
+    }
+    if self.digits != 6 {
+      result += &format!("&digits={}", self.digits);
+    }
+    if let Some(issuer) = &self.issuer {
+      result += "&issuer=";
+      result.extend(form_urlencoded::byte_serialize(issuer.as_bytes()));
+    }
+    if self.algorithm != OTPAlgorithm::SHA1 {
+      result += &format!("&algorithm={}", self.algorithm);
+    }
+
+    result
+  }
+
+  pub fn generate(&self, timestamp_or_counter: u64) -> (String, u64) {
+    match self.otp_type {
+      OTPType::TOTP { period } => TOTPGenerator {
+        algorithm: self.algorithm,
+        digits: self.digits,
+        period,
+        secret: &self.secret.0,
+      }
+      .generate(timestamp_or_counter),
+      OTPType::HOTP { .. } => HOTPGenerator {
+        algorithm: self.algorithm,
+        digits: self.digits,
+        counter: timestamp_or_counter,
+        secret: &self.secret.0,
+      }
+      .generate(),
+    }
   }
 
   fn find_parameter<T: FromStr>(url: &Url, name: &str) -> OTPResult<Option<T>> {
