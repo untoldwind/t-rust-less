@@ -6,6 +6,7 @@ use crate::memguard::weak::{ZeroingBytes, ZeroingBytesExt, ZeroingString, Zeroin
 use capnp::{struct_list, text_list};
 use chrono::{DateTime, TimeZone, Utc};
 use serde_derive::{Deserialize, Serialize};
+use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 
@@ -204,7 +205,7 @@ impl SecretListFilter {
 ///
 /// See SecretVersion for further detail.
 ///
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq)]
 pub struct SecretEntry {
   pub id: String,
   pub name: ZeroingString,
@@ -254,12 +255,33 @@ impl SecretEntry {
   }
 }
 
+impl Ord for SecretEntry {
+  fn cmp(&self, other: &Self) -> Ordering {
+    match self.name.cmp(&other.name) {
+      Ordering::Equal => self.id.cmp(&other.id),
+      ord => ord,
+    }
+  }
+}
+
+impl PartialOrd for SecretEntry {
+  fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    Some(self.cmp(other))
+  }
+}
+
+impl PartialEq for SecretEntry {
+  fn eq(&self, other: &Self) -> bool {
+    self.id.eq(&other.id)
+  }
+}
+
 /// Representation of a filter match to a SecretEntry.
 ///
 /// For the most part this is just the entry itself with some additional information
 /// which parts should be highlighted in the UI
 ///
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq)]
 pub struct SecretEntryMatch {
   pub entry: SecretEntry,
   /// Matching score of the name
@@ -301,6 +323,27 @@ impl SecretEntryMatch {
     for (idx, highlight) in self.tags_highlights.iter().enumerate() {
       tags_highlights.set(idx as u32, *highlight as u64);
     }
+  }
+}
+
+impl Ord for SecretEntryMatch {
+  fn cmp(&self, other: &Self) -> Ordering {
+    match other.name_score.cmp(&self.name_score) {
+      Ordering::Equal => self.entry.cmp(&other.entry),
+      ord => ord,
+    }
+  }
+}
+
+impl PartialOrd for SecretEntryMatch {
+  fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    Some(self.cmp(other))
+  }
+}
+
+impl PartialEq for SecretEntryMatch {
+  fn eq(&self, other: &Self) -> bool {
+    self.entry.eq(&other.entry)
   }
 }
 
