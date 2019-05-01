@@ -16,6 +16,7 @@ chrono = { version = "0", features = ["serde"] }
 url = "1"
 num-derive = "0"
 num-traits = "0"
+sha1 = "0"
 sha2 = "0"
 x25519-dalek = "0"
 chacha20-poly1305-aead = "0"

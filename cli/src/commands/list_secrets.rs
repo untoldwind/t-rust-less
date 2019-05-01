@@ -3,15 +3,15 @@ use crate::commands::unlock_store;
 use crate::error::ExtResult;
 use atty::Stream;
 use cursive::event::Key;
+use cursive::theme::Effect;
 use cursive::traits::{Boxable, Identifiable, Scrollable};
+use cursive::utils::markup::StyledString;
 use cursive::views::{DummyView, EditView, LinearLayout, SelectView};
 use cursive::Cursive;
 use std::sync::Arc;
-use t_rust_less_lib::api::{SecretListFilter, SecretEntryMatch, SecretEntry};
+use t_rust_less_lib::api::{SecretEntry, SecretEntryMatch, SecretListFilter};
 use t_rust_less_lib::secrets_store::SecretsStore;
 use t_rust_less_lib::service::TrustlessService;
-use cursive::utils::markup::StyledString;
-use cursive::theme::{Effect, PaletteColor, Color};
 
 pub fn list_secrets(service: Arc<TrustlessService>, store_name: String, filter: SecretListFilter) {
   let secrets_store = service
@@ -83,7 +83,10 @@ fn update_name_filter(s: &mut Cursive, name_filter: &str, _: usize) {
       Some(name_filter.to_string())
     };
 
-    let mut list = state.secrets_store.list(state.filter.clone()).ok_or_exit("List entries");
+    let mut list = state
+      .secrets_store
+      .list(state.filter.clone())
+      .ok_or_exit("List entries");
     list.entries.sort();
     list.entries
   };

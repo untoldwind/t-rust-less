@@ -5,6 +5,7 @@ pub mod api;
 pub mod block_store;
 pub mod clipboard;
 pub mod memguard;
+pub mod otp;
 pub mod secrets_store;
 pub mod service;
 
