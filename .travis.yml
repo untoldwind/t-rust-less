@@ -26,3 +26,8 @@ branches:
     # release tags
     - /^v\d+\.\d+\.\d+.*$/
     - master
+
+addons:
+  apt:
+    packages:
+      - capnproto
