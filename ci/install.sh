@@ -1,7 +1,2 @@
 set -ex
 
-main() {
-
-}
-
-main
