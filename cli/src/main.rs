@@ -3,6 +3,7 @@ use atty::Stream;
 use crossterm_style::{style, Color};
 use log::error;
 use std::process;
+use t_rust_less_lib::api::SecretListFilter;
 use t_rust_less_lib::service::{config_file, create_service};
 
 mod cli;
@@ -65,7 +66,17 @@ fn main() {
 
   match matches.subcommand() {
     ("status", _) => commands::status(service, store_name),
-    ("list", _) => commands::list_secrets(service, store_name),
+    ("list", Some(sub_matches)) => {
+      let filter = SecretListFilter {
+        name: sub_matches.value_of("name").map(ToString::to_string),
+        tag: sub_matches.value_of("tag").map(ToString::to_string),
+        url: sub_matches.value_of("url").map(ToString::to_string),
+        deleted: sub_matches.is_present("deleted"),
+        ..Default::default()
+      };
+
+      commands::list_secrets(service, store_name, filter)
+    }
     ("identities", Some(sub_matches)) => match sub_matches.subcommand() {
       ("add", _) => commands::add_identity(service, store_name),
       ("list", _) => commands::list_identities(service, store_name),

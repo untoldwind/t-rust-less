@@ -38,7 +38,7 @@ impl service::Server for ServiceImpl {
   ) -> Promise<(), capnp::Error> {
     let store_config = stry!(params
       .get()
-      .and_then(|p| p.get_store_config())
+      .and_then(service::set_store_config_params::Reader::get_store_config)
       .and_then(StoreConfig::from_reader));
 
     stry!(self.service.set_store_config(store_config));
@@ -51,7 +51,9 @@ impl service::Server for ServiceImpl {
     params: service::GetStoreConfigParams,
     mut results: service::GetStoreConfigResults,
   ) -> Promise<(), capnp::Error> {
-    let store_name = stry!(params.get().and_then(|p| p.get_store_name()));
+    let store_name = stry!(params
+      .get()
+      .and_then(service::get_store_config_params::Reader::get_store_name));
     let store_config = stry!(self.service.get_store_config(store_name));
 
     store_config.to_builder(stry!(results.get().get_store_config()));

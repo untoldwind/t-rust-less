@@ -1,4 +1,4 @@
-use crate::api::{SecretProperties, SecretType, SecretVersion};
+use crate::api::{SecretType, SecretVersion};
 use crate::block_store::{Change, ChangeLog, Operation};
 use crate::memguard::weak::ZeroingStringExt;
 use crate::secrets_store::index::Index;
@@ -39,7 +39,7 @@ impl TestStore {
       secret_type: SecretType::Login,
       timestamp: Utc.timestamp(1000 + 1000 * version_id, 0),
       name: format!("{}_{}", secret_id, version_id).to_zeroing(),
-      properties: SecretProperties::new(),
+      properties: Default::default(),
       tags: vec![],
       urls: vec![],
       deleted: false,

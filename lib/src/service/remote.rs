@@ -32,7 +32,7 @@ impl TrustlessService for RemoteTrustlessService {
         .get()?
         .get_store_names()?
         .into_iter()
-        .map(|name| name.map(|n| n.to_string()))
+        .map(|name| name.map(ToString::to_string))
         .collect::<capnp::Result<Vec<String>>>()?;
       Ok(names)
     }))?;
@@ -88,7 +88,7 @@ impl TrustlessService for RemoteTrustlessService {
       request
         .send()
         .promise
-        .and_then(|response| Ok(read_option(response.get()?.get_store_name()?)?.map(|s| s.to_string()))),
+        .and_then(|response| Ok(read_option(response.get()?.get_store_name()?)?.map(ToString::to_string))),
     )?;
 
     Ok(result)

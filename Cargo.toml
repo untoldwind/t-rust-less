@@ -12,4 +12,4 @@ lto = false
 
 [patch.crates-io]
 x25519-dalek = { git = "https://github.com/untoldwind/x25519-dalek.git"}
-openssl = { git = "https://github.com/untoldwind/rust-openssl.git" }
+# openssl = { git = "https://github.com/untoldwind/rust-openssl.git" }

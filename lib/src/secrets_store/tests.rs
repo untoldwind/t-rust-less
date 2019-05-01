@@ -1,5 +1,5 @@
 use super::{open_secrets_store, SecretStoreError, SecretStoreResult, SecretsStore};
-use crate::api::{Identity, SecretProperties, SecretType, SecretVersion};
+use crate::api::{Identity, SecretType, SecretVersion};
 use crate::memguard::weak::ZeroingStringExt;
 use crate::memguard::SecretBytes;
 use chrono::Utc;
@@ -86,7 +86,7 @@ fn add_secrets_versions(secrets_store: &SecretsStore, ids_with_passphrase: &[(Id
     name: "First secret".to_string().to_zeroing(),
     tags: vec![],
     urls: vec![],
-    properties: SecretProperties::new(),
+    properties: Default::default(),
     attachments: vec![],
     deleted: false,
     recipients: ids_with_passphrase

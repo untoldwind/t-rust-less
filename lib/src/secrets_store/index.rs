@@ -268,7 +268,7 @@ impl Index {
   {
     let current_block_id = old_version_refs.first().map(|v| v.block_id.clone());
     let mut version_refs =
-      Vec::with_capacity(old_version_refs.len() + maybe_added_versions.map(|m| m.len()).unwrap_or(0));
+      Vec::with_capacity(old_version_refs.len() + maybe_added_versions.map(HashMap::len).unwrap_or(0));
 
     for version_ref in old_version_refs {
       if !deleted_blocks.contains(&version_ref.block_id) {

@@ -122,7 +122,7 @@ impl SecretType {
     }
   }
 
-  pub fn to_builder(&self) -> api_capnp::SecretType {
+  pub fn to_builder(self) -> api_capnp::SecretType {
     match self {
       SecretType::Login => api_capnp::SecretType::Login,
       SecretType::Licence => api_capnp::SecretType::Licence,
@@ -153,13 +153,13 @@ pub struct SecretListFilter {
 impl SecretListFilter {
   pub fn from_reader(reader: secret_list_filter::Reader) -> capnp::Result<Self> {
     Ok(SecretListFilter {
-      url: read_option(reader.get_url()?)?.map(|u| u.to_string()),
-      tag: read_option(reader.get_tag()?)?.map(|u| u.to_string()),
+      url: read_option(reader.get_url()?)?.map(ToString::to_string),
+      tag: read_option(reader.get_tag()?)?.map(ToString::to_string),
       secret_type: match reader.get_type()?.which()? {
         secret_list_filter::option_type::Some(reader) => Some(SecretType::from_reader(reader?)),
         secret_list_filter::option_type::None(_) => None,
       },
-      name: read_option(reader.get_name()?)?.map(|u| u.to_string()),
+      name: read_option(reader.get_name()?)?.map(ToString::to_string),
       deleted: reader.get_deleted(),
     })
   }
@@ -344,21 +344,21 @@ impl SecretList {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct SecretProperties(BTreeMap<String, ZeroingString>);
 
 impl SecretProperties {
-  pub fn new() -> Self {
-    SecretProperties(BTreeMap::new())
-  }
-
   pub fn get(&self, name: &str) -> Option<&str> {
     self.0.get(name).map(|s| s.as_str())
   }
 
   pub fn len(&self) -> usize {
     self.0.len()
+  }
+
+  pub fn is_empty(&self) -> bool {
+    self.0.is_empty()
   }
 
   pub fn from_reader(reader: struct_list::Reader<secret_version::property::Owned>) -> capnp::Result<Self> {

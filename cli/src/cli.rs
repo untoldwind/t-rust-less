@@ -40,5 +40,29 @@ pub fn app() -> App<'static, 'static> {
     .subcommand(SubCommand::with_name("export").about("Export an entire store"))
     .subcommand(SubCommand::with_name("lock").about("Lock the store"))
     .subcommand(SubCommand::with_name("unlock").about("Unlock the store"))
-    .subcommand(SubCommand::with_name("list").alias("ls").about("List secrets"))
+    .subcommand(
+      SubCommand::with_name("list")
+        .alias("ls")
+        .about("List secrets")
+        .arg(
+          Arg::with_name("name")
+            .value_name("name-filter")
+            .help("Fuzzy name filter"),
+        )
+        .arg(
+          Arg::with_name("url")
+            .long("url")
+            .short("u")
+            .value_name("url-filter")
+            .number_of_values(1),
+        )
+        .arg(
+          Arg::with_name("tag")
+            .long("tag")
+            .short("t")
+            .value_name("tag-filter")
+            .number_of_values(1),
+        )
+        .arg(Arg::with_name("deleted").long("deleted").help("List deleted items")),
+    )
 }
