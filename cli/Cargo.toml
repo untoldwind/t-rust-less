@@ -1,5 +1,5 @@
 [package]
-name = "t-rust-less-cli"
+name = "t-rust-less"
 version = "0.1.0"
 authors = ["Untoldwind <landru@untoldwind.net>"]
 build = "build.rs"
