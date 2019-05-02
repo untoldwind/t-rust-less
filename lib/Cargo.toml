@@ -43,6 +43,7 @@ byteorder = "1"
 
 [target.'cfg(unix)'.dependencies]
 xcb = { version = "0.8", features = [ "thread", "xfixes" ] }
+x11 = { version = "2", features = ["xlib"] }
 libc = "0"
 
 [target.'cfg(windows)'.dependencies]

@@ -107,6 +107,10 @@ impl TrustlessService for RemoteTrustlessService {
 
     Ok(())
   }
+
+  fn secret_to_clipboard(&self, store_name: &str, block_id: &str, properties: &[&str]) -> ServiceResult<()> {
+    unimplemented!()
+  }
 }
 
 pub struct RemoteSecretsStore {

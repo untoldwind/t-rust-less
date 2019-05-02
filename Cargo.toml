@@ -3,6 +3,7 @@ members = [
     "lib",
     "cli",
     "daemon",
+    "experiments",
 ]
 
 [profile.release]

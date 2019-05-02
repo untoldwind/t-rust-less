@@ -1,0 +1,21 @@
+[package]
+name = "t-rust-less-experiments"
+version = "0.1.0"
+authors = ["Untoldwind <landru@untoldwind.net>"]
+edition = "2018"
+
+[dependencies]
+log = "0"
+env_logger = "0"
+t-rust-less-lib = { path = "../lib" }
+serde = "1"
+serde_derive = "1"
+rand = "0.5"
+dirs = "1"
+url = "1"
+serde_json = "1"
+chrono = { version = "0", features = ["serde"] }
+
+[dev-dependencies]
+tempdir = "0"
+spectral = "0"

@@ -1,11 +1,13 @@
 use std::thread;
 
+use log::debug;
+use std::sync::{Arc, RwLock};
 use xcb::{Atom, Connection, Window};
 
 use super::{ClipboardError, ClipboardResult, SelectionProvider};
 
 #[derive(Clone, Debug)]
-pub struct Atoms {
+struct Atoms {
   pub primary: Atom,
   pub clipboard: Atom,
   pub targets: Atom,
@@ -15,7 +17,7 @@ pub struct Atoms {
   pub text_plain_utf8: Atom,
 }
 
-pub struct Context {
+struct Context {
   pub connection: Connection,
   pub screen: i32,
   pub window: Window,
@@ -23,7 +25,7 @@ pub struct Context {
 }
 
 impl Context {
-  pub fn new(displayname: Option<&str>) -> ClipboardResult<Self> {
+  fn new(displayname: Option<&str>) -> ClipboardResult<Self> {
     let (connection, screen) = Connection::connect(displayname)?;
     let window = connection.generate_id();
 
@@ -63,6 +65,8 @@ impl Context {
       text_plain_utf8: Self::get_atom(&connection, "ttext/plain;charset=utf-8")?,
     };
 
+    debug!("{:?}", atoms);
+
     Ok(Context {
       connection,
       screen,
@@ -71,7 +75,12 @@ impl Context {
     })
   }
 
-  pub fn get_atom(connection: &Connection, name: &str) -> ClipboardResult<Atom> {
+  fn destroy(&self) {
+    xcb::destroy_window(&self.connection, self.window);
+    self.connection.flush();
+  }
+
+  fn get_atom(connection: &Connection, name: &str) -> ClipboardResult<Atom> {
     xcb::intern_atom(connection, false, name)
       .get_reply()
       .map(|reply| reply.atom())
@@ -80,7 +89,8 @@ impl Context {
 }
 
 pub struct Clipboard {
-  handle: thread::JoinHandle<()>,
+  context: Arc<Context>,
+  handle: RwLock<Option<thread::JoinHandle<()>>>,
 }
 
 impl Clipboard {
@@ -88,23 +98,33 @@ impl Clipboard {
   where
     T: SelectionProvider + 'static,
   {
-    let context = Context::new(None)?;
+    let context = Arc::new(Context::new(None)?);
 
-    let handle = thread::spawn(move || run(context, selection_provider));
+    let handle = thread::spawn({
+      let cloned = context.clone();
+      move || run(cloned, selection_provider)
+    });
 
-    Ok(Clipboard { handle })
+    Ok(Clipboard {
+      context,
+      handle: RwLock::new(Some(handle)),
+    })
   }
 
-  pub fn wait(self) -> ClipboardResult<()> {
-    self
-      .handle
-      .join()
-      .map_err(|_| ClipboardError("wait timeout".to_string()))?;
+  pub fn destroy(&self) {
+    self.context.destroy()
+  }
+
+  pub fn wait(&self) -> ClipboardResult<()> {
+    let mut maybe_handle = self.handle.write().unwrap();
+    if let Some(handle) = maybe_handle.take() {
+      handle.join().map_err(|_| ClipboardError("wait timeout".to_string()))?;
+    }
     Ok(())
   }
 }
 
-fn run<T>(context: Context, mut selection_provider: T)
+fn run<T>(context: Arc<Context>, mut selection_provider: T)
 where
   T: SelectionProvider,
 {
@@ -129,7 +149,7 @@ where
         let target = event.target();
         let mut property = event.property();
 
-        dbg!(target);
+        debug!("Selection target: {}", target);
 
         if target == context.atoms.targets {
           xcb::change_property(
@@ -153,7 +173,7 @@ where
                 xcb::PROP_MODE_REPLACE as u8,
                 event.requestor(),
                 property,
-                context.atoms.utf8_string,
+                target,
                 8,
                 value.as_bytes(),
               );
@@ -172,7 +192,7 @@ where
             }
           }
         } else {
-          dbg!("Nope");
+          debug!("Reply with NONE");
           property = xcb::ATOM_NONE;
         }
 
@@ -180,18 +200,25 @@ where
           &context.connection,
           false,
           event.requestor(),
-          0,
+          xcb::EVENT_MASK_NO_EVENT,
           &xcb::SelectionNotifyEvent::new(event.time(), event.requestor(), event.selection(), target, property),
         );
 
         context.connection.flush();
       }
       xcb::SELECTION_CLEAR => {
-        dbg!("Clear");
+        debug!("Lost selection ownership");
 
         break;
       }
-      _ => (),
+      xcb::DESTROY_NOTIFY => {
+        debug!("Window destroyed");
+
+        break;
+      }
+      ignored => debug!("Ignore event {}", ignored),
     }
   }
+
+  debug!("Ending event loop");
 }
