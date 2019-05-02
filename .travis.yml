@@ -32,3 +32,5 @@ addons:
   apt:
     packages:
       - capnproto
+      - libxcb-xfixes0-dev
+      - libxcb-shape0-dev
