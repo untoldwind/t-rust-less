@@ -84,7 +84,9 @@ impl service::Server for ServiceImpl {
     params: service::SetDefaultStoreParams,
     _: service::SetDefaultStoreResults,
   ) -> Promise<(), capnp::Error> {
-    let store_name = stry!(stry!(params.get()).get_store_name());
+    let store_name = stry!(params
+      .get()
+      .and_then(service::set_default_store_params::Reader::get_store_name));
 
     stry!(self.service.set_default_store(store_name));
 
@@ -96,12 +98,47 @@ impl service::Server for ServiceImpl {
     params: service::OpenStoreParams,
     mut results: service::OpenStoreResults,
   ) -> Promise<(), capnp::Error> {
-    let store_name = stry!(stry!(params.get()).get_store_name());
+    let store_name = stry!(params
+      .get()
+      .and_then(service::open_store_params::Reader::get_store_name));
     let store = stry!(self.service.open_store(store_name));
 
     results
       .get()
       .set_store(secrets_store::ToClient::new(SecretsStoreImpl::new(store)).into_client::<capnp_rpc::Server>());
+
+    Promise::ok(())
+  }
+
+  fn direct_clipboard_available(
+    &mut self,
+    _: service::DirectClipboardAvailableParams,
+    mut results: service::DirectClipboardAvailableResults,
+  ) -> Promise<(), capnp::Error> {
+    let available = stry!(self.service.direct_clipboard_available());
+
+    results.get().set_available(available);
+
+    Promise::ok(())
+  }
+
+  fn secret_to_clipboard(
+    &mut self,
+    params: service::SecretToClipboardParams,
+    _: service::SecretToClipboardResults,
+  ) -> Promise<(), capnp::Error> {
+    let store_name = stry!(params
+      .get()
+      .and_then(service::secret_to_clipboard_params::Reader::get_store_name));
+    let secret_id = stry!(params
+      .get()
+      .and_then(service::secret_to_clipboard_params::Reader::get_secret_id));
+    let properties = stry!(params
+      .get()
+      .and_then(service::secret_to_clipboard_params::Reader::get_properties)
+      .and_then(|properties| { properties.iter().collect::<capnp::Result<Vec<&str>>>() }));
+
+    stry!(self.service.secret_to_clipboard(store_name, secret_id, &properties));
 
     Promise::ok(())
   }

@@ -8,6 +8,7 @@ pub enum ServiceError {
   IO(String),
   Mutex(String),
   StoreNotFound(String),
+  NotAvailable,
 }
 
 impl fmt::Display for ServiceError {
@@ -17,6 +18,7 @@ impl fmt::Display for ServiceError {
       ServiceError::IO(error) => write!(f, "IO: {}", error)?,
       ServiceError::Mutex(error) => write!(f, "Mutex: {}", error)?,
       ServiceError::StoreNotFound(name) => write!(f, "Store with name {} not found", name)?,
+      ServiceError::NotAvailable => write!(f, "Functionality not available (on your platform)")?,
     }
     Ok(())
   }

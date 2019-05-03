@@ -128,7 +128,18 @@ impl TrustlessService for LocalTrustlessService {
     Ok(())
   }
 
-  fn secret_to_clipboard(&self, store_name: &str, block_id: &str, properties: &[&str]) -> ServiceResult<()> {
+  fn direct_clipboard_available(&self) -> ServiceResult<bool> {
+    #[cfg(unix)]
+    {
+      Ok(true)
+    }
+    #[cfg(not(unix))]
+    {
+      Ok(false)
+    }
+  }
+
+  fn secret_to_clipboard(&self, store_name: &str, secret_id: &str, properties: &[&str]) -> ServiceResult<()> {
     unimplemented!()
   }
 }

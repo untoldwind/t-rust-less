@@ -1,13 +1,13 @@
 mod error;
-#[cfg(unix)]
 mod unix_x11;
-#[cfg(unix)]
 mod unix_xcb;
 #[cfg(windows)]
 mod windows;
 
 pub use self::error::*;
-#[cfg(unix)]
+#[cfg(all(unix, feature = "with_x11"))]
+pub use self::unix_x11::Clipboard;
+#[cfg(all(unix, feature = "with_xcb"))]
 pub use self::unix_xcb::Clipboard;
 #[cfg(windows)]
 pub use self::windows::Clipboard;

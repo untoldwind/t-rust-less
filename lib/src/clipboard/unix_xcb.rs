@@ -1,3 +1,5 @@
+#![cfg(all(unix, feature = "with_xcb"))]
+
 use std::thread;
 
 use log::debug;

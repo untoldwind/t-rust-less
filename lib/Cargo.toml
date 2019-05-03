@@ -41,9 +41,14 @@ spectral = "0"
 quickcheck = "0"
 byteorder = "1"
 
+[features]
+with_x11 = ["x11"]
+with_xcb = ["xcb"]
+default = ["with_xcb"]
+
 [target.'cfg(unix)'.dependencies]
-xcb = { version = "0.8", features = [ "thread", "xfixes" ] }
-x11 = { version = "2", features = ["xlib"] }
+xcb = { version = "0.8", features = [ "thread", "xfixes" ], optional = true }
+x11 = { version = "2", features = ["xlib"], optional = true }
 libc = "0"
 
 [target.'cfg(windows)'.dependencies]

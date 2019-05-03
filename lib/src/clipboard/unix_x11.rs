@@ -1,3 +1,5 @@
+#![cfg(all(unix, feature = "with_x11"))]
+
 use crate::clipboard::{ClipboardError, ClipboardResult, SelectionProvider};
 use log::debug;
 use std::ffi::CString;

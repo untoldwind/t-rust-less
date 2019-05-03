@@ -21,6 +21,8 @@ interface Service {
     getDefaultStore @3 () -> (storeName : Option(Text));
     setDefaultStore @4 (storeName : Text);
     openStore @5 (storeName : Text) -> (store: SecretsStore);
+    directClipboardAvailable @6 () -> (available: Bool);
+    secretToClipboard @7 (storeName : Text, secretId : Text, properties : List(Text));
 }
 
 struct Identity {
