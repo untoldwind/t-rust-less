@@ -9,6 +9,11 @@ use serde_derive::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::fmt;
+
+pub const PROPERTY_USERNAME: &str = "username";
+pub const PROPERTY_PASSWORD: &str = "password";
+pub const PROPERTY_TOTP_URL: &str = "totpUrl";
 
 /// Status information of a secrets store
 ///
@@ -103,11 +108,11 @@ impl SecretType {
   /// The values of these properties are automatically estimated for the strengths.
   pub fn password_properties(&self) -> &[&str] {
     match self {
-      SecretType::Login => &["password"],
+      SecretType::Login => &[PROPERTY_PASSWORD],
       SecretType::Note => &[],
       SecretType::Licence => &[],
-      SecretType::Wlan => &["password"],
-      SecretType::Password => &["password"],
+      SecretType::Wlan => &[PROPERTY_PASSWORD],
+      SecretType::Password => &[PROPERTY_PASSWORD],
       SecretType::Other => &[],
     }
   }
@@ -131,6 +136,19 @@ impl SecretType {
       SecretType::Wlan => api_capnp::SecretType::Wlan,
       SecretType::Password => api_capnp::SecretType::Password,
       SecretType::Other => api_capnp::SecretType::Other,
+    }
+  }
+}
+
+impl fmt::Display for SecretType {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    match self {
+      SecretType::Login => write!(f, "Login"),
+      SecretType::Note => write!(f, "Note"),
+      SecretType::Licence => write!(f, "Licence"),
+      SecretType::Wlan => write!(f, "WLAN"),
+      SecretType::Password => write!(f, "Password"),
+      SecretType::Other => write!(f, "Other"),
     }
   }
 }

@@ -8,7 +8,7 @@ use cursive::views::{Dialog, DummyView, LinearLayout, SelectView, TextView};
 use cursive::Cursive;
 use std::process;
 use std::sync::Arc;
-use t_rust_less_lib::api::Identity;
+use t_rust_less_lib::api::{Identity, Status};
 use t_rust_less_lib::secrets_store::SecretsStore;
 use t_rust_less_lib::service::TrustlessService;
 
@@ -24,7 +24,7 @@ pub fn unlock(service: Arc<TrustlessService>, store_name: String) {
   }
 }
 
-pub fn unlock_store(secrets_store: &Arc<SecretsStore>, name: &str) {
+pub fn unlock_store(secrets_store: &Arc<SecretsStore>, name: &str) -> Status {
   if !atty::is(Stream::Stdout) {
     println!("Please use a terminal");
     process::exit(1);
@@ -45,6 +45,8 @@ pub fn unlock_store(secrets_store: &Arc<SecretsStore>, name: &str) {
     println!("Unlock failed");
     process::exit(1);
   }
+
+  status
 }
 
 fn unlock_dialog(secrets_store: &Arc<SecretsStore>, name: &str, identities: Vec<Identity>) {
