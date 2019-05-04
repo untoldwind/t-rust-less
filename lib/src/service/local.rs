@@ -1,6 +1,8 @@
+use crate::clipboard::Clipboard;
 use crate::secrets_store::{open_secrets_store, SecretsStore};
 use crate::service::config::{read_config, write_config, Config};
 use crate::service::error::{ServiceError, ServiceResult};
+use crate::service::secrets_provider::SecretsProvider;
 use crate::service::{StoreConfig, TrustlessService};
 use chrono::Utc;
 use log::{error, info};
@@ -11,6 +13,7 @@ use std::time::Duration;
 pub struct LocalTrustlessService {
   config: RwLock<Config>,
   opened_stores: RwLock<HashMap<String, Arc<SecretsStore>>>,
+  clipboard: RwLock<Option<Clipboard>>,
 }
 
 impl LocalTrustlessService {
@@ -20,6 +23,7 @@ impl LocalTrustlessService {
     Ok(LocalTrustlessService {
       config: RwLock::new(config),
       opened_stores: RwLock::new(HashMap::new()),
+      clipboard: RwLock::new(None),
     })
   }
 
@@ -140,6 +144,13 @@ impl TrustlessService for LocalTrustlessService {
   }
 
   fn secret_to_clipboard(&self, store_name: &str, secret_id: &str, properties: &[&str]) -> ServiceResult<()> {
-    unimplemented!()
+    let store = self.open_store(store_name)?;
+    let secret = store.get(secret_id)?;
+    let secret_provider = SecretsProvider::new(secret.current.clone(), properties);
+    let mut clipboard = self.clipboard.write()?;
+
+    clipboard.replace(Clipboard::new(secret_provider)?);
+
+    Ok(())
   }
 }

@@ -1,3 +1,4 @@
+use crate::clipboard::ClipboardError;
 use crate::secrets_store::SecretStoreError;
 use serde_derive::{Deserialize, Serialize};
 use std::fmt;
@@ -29,6 +30,7 @@ pub type ServiceResult<T> = Result<T, ServiceError>;
 error_convert_from!(std::io::Error, ServiceError, IO(display));
 error_convert_from!(toml::de::Error, ServiceError, IO(display));
 error_convert_from!(SecretStoreError, ServiceError, SecretsStore(direct));
+error_convert_from!(ClipboardError, ServiceError, IO(display));
 
 impl<T> From<std::sync::PoisonError<T>> for ServiceError {
   fn from(error: std::sync::PoisonError<T>) -> Self {

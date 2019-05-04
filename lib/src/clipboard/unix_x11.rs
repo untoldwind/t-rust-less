@@ -160,6 +160,12 @@ impl Clipboard {
   }
 }
 
+impl Drop for Clipboard {
+  fn drop(&mut self) {
+    self.destroy()
+  }
+}
+
 fn run<T>(context: Arc<Context>, mut selection_provider: T)
 where
   T: SelectionProvider,

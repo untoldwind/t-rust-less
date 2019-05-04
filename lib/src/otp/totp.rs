@@ -14,13 +14,13 @@ impl<'a> TOTPGenerator<'a> {
   pub fn generate(&self, timestamp: u64) -> (String, u64) {
     let mut hotp_gen = HOTPGenerator {
       algorithm: self.algorithm,
-      counter: timestamp / self.period as u64,
+      counter: timestamp / u64::from(self.period),
       digits: self.digits,
       secret: self.secret,
     };
     (
       hotp_gen.generate().0,
-      self.period as u64 - timestamp % self.period as u64,
+      u64::from(self.period) - timestamp % u64::from(self.period),
     )
   }
 }

@@ -1,4 +1,4 @@
-use crate::api::{read_option, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
+use crate::api::{read_option, set_text_list, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
 use crate::api_capnp::{secrets_store, service};
 use crate::memguard::SecretBytes;
 use crate::secrets_store::{SecretStoreResult, SecretsStore};
@@ -123,7 +123,20 @@ impl TrustlessService for RemoteTrustlessService {
   }
 
   fn secret_to_clipboard(&self, store_name: &str, secret_id: &str, properties: &[&str]) -> ServiceResult<()> {
-    unimplemented!()
+    let mut runtime = self.runtime.borrow_mut();
+    let mut request = self.client.secret_to_clipboard_request();
+
+    request.get().set_store_name(store_name);
+    request.get().set_secret_id(secret_id);
+    set_text_list(request.get().init_properties(properties.len() as u32), properties)?;
+
+    runtime.block_on(request.send().promise.and_then(|response| {
+      response.get()?;
+
+      Ok(())
+    }))?;
+
+    Ok(())
   }
 }
 

@@ -688,7 +688,7 @@ where
   }
 }
 
-fn set_text_list<I, S>(mut text_list: text_list::Builder, texts: I) -> capnp::Result<()>
+pub fn set_text_list<I, S>(mut text_list: text_list::Builder, texts: I) -> capnp::Result<()>
 where
   I: IntoIterator<Item = S>,
   S: AsRef<str>,

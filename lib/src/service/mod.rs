@@ -4,6 +4,7 @@ mod config;
 mod error;
 pub mod local;
 mod remote;
+mod secrets_provider;
 
 #[cfg(unix)]
 pub mod unix;
