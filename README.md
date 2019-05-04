@@ -1,7 +1,6 @@
 # t-rust-less
 
-[![Build Status](https://travis-ci.com/untoldwind/t-rust-less.svg?token=piBixxrHL3y2FoWP6PYe&branch=master)](https://travis-ci.com/untoldwind/t-rust-less)
-
+[![Build Status](https://travis-ci.org/untoldwind/t-rust-less.svg?branch=master)](https://travis-ci.org/untoldwind/t-rust-less)
 
 Spritual ancestor of https://github.com/untoldwind/trustless taking over the concepts that worked, improving those
 that did not turned out so well and avoiding all the quirky stuff (potentially by replacing it with new quirky stuff).
