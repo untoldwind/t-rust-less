@@ -167,7 +167,7 @@ where
             property,
             xcb::ATOM_ATOM,
             32,
-            &[context.atoms.targets, context.atoms.utf8_string],
+            &[context.atoms.targets, context.atoms.utf8_string,  context.atoms.text_plain, context.atoms.text_plain_utf8],
           );
         } else if target == context.atoms.string
           || target == context.atoms.utf8_string

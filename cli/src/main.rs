@@ -46,7 +46,7 @@ fn main() {
   log_builder.target(env_logger::Target::Stderr);
   log_builder.init();
 
-  let service = create_service().ok_or_exit("Failed opening servier");
+  let service = create_service().ok_or_exit("Failed creating service");
   let maybe_store_name = matches
     .value_of("store")
     .map(str::to_string)

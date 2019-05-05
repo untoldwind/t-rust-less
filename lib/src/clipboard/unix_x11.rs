@@ -198,7 +198,7 @@ where
           debug!("Selection target: {}", selection.target);
 
           if selection.target == context.atoms.targets {
-            let atoms = [context.atoms.targets, context.atoms.utf8_string];
+            let atoms = [context.atoms.targets, context.atoms.utf8_string, context.atoms.text_plain, context.atoms.text_plain_utf8];
             xlib::XChangeProperty(
               context.display,
               selection.requestor,
@@ -207,7 +207,7 @@ where
               32,
               xlib::PropModeReplace,
               &atoms as *const xlib::Atom as *const u8,
-              2,
+              atoms.len() as i32,
             );
           } else if selection.target == context.atoms.string
             || selection.target == context.atoms.utf8_string
