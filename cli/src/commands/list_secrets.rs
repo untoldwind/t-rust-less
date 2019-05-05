@@ -118,6 +118,11 @@ fn update_name_filter(s: &mut Cursive, name_filter: &str, _: usize) {
   };
 
   let mut entry_select = s.find_id::<SelectView<SecretEntry>>("entry_list").unwrap();
+  let mut secret_view = s.find_id::<SecretView>("secret_view").unwrap();
+  match next_entries.first() {
+    Some(new_selection) => secret_view.show_secret(&new_selection.entry.id),
+    None => secret_view.clear(),
+  }
   entry_select.clear();
   entry_select.add_all(next_entries.into_iter().map(entry_list_item));
 }

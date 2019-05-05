@@ -1,22 +1,21 @@
 use cursive::view::ViewWrapper;
 use cursive::views::{LinearLayout, TextView};
-use t_rust_less_lib::api::SecretType;
 
-pub struct SecretTypeView {
+pub struct SecretSimpleView {
   base_view: LinearLayout,
 }
 
-impl SecretTypeView {
-  pub fn new(secret_type: SecretType) -> Self {
-    SecretTypeView {
+impl SecretSimpleView {
+  pub fn new(property: &str, value: &str) -> Self {
+    SecretSimpleView {
       base_view: LinearLayout::horizontal()
-        .child(TextView::new("Type: "))
-        .child(TextView::new(secret_type.to_string())),
+        .child(TextView::new(format!("{}: ", property)))
+        .child(TextView::new(value)),
     }
   }
 }
 
-impl ViewWrapper for SecretTypeView {
+impl ViewWrapper for SecretSimpleView {
   type V = LinearLayout;
 
   fn with_view<F, R>(&self, f: F) -> Option<R>
