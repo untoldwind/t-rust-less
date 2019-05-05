@@ -157,6 +157,7 @@ where
         let target = event.target();
         let mut property = event.property();
 
+        debug!("{} {} {} {} {} {}", event.time(), event.owner(), event.selection(), event.property(), event.target(), event.requestor());
         debug!("Selection target: {}", target);
 
         if target == context.atoms.targets {
@@ -167,7 +168,7 @@ where
             property,
             xcb::ATOM_ATOM,
             32,
-            &[context.atoms.targets, context.atoms.utf8_string,  context.atoms.text_plain, context.atoms.text_plain_utf8],
+            &[context.atoms.targets, context.atoms.string, context.atoms.utf8_string, context.atoms.text_plain, context.atoms.text_plain_utf8],
           );
         } else if target == context.atoms.string
           || target == context.atoms.utf8_string
