@@ -108,20 +108,6 @@ impl TrustlessService for RemoteTrustlessService {
     Ok(())
   }
 
-  fn direct_clipboard_available(&self) -> ServiceResult<bool> {
-    let mut runtime = self.runtime.borrow_mut();
-    let request = self.client.direct_clipboard_available_request();
-
-    let result = runtime.block_on(
-      request
-        .send()
-        .promise
-        .and_then(|response| Ok(response.get()?.get_available())),
-    )?;
-
-    Ok(result)
-  }
-
   fn secret_to_clipboard(&self, store_name: &str, secret_id: &str, properties: &[&str]) -> ServiceResult<()> {
     let mut runtime = self.runtime.borrow_mut();
     let mut request = self.client.secret_to_clipboard_request();

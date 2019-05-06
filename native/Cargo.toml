@@ -1,0 +1,14 @@
+[package]
+name = "t-rust-less-native"
+version = "0.1.0"
+authors = ["Untoldwind <landru@untoldwind.net>"]
+edition = "2018"
+
+[dependencies]
+log = "0"
+env_logger = "0"
+t-rust-less-lib = { path = "../lib" }
+serde = "1"
+serde_derive = "1"
+byteorder = "1"
+serde_json = "1"

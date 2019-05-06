@@ -12,7 +12,7 @@ pub struct SecretsProvider {
 
 impl SecretsProvider {
   pub fn new(secret_version: SecretVersion, properties: &[&str]) -> Self {
-    let properties_stack = properties.into_iter().rev().map(ToString::to_string).collect();
+    let properties_stack = properties.iter().rev().map(ToString::to_string).collect();
     SecretsProvider {
       secret_version,
       properties_stack,

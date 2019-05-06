@@ -110,18 +110,6 @@ impl service::Server for ServiceImpl {
     Promise::ok(())
   }
 
-  fn direct_clipboard_available(
-    &mut self,
-    _: service::DirectClipboardAvailableParams,
-    mut results: service::DirectClipboardAvailableResults,
-  ) -> Promise<(), capnp::Error> {
-    let available = stry!(self.service.direct_clipboard_available());
-
-    results.get().set_available(available);
-
-    Promise::ok(())
-  }
-
   fn secret_to_clipboard(
     &mut self,
     params: service::SecretToClipboardParams,

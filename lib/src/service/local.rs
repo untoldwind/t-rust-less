@@ -132,27 +132,23 @@ impl TrustlessService for LocalTrustlessService {
     Ok(())
   }
 
-  fn direct_clipboard_available(&self) -> ServiceResult<bool> {
+  fn secret_to_clipboard(&self, store_name: &str, secret_id: &str, properties: &[&str]) -> ServiceResult<()> {
     #[cfg(unix)]
     {
-      Ok(true)
+      let store = self.open_store(store_name)?;
+      let secret = store.get(secret_id)?;
+      let secret_provider = SecretsProvider::new(secret.current.clone(), properties);
+      let mut clipboard = self.clipboard.write()?;
+
+      info!("Providing {} for {} in {}", properties.join(","), secret_id, store_name);
+
+      clipboard.replace(Clipboard::new(secret_provider)?);
+
+      Ok(())
     }
     #[cfg(not(unix))]
     {
-      Ok(false)
+      Err(ServiceResult::NotAvailable)
     }
-  }
-
-  fn secret_to_clipboard(&self, store_name: &str, secret_id: &str, properties: &[&str]) -> ServiceResult<()> {
-    let store = self.open_store(store_name)?;
-    let secret = store.get(secret_id)?;
-    let secret_provider = SecretsProvider::new(secret.current.clone(), properties);
-    let mut clipboard = self.clipboard.write()?;
-
-    info!("Providing {} for {} in {}", properties.join(","), secret_id, store_name);
-
-    clipboard.replace(Clipboard::new(secret_provider)?);
-
-    Ok(())
   }
 }
