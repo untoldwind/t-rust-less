@@ -1,8 +1,8 @@
+use crate::view::{SecretSimpleView, SecretTypeView};
 use cursive::view::ViewWrapper;
 use cursive::views::LinearLayout;
 use std::sync::Arc;
 use t_rust_less_lib::secrets_store::SecretsStore;
-use crate::view::{SecretSimpleView, SecretTypeView};
 
 pub struct SecretView {
   secrets_store: Arc<SecretsStore>,
@@ -29,9 +29,11 @@ impl SecretView {
   pub fn show_secret(&mut self, secret_id: &str) {
     match self.secrets_store.get(secret_id) {
       Ok(secret) => {
-        self.base_view = Some(LinearLayout::vertical()
+        self.base_view = Some(
+          LinearLayout::vertical()
             .child(SecretSimpleView::new("Name", &secret.current.name))
-            .child(SecretTypeView::new(secret.current.secret_type)))
+            .child(SecretTypeView::new(secret.current.secret_type)),
+        )
       }
       _ => self.base_view = None,
     }

@@ -1,3 +1,4 @@
+mod debounce;
 mod error;
 mod unix_x11;
 mod unix_xcb;
@@ -13,5 +14,7 @@ pub use self::unix_xcb::Clipboard;
 pub use self::windows::Clipboard;
 
 pub trait SelectionProvider: Send + Sync {
-  fn get_selection(&mut self) -> Option<String>;
+  type Content: AsRef<[u8]> + Send + Sync + Clone;
+
+  fn get_selection(&mut self) -> Option<Self::Content>;
 }

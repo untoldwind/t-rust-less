@@ -1,10 +1,12 @@
 #![cfg(all(unix, feature = "with_x11"))]
 
+use crate::clipboard::debounce::SelectionDebounce;
 use crate::clipboard::{ClipboardError, ClipboardResult, SelectionProvider};
 use log::debug;
 use std::ffi::CString;
 use std::mem;
 use std::ptr;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread;
 use x11::xlib;
@@ -16,14 +18,13 @@ struct Atoms {
   pub targets: xlib::Atom,
   pub string: xlib::Atom,
   pub utf8_string: xlib::Atom,
-  pub text_plain: xlib::Atom,
-  pub text_plain_utf8: xlib::Atom,
 }
 
 struct Context {
   display: *mut xlib::Display,
   window: xlib::Window,
   atoms: Atoms,
+  open: AtomicBool,
 }
 
 impl Context {
@@ -53,8 +54,6 @@ impl Context {
         debug!("XA_STRING is not named STRING");
       }
       let utf8_string = Self::get_atom(display, "UTF8_STRING");
-      let text_plain = Self::get_atom(display, "text/plain");
-      let text_plain_utf8 = Self::get_atom(display, "text/plain;charset=utf-8");
 
       let atoms = Atoms {
         primary,
@@ -62,13 +61,16 @@ impl Context {
         targets,
         string,
         utf8_string,
-        text_plain,
-        text_plain_utf8,
       };
 
       debug!("{:?}", atoms);
 
-      Ok(Context { display, window, atoms })
+      Ok(Context {
+        display,
+        window,
+        atoms,
+        open: AtomicBool::new(true),
+      })
     }
   }
 
@@ -80,22 +82,22 @@ impl Context {
   }
 
   fn destroy(&self) {
-    unsafe {
-      xlib::XDestroyWindow(self.display, self.window);
-      xlib::XFlush(self.display);
+    if self.open.swap(false, Ordering::Relaxed) {
+      unsafe {
+        xlib::XDestroyWindow(self.display, self.window);
+        xlib::XFlush(self.display);
+      }
     }
   }
 
   fn own_selection(&self) -> bool {
     unsafe {
-      for selection in &[self.atoms.primary, self.atoms.clipboard] {
-        xlib::XSetSelectionOwner(self.display, *selection, self.window, xlib::CurrentTime);
+      xlib::XSetSelectionOwner(self.display, self.atoms.clipboard, self.window, xlib::CurrentTime);
 
-        let owner = xlib::XGetSelectionOwner(self.display, *selection);
-        if owner != self.window {
-          debug!("Failed taking ownership of {}", *selection);
-          return false;
-        }
+      let owner = xlib::XGetSelectionOwner(self.display, self.atoms.clipboard);
+      if owner != self.window {
+        debug!("Failed taking ownership of {}", self.atoms.clipboard);
+        return false;
       }
     }
 
@@ -166,10 +168,12 @@ impl Drop for Clipboard {
   }
 }
 
-fn run<T>(context: Arc<Context>, mut selection_provider: T)
+fn run<T>(context: Arc<Context>, selection_provider: T)
 where
   T: SelectionProvider,
 {
+  let mut debounce = SelectionDebounce::new(selection_provider);
+
   unsafe {
     if !context.own_selection() {
       return;
@@ -198,7 +202,7 @@ where
           debug!("Selection target: {}", selection.target);
 
           if selection.target == context.atoms.targets {
-            let atoms = [context.atoms.targets, context.atoms.utf8_string, context.atoms.text_plain, context.atoms.text_plain_utf8];
+            let atoms = [context.atoms.targets, context.atoms.string, context.atoms.utf8_string];
             xlib::XChangeProperty(
               context.display,
               selection.requestor,
@@ -209,15 +213,10 @@ where
               &atoms as *const xlib::Atom as *const u8,
               atoms.len() as i32,
             );
-          } else if selection.target == context.atoms.string
-            || selection.target == context.atoms.utf8_string
-            || selection.target == context.atoms.text_plain
-            || selection.target == context.atoms.text_plain_utf8
-          {
-            match selection_provider.get_selection() {
+          } else if selection.target == context.atoms.string || selection.target == context.atoms.utf8_string {
+            match debounce.get_selection() {
               Some(value) => {
-                let c_str = CString::new(value).unwrap();
-                let c_str_bytes = c_str.as_bytes_with_nul();
+                let content: &[u8] = value.as_ref();
 
                 xlib::XChangeProperty(
                   context.display,
@@ -226,8 +225,8 @@ where
                   selection.target,
                   8,
                   xlib::PropModeReplace,
-                  c_str_bytes.as_ptr(),
-                  c_str_bytes.len() as i32,
+                  content.as_ptr(),
+                  content.len() as i32,
                 );
               }
               None => {

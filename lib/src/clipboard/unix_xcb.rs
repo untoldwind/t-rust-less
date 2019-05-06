@@ -7,6 +7,7 @@ use std::sync::{Arc, RwLock};
 use xcb::{Atom, Connection, Window};
 
 use super::{ClipboardError, ClipboardResult, SelectionProvider};
+use crate::clipboard::debounce::SelectionDebounce;
 
 #[derive(Clone, Debug)]
 struct Atoms {
@@ -15,8 +16,6 @@ struct Atoms {
   pub targets: Atom,
   pub string: Atom,
   pub utf8_string: Atom,
-  pub text_plain: Atom,
-  pub text_plain_utf8: Atom,
 }
 
 struct Context {
@@ -63,8 +62,6 @@ impl Context {
       targets: Self::get_atom(&connection, "TARGETS")?,
       string: xcb::ATOM_STRING,
       utf8_string: Self::get_atom(&connection, "UTF8_STRING")?,
-      text_plain: Self::get_atom(&connection, "text/plain")?,
-      text_plain_utf8: Self::get_atom(&connection, "ttext/plain;charset=utf-8")?,
     };
 
     debug!("{:?}", atoms);
@@ -132,10 +129,12 @@ impl Drop for Clipboard {
   }
 }
 
-fn run<T>(context: Arc<Context>, mut selection_provider: T)
+fn run<T>(context: Arc<Context>, selection_provider: T)
 where
   T: SelectionProvider,
 {
+  let mut debounce = SelectionDebounce::new(selection_provider);
+
   if xcb::set_selection_owner_checked(
     &context.connection,
     context.window,
@@ -157,7 +156,15 @@ where
         let target = event.target();
         let mut property = event.property();
 
-        debug!("{} {} {} {} {} {}", event.time(), event.owner(), event.selection(), event.property(), event.target(), event.requestor());
+        debug!(
+          "{} {} {} {} {} {}",
+          event.time(),
+          event.owner(),
+          event.selection(),
+          event.property(),
+          event.target(),
+          event.requestor()
+        );
         debug!("Selection target: {}", target);
 
         if target == context.atoms.targets {
@@ -168,14 +175,10 @@ where
             property,
             xcb::ATOM_ATOM,
             32,
-            &[context.atoms.targets, context.atoms.string, context.atoms.utf8_string, context.atoms.text_plain, context.atoms.text_plain_utf8],
+            &[context.atoms.targets, context.atoms.string, context.atoms.utf8_string],
           );
-        } else if target == context.atoms.string
-          || target == context.atoms.utf8_string
-          || target == context.atoms.text_plain
-          || target == context.atoms.text_plain_utf8
-        {
-          match selection_provider.get_selection() {
+        } else if target == context.atoms.string || target == context.atoms.utf8_string {
+          match debounce.get_selection() {
             Some(value) => {
               xcb::change_property(
                 &context.connection,
@@ -184,7 +187,7 @@ where
                 property,
                 target,
                 8,
-                value.as_bytes(),
+                value.as_ref(),
               );
             }
             None => {

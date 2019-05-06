@@ -41,10 +41,12 @@ impl<T> From<std::sync::PoisonError<T>> for ServiceError {
 impl From<capnp::Error> for ServiceError {
   fn from(error: capnp::Error) -> Self {
     match error.kind {
-      capnp::ErrorKind::Failed => match serde_json::from_str::<ServiceError>(&error.description.trim_start_matches("remote exception: ")) {
-        Ok(service_error) => service_error,
-        _ => ServiceError::IO(format!("{}", error)),
-      },
+      capnp::ErrorKind::Failed => {
+        match serde_json::from_str::<ServiceError>(&error.description.trim_start_matches("remote exception: ")) {
+          Ok(service_error) => service_error,
+          _ => ServiceError::IO(format!("{}", error)),
+        }
+      }
       _ => ServiceError::IO(format!("{}", error)),
     }
   }

@@ -137,6 +137,12 @@ impl AsRef<str> for ZeroingString {
   }
 }
 
+impl AsRef<[u8]> for ZeroingString {
+  fn as_ref(&self) -> &[u8] {
+    self.0.as_bytes()
+  }
+}
+
 impl Borrow<str> for ZeroingString {
   fn borrow(&self) -> &str {
     self.0.as_ref()

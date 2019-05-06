@@ -44,7 +44,7 @@ byteorder = "1"
 [features]
 with_x11 = ["x11"]
 with_xcb = ["xcb"]
-default = ["with_xcb"]
+default = ["with_x11"]
 
 [target.'cfg(unix)'.dependencies]
 xcb = { version = "0.8", features = [ "thread", "xfixes" ], optional = true }

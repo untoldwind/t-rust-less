@@ -410,8 +410,8 @@ impl SecretList {
 pub struct SecretProperties(BTreeMap<String, ZeroingString>);
 
 impl SecretProperties {
-  pub fn get(&self, name: &str) -> Option<&str> {
-    self.0.get(name).map(|s| s.as_str())
+  pub fn get(&self, name: &str) -> Option<&ZeroingString> {
+    self.0.get(name)
   }
 
   pub fn len(&self) -> usize {
