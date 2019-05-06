@@ -1,3 +1,4 @@
+use crate::commands::tui::create_tui;
 use crate::commands::unlock_store;
 use crate::error::ExtResult;
 use crate::model::import_v1::SecretV1;
@@ -30,7 +31,8 @@ pub fn import_v1(service: Arc<TrustlessService>, store_name: String, maybe_file_
   };
 
   if status.locked {
-    unlock_store(&secrets_store, &store_name);
+    let mut siv = create_tui();
+    unlock_store(&mut siv, &secrets_store, &store_name);
   }
 
   for maybe_line in import_stream.lines() {

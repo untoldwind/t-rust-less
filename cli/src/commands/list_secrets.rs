@@ -23,18 +23,19 @@ pub fn list_secrets(service: Arc<TrustlessService>, store_name: String, filter: 
 
   let mut status = secrets_store.status().ok_or_exit("Get status");
 
-  if status.locked {
-    status = unlock_store(&secrets_store, &store_name);
-  }
-
   if atty::is(Stream::Stdout) {
+    let mut siv = create_tui();
+    if status.locked {
+      status = unlock_store(&mut siv, &secrets_store, &store_name);
+    }
+
     let initial_state = ListUIState {
       service,
       store_name,
       secrets_store,
       filter,
     };
-    list_secrets_ui(initial_state, status);
+    list_secrets_ui(&mut siv, initial_state, status);
   } else {
     let list = secrets_store.list(filter).ok_or_exit("List entries");
 
@@ -51,7 +52,7 @@ struct ListUIState {
   filter: SecretListFilter,
 }
 
-fn list_secrets_ui(initial_state: ListUIState, status: Status) {
+fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState, status: Status) {
   let mut list = initial_state
     .secrets_store
     .list(initial_state.filter.clone())
@@ -69,7 +70,6 @@ fn list_secrets_ui(initial_state: ListUIState, status: Status) {
   entry_select.set_on_select(update_selection);
 
   let secrets_store = initial_state.secrets_store.clone();
-  let mut siv = create_tui();
 
   siv.set_user_data(initial_state);
   siv.set_fps(2);
