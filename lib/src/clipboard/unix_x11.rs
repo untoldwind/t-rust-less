@@ -5,7 +5,6 @@ use crate::clipboard::{ClipboardError, ClipboardResult, SelectionProvider};
 use log::debug;
 use std::ffi::CString;
 use std::mem;
-use std::ptr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread;
@@ -28,9 +27,10 @@ struct Context {
 }
 
 impl Context {
-  fn new() -> ClipboardResult<Self> {
+  fn new(display_name: &str) -> ClipboardResult<Self> {
     unsafe {
-      let display = xlib::XOpenDisplay(ptr::null());
+      let c_display_name = CString::new(display_name)?;
+      let display = xlib::XOpenDisplay(c_display_name.as_ptr());
 
       if display.is_null() {
         return Err(ClipboardError("Cannot open display".to_string()));
@@ -132,11 +132,11 @@ pub struct Clipboard {
 }
 
 impl Clipboard {
-  pub fn new<T>(selection_provider: T) -> ClipboardResult<Clipboard>
+  pub fn new<T>(display_name: &str, selection_provider: T) -> ClipboardResult<Clipboard>
   where
     T: SelectionProvider + 'static,
   {
-    let context = Arc::new(Context::new()?);
+    let context = Arc::new(Context::new(display_name)?);
 
     let handle = thread::spawn({
       let cloned = context.clone();

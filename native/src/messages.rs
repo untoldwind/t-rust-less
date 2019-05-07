@@ -16,6 +16,7 @@ pub enum Command {
     store_name: String,
     secret_id: String,
     properties: Vec<String>,
+    display_name: String,
   },
 
   Status {

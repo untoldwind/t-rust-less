@@ -125,8 +125,13 @@ impl service::Server for ServiceImpl {
       .get()
       .and_then(service::secret_to_clipboard_params::Reader::get_properties)
       .and_then(|properties| { properties.iter().collect::<capnp::Result<Vec<&str>>>() }));
+    let display_name = stry!(params
+      .get()
+      .and_then(service::secret_to_clipboard_params::Reader::get_display_name));
 
-    stry!(self.service.secret_to_clipboard(store_name, secret_id, &properties));
+    stry!(self
+      .service
+      .secret_to_clipboard(store_name, secret_id, &properties, &display_name));
 
     Promise::ok(())
   }

@@ -9,6 +9,7 @@ use cursive::traits::{Boxable, Identifiable, Scrollable};
 use cursive::utils::markup::StyledString;
 use cursive::views::{EditView, LinearLayout, SelectView};
 use cursive::Cursive;
+use std::env;
 use std::sync::Arc;
 use t_rust_less_lib::api::{
   SecretEntry, SecretEntryMatch, SecretListFilter, Status, PROPERTY_PASSWORD, PROPERTY_TOTP_URL, PROPERTY_USERNAME,
@@ -163,6 +164,7 @@ fn secret_to_clipboard(s: &mut Cursive) {
         &state.store_name,
         &entry.id,
         &[PROPERTY_USERNAME, PROPERTY_PASSWORD, PROPERTY_TOTP_URL],
+        &env::var("DISPLAY").unwrap_or_else(|_| ":0".to_string()),
       )
       .ok_or_exit("Copy to clipboard");
   }

@@ -27,7 +27,13 @@ pub trait TrustlessService {
 
   fn set_default_store(&self, name: &str) -> ServiceResult<()>;
 
-  fn secret_to_clipboard(&self, store_name: &str, secret_id: &str, properties: &[&str]) -> ServiceResult<()>;
+  fn secret_to_clipboard(
+    &self,
+    store_name: &str,
+    secret_id: &str,
+    properties: &[&str],
+    display_name: &str,
+  ) -> ServiceResult<()>;
 }
 
 pub fn create_service() -> ServiceResult<Arc<TrustlessService>> {

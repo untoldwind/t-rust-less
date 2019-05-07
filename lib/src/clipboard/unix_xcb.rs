@@ -26,8 +26,8 @@ struct Context {
 }
 
 impl Context {
-  fn new(displayname: Option<&str>) -> ClipboardResult<Self> {
-    let (connection, screen) = Connection::connect(displayname)?;
+  fn new(display_name: &str) -> ClipboardResult<Self> {
+    let (connection, screen) = Connection::connect(Some(display_name))?;
     let window = connection.generate_id();
 
     {
@@ -93,11 +93,11 @@ pub struct Clipboard {
 }
 
 impl Clipboard {
-  pub fn new<T>(selection_provider: T) -> ClipboardResult<Clipboard>
+  pub fn new<T>(display_name: &str, selection_provider: T) -> ClipboardResult<Clipboard>
   where
     T: SelectionProvider + 'static,
   {
-    let context = Arc::new(Context::new(None)?);
+    let context = Arc::new(Context::new(display_name)?);
 
     let handle = thread::spawn({
       let cloned = context.clone();

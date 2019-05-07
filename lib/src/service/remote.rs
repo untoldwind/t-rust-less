@@ -108,13 +108,20 @@ impl TrustlessService for RemoteTrustlessService {
     Ok(())
   }
 
-  fn secret_to_clipboard(&self, store_name: &str, secret_id: &str, properties: &[&str]) -> ServiceResult<()> {
+  fn secret_to_clipboard(
+    &self,
+    store_name: &str,
+    secret_id: &str,
+    properties: &[&str],
+    display_name: &str,
+  ) -> ServiceResult<()> {
     let mut runtime = self.runtime.borrow_mut();
     let mut request = self.client.secret_to_clipboard_request();
 
     request.get().set_store_name(store_name);
     request.get().set_secret_id(secret_id);
     set_text_list(request.get().init_properties(properties.len() as u32), properties)?;
+    request.get().set_display_name(display_name);
 
     runtime.block_on(request.send().promise.and_then(|response| {
       response.get()?;

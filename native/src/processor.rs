@@ -58,11 +58,13 @@ fn process_request(service: &TrustlessService, request: Request) -> Response {
       store_name,
       secret_id,
       properties,
+      display_name,
     } => service
       .secret_to_clipboard(
         &store_name,
         &secret_id,
         &properties.iter().map(String::as_str).collect::<Vec<&str>>(),
+        &display_name,
       )
       .into(),
 

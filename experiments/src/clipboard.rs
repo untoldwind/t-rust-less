@@ -1,4 +1,5 @@
 use log::info;
+use std::env;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -24,7 +25,13 @@ impl SelectionProvider for DummyProvider {
 }
 
 pub fn experimental_clipboard() {
-  let clipboard = Arc::new(Clipboard::new(DummyProvider { counter: 0 }).unwrap());
+  let clipboard = Arc::new(
+    Clipboard::new(
+      &env::var("DISPLAY").unwrap_or_else(|_| ":0".to_string()),
+      DummyProvider { counter: 0 },
+    )
+    .unwrap(),
+  );
 
   thread::spawn({
     let cloned = clipboard.clone();

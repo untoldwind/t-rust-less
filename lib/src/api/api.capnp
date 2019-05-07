@@ -21,7 +21,7 @@ interface Service {
     getDefaultStore @3 () -> (storeName : Option(Text));
     setDefaultStore @4 (storeName : Text);
     openStore @5 (storeName : Text) -> (store: SecretsStore);
-    secretToClipboard @6 (storeName : Text, secretId : Text, properties : List(Text));
+    secretToClipboard @6 (storeName : Text, secretId : Text, properties : List(Text), displayName: Text);
 }
 
 struct Identity {

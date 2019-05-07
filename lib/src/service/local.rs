@@ -132,7 +132,13 @@ impl TrustlessService for LocalTrustlessService {
     Ok(())
   }
 
-  fn secret_to_clipboard(&self, store_name: &str, secret_id: &str, properties: &[&str]) -> ServiceResult<()> {
+  fn secret_to_clipboard(
+    &self,
+    store_name: &str,
+    secret_id: &str,
+    properties: &[&str],
+    display_name: &str,
+  ) -> ServiceResult<()> {
     #[cfg(unix)]
     {
       let store = self.open_store(store_name)?;
@@ -142,7 +148,7 @@ impl TrustlessService for LocalTrustlessService {
 
       info!("Providing {} for {} in {}", properties.join(","), secret_id, store_name);
 
-      clipboard.replace(Clipboard::new(secret_provider)?);
+      clipboard.replace(Clipboard::new(display_name, secret_provider)?);
 
       Ok(())
     }

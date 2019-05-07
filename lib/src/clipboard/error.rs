@@ -24,3 +24,9 @@ impl<T> From<xcb::base::Error<T>> for ClipboardError {
     ClipboardError(format!("{}", error))
   }
 }
+
+impl From<std::ffi::NulError> for ClipboardError {
+  fn from(error: std::ffi::NulError) -> Self {
+    ClipboardError(format!("{}", error))
+  }
+}
