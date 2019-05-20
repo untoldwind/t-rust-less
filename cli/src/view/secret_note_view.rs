@@ -1,16 +1,22 @@
+use cursive::traits::Boxable;
 use cursive::view::ViewWrapper;
-use cursive::views::{LinearLayout, TextArea, TextView};
+use cursive::views::{Button, LinearLayout, TextArea, TextView};
+use cursive::Cursive;
 
 pub struct SecretNodeView {
   base_view: LinearLayout,
 }
 
 impl SecretNodeView {
-  pub fn new(property: &str, value: &str) -> Self {
+  pub fn new<F>(property: &str, value: &str, on_copy: F) -> Self
+  where
+    F: Fn(&mut Cursive) -> () + 'static,
+  {
     SecretNodeView {
       base_view: LinearLayout::horizontal()
-        .child(TextView::new(format!("{}:", property)))
-        .child(TextArea::new().disabled().content(value)),
+        .child(TextView::new(format!("{:10}: ", property)))
+        .child(TextArea::new().disabled().content(value).full_width().min_height(3))
+        .child(Button::new("Copy", on_copy)),
     }
   }
 }

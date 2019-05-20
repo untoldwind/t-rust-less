@@ -20,7 +20,7 @@ impl<'a> TOTPGenerator<'a> {
     };
     (
       hotp_gen.generate().0,
-      u64::from(self.period) - timestamp % u64::from(self.period),
+      (timestamp / u64::from(self.period) + 1) * u64::from(self.period),
     )
   }
 }

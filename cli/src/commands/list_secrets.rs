@@ -70,12 +70,17 @@ fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState, status: Status
   entry_select.add_all(list.entries.into_iter().map(entry_list_item));
   entry_select.set_on_select(update_selection);
 
+  let service = initial_state.service.clone();
+  let store_name = initial_state.store_name.clone();
   let secrets_store = initial_state.secrets_store.clone();
 
   siv.set_user_data(initial_state);
   siv.set_fps(2);
   siv.add_global_callback(Key::Esc, Cursive::quit);
-  siv.add_global_callback(Event::CtrlChar('a'), secret_to_clipboard(&[PROPERTY_USERNAME, PROPERTY_PASSWORD, PROPERTY_TOTP_URL]));
+  siv.add_global_callback(
+    Event::CtrlChar('a'),
+    secret_to_clipboard(&[PROPERTY_USERNAME, PROPERTY_PASSWORD, PROPERTY_TOTP_URL]),
+  );
   siv.add_global_callback(Event::CtrlChar('u'), secret_to_clipboard(&[PROPERTY_USERNAME]));
   siv.add_global_callback(Event::CtrlChar('p'), secret_to_clipboard(&[PROPERTY_PASSWORD]));
   siv.add_global_callback(Event::CtrlChar('o'), secret_to_clipboard(&[PROPERTY_TOTP_URL]));
@@ -94,7 +99,7 @@ fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState, status: Status
         LinearLayout::horizontal()
           .child(entry_select.with_id("entry_list").full_width().scrollable())
           .child(
-            SecretView::new(secrets_store, initial_selected)
+            SecretView::new(service, store_name, secrets_store, initial_selected)
               .with_id("secret_view")
               .full_screen(),
           ),

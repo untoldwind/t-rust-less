@@ -14,6 +14,7 @@ use std::fmt;
 pub const PROPERTY_USERNAME: &str = "username";
 pub const PROPERTY_PASSWORD: &str = "password";
 pub const PROPERTY_TOTP_URL: &str = "totpUrl";
+pub const PROPERTY_NOTES: &str = "notes";
 
 /// Status information of a secrets store
 ///
@@ -420,6 +421,10 @@ impl SecretProperties {
 
   pub fn is_empty(&self) -> bool {
     self.0.is_empty()
+  }
+
+  pub fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
+    self.0.iter().map(|(k, v)| (k.as_str(), v.as_str()))
   }
 
   pub fn from_reader(reader: struct_list::Reader<secret_version::property::Owned>) -> capnp::Result<Self> {

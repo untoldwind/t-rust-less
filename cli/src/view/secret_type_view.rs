@@ -10,7 +10,7 @@ impl SecretTypeView {
   pub fn new(secret_type: SecretType) -> Self {
     SecretTypeView {
       base_view: LinearLayout::horizontal()
-        .child(TextView::new("Type: "))
+        .child(TextView::new("Type      : "))
         .child(TextView::new(secret_type.to_string())),
     }
   }

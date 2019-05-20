@@ -1,21 +1,27 @@
+use cursive::traits::Boxable;
 use cursive::view::ViewWrapper;
-use cursive::views::{LinearLayout, TextView};
+use cursive::views::{Button, LinearLayout, TextView};
+use cursive::Cursive;
 
-pub struct SecretSimpleView {
+pub struct SecretCopyView {
   base_view: LinearLayout,
 }
 
-impl SecretSimpleView {
-  pub fn new(property: &str, value: &str) -> Self {
-    SecretSimpleView {
+impl SecretCopyView {
+  pub fn new<F>(property: &str, value: &str, on_copy: F) -> Self
+  where
+    F: Fn(&mut Cursive) -> () + 'static,
+  {
+    SecretCopyView {
       base_view: LinearLayout::horizontal()
         .child(TextView::new(format!("{:10}: ", property)))
-        .child(TextView::new(value)),
+        .child(TextView::new(value).full_width())
+        .child(Button::new("Copy", on_copy)),
     }
   }
 }
 
-impl ViewWrapper for SecretSimpleView {
+impl ViewWrapper for SecretCopyView {
   type V = LinearLayout;
 
   fn with_view<F, R>(&self, f: F) -> Option<R>
