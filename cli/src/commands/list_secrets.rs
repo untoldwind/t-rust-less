@@ -75,7 +75,10 @@ fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState, status: Status
   siv.set_user_data(initial_state);
   siv.set_fps(2);
   siv.add_global_callback(Key::Esc, Cursive::quit);
-  siv.add_global_callback(Event::CtrlChar('a'), secret_to_clipboard);
+  siv.add_global_callback(Event::CtrlChar('a'), secret_to_clipboard(&[PROPERTY_USERNAME, PROPERTY_PASSWORD, PROPERTY_TOTP_URL]));
+  siv.add_global_callback(Event::CtrlChar('u'), secret_to_clipboard(&[PROPERTY_USERNAME]));
+  siv.add_global_callback(Event::CtrlChar('p'), secret_to_clipboard(&[PROPERTY_PASSWORD]));
+  siv.add_global_callback(Event::CtrlChar('o'), secret_to_clipboard(&[PROPERTY_TOTP_URL]));
   siv.add_fullscreen_layer(
     LinearLayout::vertical()
       .child(
@@ -150,22 +153,24 @@ fn entry_list_item(entry_match: SecretEntryMatch) -> (StyledString, SecretEntry)
   (styled_name, entry_match.entry)
 }
 
-fn secret_to_clipboard(s: &mut Cursive) {
-  let maybe_entry = {
-    let entry_select = s.find_id::<SelectView<SecretEntry>>("entry_list").unwrap();
-    entry_select.selection()
-  };
-  let state = s.user_data::<ListUIState>().unwrap();
+fn secret_to_clipboard(properties: &'static [&'static str]) -> impl Fn(&mut Cursive) -> () {
+  move |s: &mut Cursive| {
+    let maybe_entry = {
+      let entry_select = s.find_id::<SelectView<SecretEntry>>("entry_list").unwrap();
+      entry_select.selection()
+    };
+    let state = s.user_data::<ListUIState>().unwrap();
 
-  if let Some(entry) = maybe_entry {
-    state
-      .service
-      .secret_to_clipboard(
-        &state.store_name,
-        &entry.id,
-        &[PROPERTY_USERNAME, PROPERTY_PASSWORD, PROPERTY_TOTP_URL],
-        &env::var("DISPLAY").unwrap_or_else(|_| ":0".to_string()),
-      )
-      .ok_or_exit("Copy to clipboard");
+    if let Some(entry) = maybe_entry {
+      state
+        .service
+        .secret_to_clipboard(
+          &state.store_name,
+          &entry.id,
+          properties,
+          &env::var("DISPLAY").unwrap_or_else(|_| ":0".to_string()),
+        )
+        .ok_or_exit("Copy to clipboard");
+    }
   }
 }

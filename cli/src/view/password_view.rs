@@ -98,7 +98,9 @@ impl PasswordView {
   }
 
   pub fn get_content(&mut self) -> SecretBytes {
-    self.content.clone()
+    let content = self.content.clone();
+    self.content.borrow_mut().clear();
+    content
   }
 
   fn append(&mut self, ch: char) {
