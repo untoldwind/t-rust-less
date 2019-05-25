@@ -36,6 +36,7 @@ where
     NativeEndian::write_u32(&mut length_buffer, buffer.len() as u32);
     output.write_all(&length_buffer)?;
     output.write_all(&buffer)?;
+    output.flush()?;
     clear_buffer(&mut buffer);
   }
 }
