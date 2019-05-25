@@ -48,7 +48,7 @@ fn clear_buffer(buffer: &mut Vec<u8>) {
 }
 
 fn process_request(service: &TrustlessService, request: Request) -> Response {
-  let result = match request.comamnd {
+  let result = match request.command {
     Command::ListStores => service.list_stores().into(),
     Command::GetStoreConfig(store_name) => service.get_store_config(&store_name).into(),
     Command::SetStoreConfig(config) => service.set_store_config(config).into(),

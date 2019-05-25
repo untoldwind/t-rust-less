@@ -5,6 +5,7 @@ use t_rust_less_lib::service::{ServiceError, ServiceResult, StoreConfig};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(clippy::large_enum_variant)]
+#[serde(rename_all = "snake_case")]
 pub enum Command {
   ListStores,
   GetStoreConfig(String),
@@ -64,6 +65,7 @@ pub enum Command {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[allow(clippy::large_enum_variant)]
+#[serde(rename_all = "snake_case")]
 pub enum CommandResult {
   Invalid,
   Success,
@@ -172,11 +174,36 @@ impl From<SecretVersion> for CommandResult {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Request {
   pub id: u64,
-  pub comamnd: Command,
+  pub command: Command,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Response {
   pub id: u64,
   pub result: CommandResult,
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use spectral::prelude::*;
+
+  #[test]
+  fn test_serialize() {
+    let request1 = Request {
+      id: 12,
+      command: Command::ListStores,
+    };
+    let request2 = Request {
+      id: 13,
+      command: Command::Status {
+        store_name: "bla".to_string(),
+      },
+    };
+
+    assert_that(&serde_json::to_string(&request1).unwrap())
+      .is_equal_to(r#"{"id":12,"command":"list_stores"}"#.to_string());
+    assert_that(&serde_json::to_string(&request2).unwrap())
+      .is_equal_to(r#"{"id":13,"command":{"status":{"store_name":"bla"}}}"#.to_string());
+  }
 }
