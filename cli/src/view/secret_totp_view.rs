@@ -76,14 +76,11 @@ impl ViewWrapper for SecretTOTPView {
     let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
     if let Some(valid_until) = self.maybe_valid_until {
       if valid_until <= now {
-        match OTPAuthUrl::parse(&self.otp_url) {
-          Ok(otpauth) => {
-            let (token, valid_until) = otpauth.generate(now);
-            let mut token_display = self.base_view.find_id::<TextView>(&self.token_display_id).unwrap();
-            token_display.set_content(token);
-            self.maybe_valid_until = Some(valid_until);
-          }
-          _ => (),
+        if let Ok(otpauth) = OTPAuthUrl::parse(&self.otp_url) {
+          let (token, valid_until) = otpauth.generate(now);
+          let mut token_display = self.base_view.find_id::<TextView>(&self.token_display_id).unwrap();
+          token_display.set_content(token);
+          self.maybe_valid_until = Some(valid_until);
         }
       }
       if let Some(mut token_valid) = self.base_view.find_id::<ProgressBar>(&self.token_valid_id) {
