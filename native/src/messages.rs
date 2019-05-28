@@ -1,6 +1,6 @@
 use serde_derive::{Deserialize, Serialize};
 use t_rust_less_lib::api::{Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
-use t_rust_less_lib::memguard::weak::ZeroingBytes;
+use t_rust_less_lib::memguard::weak::ZeroingString;
 use t_rust_less_lib::service::{ServiceError, ServiceResult, StoreConfig};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -29,7 +29,7 @@ pub enum Command {
   Unlock {
     store_name: String,
     identity_id: String,
-    passphrase: ZeroingBytes,
+    passphrase: ZeroingString,
   },
 
   ListIdentities {
@@ -38,11 +38,11 @@ pub enum Command {
   AddIdentity {
     store_name: String,
     identity: Identity,
-    passphrase: ZeroingBytes,
+    passphrase: ZeroingString,
   },
   ChangePassphrase {
     store_name: String,
-    passphrase: ZeroingBytes,
+    passphrase: ZeroingString,
   },
 
   ListSecrets {

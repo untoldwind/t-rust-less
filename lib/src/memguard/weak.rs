@@ -143,6 +143,14 @@ impl AsRef<[u8]> for ZeroingString {
   }
 }
 
+impl AsMut<[u8]> for ZeroingString {
+  fn as_mut(&mut self) -> &mut [u8] {
+    unsafe {
+      self.0.as_bytes_mut()
+    }
+  }
+}
+
 impl Borrow<str> for ZeroingString {
   fn borrow(&self) -> &str {
     self.0.as_ref()
