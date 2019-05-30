@@ -145,9 +145,7 @@ impl AsRef<[u8]> for ZeroingString {
 
 impl AsMut<[u8]> for ZeroingString {
   fn as_mut(&mut self) -> &mut [u8] {
-    unsafe {
-      self.0.as_bytes_mut()
-    }
+    unsafe { self.0.as_bytes_mut() }
   }
 }
 

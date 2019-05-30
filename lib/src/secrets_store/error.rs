@@ -67,10 +67,12 @@ impl<T> From<std::sync::PoisonError<T>> for SecretStoreError {
 impl From<capnp::Error> for SecretStoreError {
   fn from(error: capnp::Error) -> Self {
     match error.kind {
-      capnp::ErrorKind::Failed => match serde_json::from_str::<SecretStoreError>(&error.description) {
-        Ok(service_error) => service_error,
-        _ => SecretStoreError::IO(format!("{}", error)),
-      },
+      capnp::ErrorKind::Failed => {
+        match serde_json::from_str::<SecretStoreError>(&error.description.trim_start_matches("remote exception: ")) {
+          Ok(service_error) => service_error,
+          _ => SecretStoreError::IO(format!("{}", error)),
+        }
+      }
       _ => SecretStoreError::IO(format!("{}", error)),
     }
   }
