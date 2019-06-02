@@ -148,12 +148,12 @@ fn entry_list_item(entry_match: SecretEntryMatch) -> (StyledString, SecretEntry)
 
   for highlight in entry_match.name_highlights {
     if highlight > last {
-      styled_name.append_plain(&name[last..highlight]);
+      styled_name.append_plain(name.chars().skip(last).take(highlight - last).collect::<String>());
     }
-    styled_name.append_styled(&name[highlight..=highlight], Effect::Reverse);
+    styled_name.append_styled(name.chars().skip(highlight).take(1).collect::<String>(), Effect::Reverse);
     last = highlight + 1;
   }
-  styled_name.append_plain(&name[last..]);
+  styled_name.append_plain(name.chars().skip(last).collect::<String>());
 
   (styled_name, entry_match.entry)
 }
