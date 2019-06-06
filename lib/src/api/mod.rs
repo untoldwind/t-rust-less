@@ -167,6 +167,7 @@ pub struct SecretListFilter {
   #[serde(rename = "type")]
   pub secret_type: Option<SecretType>,
   pub name: Option<String>,
+  #[serde(default)]
   pub deleted: bool,
 }
 
