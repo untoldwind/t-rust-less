@@ -54,11 +54,10 @@ struct ListUIState {
 }
 
 fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState, status: Status) {
-  let mut list = initial_state
+  let list = initial_state
     .secrets_store
     .list(initial_state.filter.clone())
     .ok_or_exit("List entries");
-  list.entries.sort();
 
   let mut name_search = EditView::new();
   if let Some(name_filter) = &initial_state.filter.name {
@@ -150,7 +149,10 @@ fn entry_list_item(entry_match: SecretEntryMatch) -> (StyledString, SecretEntry)
     if highlight > last {
       styled_name.append_plain(name.chars().skip(last).take(highlight - last).collect::<String>());
     }
-    styled_name.append_styled(name.chars().skip(highlight).take(1).collect::<String>(), Effect::Reverse);
+    styled_name.append_styled(
+      name.chars().skip(highlight).take(1).collect::<String>(),
+      Effect::Reverse,
+    );
     last = highlight + 1;
   }
   styled_name.append_plain(name.chars().skip(last).collect::<String>());

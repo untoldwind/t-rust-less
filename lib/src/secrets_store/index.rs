@@ -72,6 +72,7 @@ impl Index {
         entries.push(entry_match);
       }
     }
+    entries.sort();
 
     Ok(SecretList {
       all_tags: all_tags.into_iter().collect(),
