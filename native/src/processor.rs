@@ -117,9 +117,17 @@ fn process_request(service: &TrustlessService, request: Request) -> Response {
       .open_store(&store_name)
       .and_then(move |store| Ok(store.list(filter)?))
       .into(),
+    Command::GetSecret { store_name, secret_id } => service
+      .open_store(&store_name)
+      .and_then(move |store| Ok(store.get(&secret_id)?))
+      .into(),
     Command::AddSecret { store_name, version } => service
       .open_store(&store_name)
       .and_then(move |store| Ok(store.add(version)?))
+      .into(),
+    Command::GetSecretVersion { store_name, block_id } => service
+      .open_store(&store_name)
+      .and_then(move |store| Ok(store.get_version(&block_id)?))
       .into(),
     _ => CommandResult::Invalid,
   };
