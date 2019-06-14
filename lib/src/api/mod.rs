@@ -493,6 +493,7 @@ pub struct SecretVersion {
   /// otherwise do not use this kind of UUID.
   pub secret_id: String,
   /// General type of the Secret (in this version)
+  #[serde(rename = "type")]
   pub secret_type: SecretType,
   /// Timestamp of this version. All SecretVersion's of a Secret a sorted by their timestamps,
   /// the last one will be considered the current version.
