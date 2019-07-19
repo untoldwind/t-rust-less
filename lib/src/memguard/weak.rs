@@ -224,7 +224,7 @@ mod tests {
       let mut zeroing = ZeroingBytes::with_capacity(20);
 
       zeroing.extend_from_slice(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
-      assert!(zeroing.as_slice() == &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
+      assert!(zeroing.as_slice() == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
     }
     {
       let zeroing = ZeroingString::wrap("0123456789".to_string());
@@ -237,7 +237,7 @@ mod tests {
       assert_eq!(zeroing.len(), 200);
 
       for w in zeroing.iter() {
-        assert_eq!(w.raw_content, 0);
+        assert_eq!(w, &capnp::word(0, 0, 0, 0, 0, 0, 0, 0));
       }
     }
   }

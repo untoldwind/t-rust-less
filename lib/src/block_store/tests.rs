@@ -7,6 +7,19 @@ use spectral::prelude::*;
 use std::sync::Arc;
 use tempdir::TempDir;
 
+fn word_from_u64(w: u64) -> Word {
+  capnp::word(
+    ((w >> 56) & 0xff) as u8,
+    ((w >> 48) & 0xff) as u8,
+    ((w >> 40) & 0xff) as u8,
+    ((w >> 32) & 0xff) as u8,
+    ((w >> 24) & 0xff) as u8,
+    ((w >> 16) & 0xff) as u8,
+    ((w >> 8) & 0xff) as u8,
+    (w & 0xff) as u8,
+  )
+}
+
 fn common_store_tests(store: Arc<BlockStore>) {
   let mut rng = thread_rng();
   common_test_ring(store.as_ref(), &mut rng);
@@ -17,22 +30,22 @@ fn common_store_tests(store: Arc<BlockStore>) {
 fn common_test_ring(store: &BlockStore, rng: &mut ThreadRng) {
   let ring1a = rng
     .sample_iter(&distributions::Standard)
-    .map(|w| Word { raw_content: w })
+    .map(word_from_u64)
     .take(200)
     .collect::<Vec<Word>>();
   let ring1b = rng
     .sample_iter(&distributions::Standard)
-    .map(|w| Word { raw_content: w })
+    .map(word_from_u64)
     .take(200)
     .collect::<Vec<Word>>();
   let ring2a = rng
     .sample_iter(&distributions::Standard)
-    .map(|w| Word { raw_content: w })
+    .map(word_from_u64)
     .take(300)
     .collect::<Vec<Word>>();
   let ring2b = rng
     .sample_iter(&distributions::Standard)
-    .map(|w| Word { raw_content: w })
+    .map(word_from_u64)
     .take(300)
     .collect::<Vec<Word>>();
 
@@ -63,12 +76,12 @@ fn common_test_index(store: &BlockStore, rng: &mut ThreadRng) {
     .collect::<String>();
   let node1_index1 = rng
     .sample_iter(&distributions::Standard)
-    .map(|w| Word { raw_content: w })
+    .map(word_from_u64)
     .take(200)
     .collect::<Vec<Word>>();
   let node1_index2 = rng
     .sample_iter(&distributions::Standard)
-    .map(|w| Word { raw_content: w })
+    .map(word_from_u64)
     .take(200)
     .collect::<Vec<Word>>();
   let node2 = rng
@@ -77,12 +90,12 @@ fn common_test_index(store: &BlockStore, rng: &mut ThreadRng) {
     .collect::<String>();
   let node2_index1 = rng
     .sample_iter(&distributions::Standard)
-    .map(|w| Word { raw_content: w })
+    .map(word_from_u64)
     .take(200)
     .collect::<Vec<Word>>();
   let node2_index2 = rng
     .sample_iter(&distributions::Standard)
-    .map(|w| Word { raw_content: w })
+    .map(word_from_u64)
     .take(200)
     .collect::<Vec<Word>>();
 
@@ -103,17 +116,50 @@ fn common_test_blocks_commits(store: &BlockStore, rng: &mut ThreadRng) {
 
   let block1 = rng
     .sample_iter(&distributions::Standard)
-    .map(|w| Word { raw_content: w })
+    .map(|w: u64| {
+      capnp::word(
+        ((w >> 56) & 0xff) as u8,
+        ((w >> 48) & 0xff) as u8,
+        ((w >> 40) & 0xff) as u8,
+        ((w >> 32) & 0xff) as u8,
+        ((w >> 24) & 0xff) as u8,
+        ((w >> 16) & 0xff) as u8,
+        ((w >> 8) & 0xff) as u8,
+        (w & 0xff) as u8,
+      )
+    })
     .take(200)
     .collect::<Vec<Word>>();
   let block2 = rng
     .sample_iter(&distributions::Standard)
-    .map(|w| Word { raw_content: w })
+    .map(|w: u64| {
+      capnp::word(
+        ((w >> 56) & 0xff) as u8,
+        ((w >> 48) & 0xff) as u8,
+        ((w >> 40) & 0xff) as u8,
+        ((w >> 32) & 0xff) as u8,
+        ((w >> 24) & 0xff) as u8,
+        ((w >> 16) & 0xff) as u8,
+        ((w >> 8) & 0xff) as u8,
+        (w & 0xff) as u8,
+      )
+    })
     .take(200)
     .collect::<Vec<Word>>();
   let block3 = rng
     .sample_iter(&distributions::Standard)
-    .map(|w| Word { raw_content: w })
+    .map(|w: u64| {
+      capnp::word(
+        ((w >> 56) & 0xff) as u8,
+        ((w >> 48) & 0xff) as u8,
+        ((w >> 40) & 0xff) as u8,
+        ((w >> 32) & 0xff) as u8,
+        ((w >> 24) & 0xff) as u8,
+        ((w >> 16) & 0xff) as u8,
+        ((w >> 8) & 0xff) as u8,
+        (w & 0xff) as u8,
+      )
+    })
     .take(200)
     .collect::<Vec<Word>>();
 

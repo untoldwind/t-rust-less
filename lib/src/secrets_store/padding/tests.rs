@@ -43,7 +43,7 @@ fn test_non_zero_padding() {
   common_padding_tests::<NonZeroPadding>(clean_zero_bytes(SecretBytes::random(&mut rng, 137)));
   common_padding_tests::<NonZeroPadding>(clean_zero_bytes(SecretBytes::random(&mut rng, 1234)));
   common_padding_tests::<NonZeroPadding>(clean_zero_bytes(SecretBytes::random(&mut rng, 12345)));
-  common_padding_tests::<NonZeroPadding>(clean_zero_bytes(SecretBytes::random(&mut rng, 123456)));
+  common_padding_tests::<NonZeroPadding>(clean_zero_bytes(SecretBytes::random(&mut rng, 123_456)));
 }
 
 #[test]
@@ -72,7 +72,7 @@ fn test_randon_front_back_padding() {
   common_padding_tests::<RandomFrontBack>(SecretBytes::random(&mut rng, 137));
   common_padding_tests::<RandomFrontBack>(SecretBytes::random(&mut rng, 1234));
   common_padding_tests::<RandomFrontBack>(SecretBytes::random(&mut rng, 12345));
-  common_padding_tests::<RandomFrontBack>(SecretBytes::random(&mut rng, 123456));
+  common_padding_tests::<RandomFrontBack>(SecretBytes::random(&mut rng, 123_456));
 }
 
 #[test]
