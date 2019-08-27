@@ -7,6 +7,13 @@ use spectral::prelude::*;
 use std::sync::Arc;
 use tempdir::TempDir;
 
+fn common_store_tests(store: Arc<dyn BlockStore>) {
+  let mut rng = thread_rng();
+  common_test_ring(store.as_ref(), &mut rng);
+  common_test_index(store.as_ref(), &mut rng);
+  common_test_blocks_commits(store.as_ref(), &mut rng);
+}
+
 fn word_from_u64(w: u64) -> Word {
   capnp::word(
     ((w >> 56) & 0xff) as u8,
@@ -20,14 +27,7 @@ fn word_from_u64(w: u64) -> Word {
   )
 }
 
-fn common_store_tests(store: Arc<BlockStore>) {
-  let mut rng = thread_rng();
-  common_test_ring(store.as_ref(), &mut rng);
-  common_test_index(store.as_ref(), &mut rng);
-  common_test_blocks_commits(store.as_ref(), &mut rng);
-}
-
-fn common_test_ring(store: &BlockStore, rng: &mut ThreadRng) {
+fn common_test_ring(store: &dyn BlockStore, rng: &mut ThreadRng) {
   let ring1a = rng
     .sample_iter(&distributions::Standard)
     .map(word_from_u64)
@@ -69,7 +69,7 @@ fn common_test_ring(store: &BlockStore, rng: &mut ThreadRng) {
   assert_that(&ring_ids2).is_equal_to(vec!["ring1".to_string(), "ring2".to_string()]);
 }
 
-fn common_test_index(store: &BlockStore, rng: &mut ThreadRng) {
+fn common_test_index(store: &dyn BlockStore, rng: &mut ThreadRng) {
   let node1 = rng
     .sample_iter(&distributions::Alphanumeric)
     .take(40)
@@ -111,55 +111,22 @@ fn common_test_index(store: &BlockStore, rng: &mut ThreadRng) {
   assert_that(&store.get_index(&node2)).is_ok_containing(Some(node2_index2));
 }
 
-fn common_test_blocks_commits(store: &BlockStore, rng: &mut ThreadRng) {
+fn common_test_blocks_commits(store: &dyn BlockStore, rng: &mut ThreadRng) {
   assert_that(&store.get_block("00000000000")).is_err_containing(StoreError::InvalidBlock("00000000000".to_string()));
 
   let block1 = rng
     .sample_iter(&distributions::Standard)
-    .map(|w: u64| {
-      capnp::word(
-        ((w >> 56) & 0xff) as u8,
-        ((w >> 48) & 0xff) as u8,
-        ((w >> 40) & 0xff) as u8,
-        ((w >> 32) & 0xff) as u8,
-        ((w >> 24) & 0xff) as u8,
-        ((w >> 16) & 0xff) as u8,
-        ((w >> 8) & 0xff) as u8,
-        (w & 0xff) as u8,
-      )
-    })
+    .map(word_from_u64)
     .take(200)
     .collect::<Vec<Word>>();
   let block2 = rng
     .sample_iter(&distributions::Standard)
-    .map(|w: u64| {
-      capnp::word(
-        ((w >> 56) & 0xff) as u8,
-        ((w >> 48) & 0xff) as u8,
-        ((w >> 40) & 0xff) as u8,
-        ((w >> 32) & 0xff) as u8,
-        ((w >> 24) & 0xff) as u8,
-        ((w >> 16) & 0xff) as u8,
-        ((w >> 8) & 0xff) as u8,
-        (w & 0xff) as u8,
-      )
-    })
+    .map(word_from_u64)
     .take(200)
     .collect::<Vec<Word>>();
   let block3 = rng
     .sample_iter(&distributions::Standard)
-    .map(|w: u64| {
-      capnp::word(
-        ((w >> 56) & 0xff) as u8,
-        ((w >> 48) & 0xff) as u8,
-        ((w >> 40) & 0xff) as u8,
-        ((w >> 32) & 0xff) as u8,
-        ((w >> 24) & 0xff) as u8,
-        ((w >> 16) & 0xff) as u8,
-        ((w >> 8) & 0xff) as u8,
-        (w & 0xff) as u8,
-      )
-    })
+    .map(word_from_u64)
     .take(200)
     .collect::<Vec<Word>>();
 

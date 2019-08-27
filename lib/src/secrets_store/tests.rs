@@ -7,7 +7,7 @@ use spectral::prelude::*;
 use std::sync::Arc;
 use std::time::Duration;
 
-fn common_secrets_store_tests(secrets_store: Arc<SecretsStore>) {
+fn common_secrets_store_tests(secrets_store: Arc<dyn SecretsStore>) {
   let initial_status = secrets_store.status().unwrap();
 
   assert_that(&initial_status.autolock_at).is_none();
@@ -22,7 +22,7 @@ fn common_secrets_store_tests(secrets_store: Arc<SecretsStore>) {
   add_secrets_versions(secrets_store.as_ref(), &ids_with_passphrase);
 }
 
-fn add_identities_test(secrets_store: &SecretsStore) -> Vec<(Identity, SecretBytes)> {
+fn add_identities_test(secrets_store: &dyn SecretsStore) -> Vec<(Identity, SecretBytes)> {
   let id1 = add_identity(secrets_store, "identity1", "Name1", "Email1", "Passphrase1").unwrap();
   let id2 = add_identity(secrets_store, "identity2", "Name2", "Email2", "Passphrase2").unwrap();
 
@@ -78,7 +78,7 @@ fn add_identities_test(secrets_store: &SecretsStore) -> Vec<(Identity, SecretByt
   ]
 }
 
-fn add_secrets_versions(secrets_store: &SecretsStore, ids_with_passphrase: &[(Identity, SecretBytes)]) {
+fn add_secrets_versions(secrets_store: &dyn SecretsStore, ids_with_passphrase: &[(Identity, SecretBytes)]) {
   let version1 = SecretVersion {
     secret_id: "secret1".to_string(),
     secret_type: SecretType::Login,
@@ -101,7 +101,7 @@ fn add_secrets_versions(secrets_store: &SecretsStore, ids_with_passphrase: &[(Id
 }
 
 fn add_identity(
-  secrets_store: &SecretsStore,
+  secrets_store: &dyn SecretsStore,
   id: &str,
   name: &str,
   email: &str,

@@ -67,7 +67,7 @@ impl TrustlessService for RemoteTrustlessService {
     Ok(result)
   }
 
-  fn open_store(&self, name: &str) -> ServiceResult<Arc<SecretsStore>> {
+  fn open_store(&self, name: &str) -> ServiceResult<Arc<dyn SecretsStore>> {
     let mut runtime = self.runtime.borrow_mut();
     let mut request = self.client.open_store_request();
     request.get().set_store_name(name);

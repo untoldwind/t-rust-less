@@ -10,17 +10,17 @@ use t_rust_less_lib::secrets_store::SecretsStore;
 use t_rust_less_lib::service::TrustlessService;
 
 pub struct SecretView {
-  service: Arc<TrustlessService>,
+  service: Arc<dyn TrustlessService>,
   store_name: String,
-  secrets_store: Arc<SecretsStore>,
+  secrets_store: Arc<dyn SecretsStore>,
   base_view: Option<LinearLayout>,
 }
 
 impl SecretView {
   pub fn new(
-    service: Arc<TrustlessService>,
+    service: Arc<dyn TrustlessService>,
     store_name: String,
-    secrets_store: Arc<SecretsStore>,
+    secrets_store: Arc<dyn SecretsStore>,
     maybe_secret_id: Option<String>,
   ) -> Self {
     let mut view = SecretView {

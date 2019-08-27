@@ -6,13 +6,13 @@ use t_rust_less_lib::api::Status;
 use t_rust_less_lib::secrets_store::SecretsStore;
 
 pub struct StatusView {
-  secrets_store: Arc<SecretsStore>,
+  secrets_store: Arc<dyn SecretsStore>,
   text_view: TextView,
   last_update: Option<DateTime<Utc>>,
 }
 
 impl StatusView {
-  pub fn new(secrets_store: Arc<SecretsStore>, status: Status) -> Self {
+  pub fn new(secrets_store: Arc<dyn SecretsStore>, status: Status) -> Self {
     StatusView {
       secrets_store,
       text_view: TextView::new(Self::status_text(status)),

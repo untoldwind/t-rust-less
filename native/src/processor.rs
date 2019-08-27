@@ -7,7 +7,7 @@ use std::sync::Arc;
 use t_rust_less_lib::memguard::SecretBytes;
 use t_rust_less_lib::service::TrustlessService;
 
-pub fn process<I, O>(service: Arc<TrustlessService>, mut input: I, mut output: O) -> Result<()>
+pub fn process<I, O>(service: Arc<dyn TrustlessService>, mut input: I, mut output: O) -> Result<()>
 where
   I: Read,
   O: Write,
@@ -48,7 +48,7 @@ fn clear_buffer(buffer: &mut Vec<u8>) {
   buffer.clear()
 }
 
-fn process_request(service: &TrustlessService, request: Request) -> Response {
+fn process_request(service: &dyn TrustlessService, request: Request) -> Response {
   let result = match request.command {
     Command::ListStores => service.list_stores().into(),
     Command::GetStoreConfig(store_name) => service.get_store_config(&store_name).into(),

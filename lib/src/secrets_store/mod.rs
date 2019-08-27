@@ -39,7 +39,7 @@ pub fn open_secrets_store(
   url: &str,
   node_id: &str,
   autolock_timeout: Duration,
-) -> SecretStoreResult<Arc<SecretsStore>> {
+) -> SecretStoreResult<Arc<dyn SecretsStore>> {
   let (scheme, block_store_url) = match url.find('+') {
     Some(idx) => (&url[..idx], &url[idx + 1..]),
     _ => return Err(SecretStoreError::InvalidStoreUrl(url.to_string())),

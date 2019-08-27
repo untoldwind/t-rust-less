@@ -378,6 +378,19 @@ mod tests {
     assert!(actual == expected)
   }
 
+  fn word_from_u64(w: u64) -> Word {
+    capnp::word(
+      (w & 0xff) as u8,
+      ((w >> 8) & 0xff) as u8,
+      ((w >> 16) & 0xff) as u8,
+      ((w >> 24) & 0xff) as u8,
+      ((w >> 32) & 0xff) as u8,
+      ((w >> 40) & 0xff) as u8,
+      ((w >> 48) & 0xff) as u8,
+      ((w >> 56) & 0xff) as u8,
+    )
+  }
+
   #[test]
   fn test_borrow_read_only() {
     let mut rng = thread_rng();
@@ -385,23 +398,12 @@ mod tests {
       .sample_iter::<u64, _>(&distributions::Standard)
       .filter(|w| *w != 0)
       .take(200)
-      .map(|w| {
-        capnp::word(
-          ((w >> 56) & 0xff) as u8,
-          ((w >> 48) & 0xff) as u8,
-          ((w >> 40) & 0xff) as u8,
-          ((w >> 32) & 0xff) as u8,
-          ((w >> 24) & 0xff) as u8,
-          ((w >> 16) & 0xff) as u8,
-          ((w >> 8) & 0xff) as u8,
-          (w & 0xff) as u8,
-        )
-      })
+      .map(word_from_u64)
       .collect::<Vec<Word>>();
     let expected = source.clone();
 
     for w in source.iter() {
-      assert_that(&w).is_not_equal_to(&capnp::word(0, 0, 0, 0, 0, 0, 0, 0));
+      assert_that(&w).is_not_equal_to(&word_from_u64(0));
     }
 
     let guarded = SecretWords::from(source.as_mut_slice());
@@ -410,7 +412,7 @@ mod tests {
     assert_that(&guarded.borrow().as_words().len()).is_equal_to(source.len());
 
     for w in source.iter() {
-      assert_that(&w).is_equal_to(&capnp::word(0, 0, 0, 0, 0, 0, 0, 0));
+      assert_that(&w).is_equal_to(&word_from_u64(0));
     }
 
     assert_that(&guarded.locks()).is_equal_to(0);
@@ -443,7 +445,7 @@ mod tests {
 
       assert_that(&ref1.len()).is_equal_to(200);
       for w in ref1.as_words() {
-        assert_that(&w).is_equal_to(&capnp::word(0, 0, 0, 0, 0, 0, 0, 0));
+        assert_that(&w).is_equal_to(&word_from_u64(0));
       }
     }
   }
@@ -455,47 +457,25 @@ mod tests {
       .sample_iter::<u64, _>(&distributions::Standard)
       .filter(|w| *w != 0)
       .take(200)
-      .map(|w| {
-        capnp::word(
-          ((w >> 56) & 0xff) as u8,
-          ((w >> 48) & 0xff) as u8,
-          ((w >> 40) & 0xff) as u8,
-          ((w >> 32) & 0xff) as u8,
-          ((w >> 24) & 0xff) as u8,
-          ((w >> 16) & 0xff) as u8,
-          ((w >> 8) & 0xff) as u8,
-          (w & 0xff) as u8,
-        )
-      })
+      .map(word_from_u64)
       .collect::<Vec<Word>>();
     let source2 = rng
       .sample_iter::<u64, _>(&distributions::Standard)
       .filter(|w| *w != 0)
       .take(200)
-      .map(|w| {
-        capnp::word(
-          ((w >> 56) & 0xff) as u8,
-          ((w >> 48) & 0xff) as u8,
-          ((w >> 40) & 0xff) as u8,
-          ((w >> 32) & 0xff) as u8,
-          ((w >> 24) & 0xff) as u8,
-          ((w >> 16) & 0xff) as u8,
-          ((w >> 8) & 0xff) as u8,
-          (w & 0xff) as u8,
-        )
-      })
+      .map(word_from_u64)
       .collect::<Vec<Word>>();
     let expected = source.clone();
     let expected2 = source2.clone();
 
     for w in source.iter() {
-      assert_that(&w).is_not_equal_to(&capnp::word(0, 0, 0, 0, 0, 0, 0, 0));
+      assert_that(&w).is_not_equal_to(&word_from_u64(0));
     }
 
     let mut guarded = SecretWords::from(source.as_mut_slice());
 
     for w in source.iter() {
-      assert_that(&w).is_equal_to(&capnp::word(0, 0, 0, 0, 0, 0, 0, 0));
+      assert_that(&w).is_equal_to(&word_from_u64(0));
     }
 
     assert_that(&guarded.locks()).is_equal_to(0);
@@ -537,16 +517,16 @@ mod tests {
 
     for (idx, w) in guarded1.borrow().iter().enumerate() {
       if idx % 2 == 0 {
-        assert_that(&w).is_equal_to(&capnp::word(0x78, 0x56, 0x34, 0x12, 0x78, 0x56, 0x34, 0x12));
+        assert_that(&w).is_equal_to(&word_from_u64(0x1234567812345678));
       } else {
-        assert_that(&w).is_equal_to(&capnp::word( 0x87, 0x96, 0xa5, 0xb4, 0xc3, 0xd2, 0xe1, 0xf0 ));
+        assert_that(&w).is_equal_to(&word_from_u64(0xf0e1d2c3b4a59687));
       }
     }
     for (idx, w) in guarded2.borrow().iter().enumerate() {
       if idx % 2 == 0 {
-        assert_that(&w).is_equal_to(&capnp::word(0x78, 0x56, 0x34, 0x12, 0x78, 0x56, 0x34, 0x12));
+        assert_that(&w).is_equal_to(&word_from_u64(0x1234567812345678));
       } else {
-        assert_that(&w).is_equal_to(&capnp::word( 0x87, 0x96, 0xa5, 0xb4, 0xc3, 0xd2, 0xe1, 0xf0 ));
+        assert_that(&w).is_equal_to(&word_from_u64(0xf0e1d2c3b4a59687));
       }
     }
   }

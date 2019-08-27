@@ -15,7 +15,7 @@ impl PasswordEstimator for ZxcvbnEstimator {
       },
       Err(ZxcvbnError::BlankPassword) => PasswordStrength {
         entropy: 0.0,
-        crack_time: 0,
+        crack_time: 0.0,
         crack_time_display: "Instant".to_string(),
         score: 0,
       },

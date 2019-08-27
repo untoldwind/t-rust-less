@@ -12,7 +12,7 @@ use t_rust_less_lib::api::{Identity, Status};
 use t_rust_less_lib::secrets_store::SecretsStore;
 use t_rust_less_lib::service::TrustlessService;
 
-pub fn unlock(service: Arc<TrustlessService>, store_name: String) {
+pub fn unlock(service: Arc<dyn TrustlessService>, store_name: String) {
   let secrets_store = service
     .open_store(&store_name)
     .ok_or_exit(format!("Failed opening store {}: ", store_name));
@@ -26,7 +26,7 @@ pub fn unlock(service: Arc<TrustlessService>, store_name: String) {
   }
 }
 
-pub fn unlock_store(siv: &mut Cursive, secrets_store: &Arc<SecretsStore>, name: &str) -> Status {
+pub fn unlock_store(siv: &mut Cursive, secrets_store: &Arc<dyn SecretsStore>, name: &str) -> Status {
   if !atty::is(Stream::Stdout) {
     println!("Please use a terminal");
     process::exit(1);
@@ -51,7 +51,7 @@ pub fn unlock_store(siv: &mut Cursive, secrets_store: &Arc<SecretsStore>, name: 
   status
 }
 
-fn unlock_dialog(siv: &mut Cursive, secrets_store: &Arc<SecretsStore>, name: &str, identities: Vec<Identity>) {
+fn unlock_dialog(siv: &mut Cursive, secrets_store: &Arc<dyn SecretsStore>, name: &str, identities: Vec<Identity>) {
   siv.set_user_data(secrets_store.clone());
   siv.add_global_callback(Key::Esc, Cursive::quit);
   siv.add_layer(
@@ -87,7 +87,7 @@ fn unlock_dialog(siv: &mut Cursive, secrets_store: &Arc<SecretsStore>, name: &st
 }
 
 fn do_unlock_store(s: &mut Cursive) {
-  let secrets_store = s.user_data::<Arc<SecretsStore>>().unwrap().clone();
+  let secrets_store = s.user_data::<Arc<dyn SecretsStore>>().unwrap().clone();
   let maybe_identity = s.find_id::<SelectView>("identity").unwrap().selection();
   let passphrase = s.find_id::<PasswordView>("passphrase").unwrap().get_content();
   let identity_id = match maybe_identity {

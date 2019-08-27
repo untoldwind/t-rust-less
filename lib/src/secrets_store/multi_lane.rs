@@ -29,20 +29,20 @@ struct User {
 }
 
 struct RecipientsForCipher<'a> {
-  cipher: &'static Cipher,
+  cipher: &'static dyn Cipher,
   recipient_keys: Vec<(&'a str, PublicKey)>,
 }
 
 pub struct MultiLaneSecretsStore {
-  ciphers: Vec<&'static Cipher>,
-  key_derivation: &'static KeyDerivation,
+  ciphers: Vec<&'static dyn Cipher>,
+  key_derivation: &'static dyn KeyDerivation,
   unlocked_user: RwLock<Option<User>>,
-  block_store: Arc<BlockStore>,
+  block_store: Arc<dyn BlockStore>,
   autolock_timeout: Duration,
 }
 
 impl MultiLaneSecretsStore {
-  pub fn new(block_store: Arc<BlockStore>, autolock_timeout: Duration) -> MultiLaneSecretsStore {
+  pub fn new(block_store: Arc<dyn BlockStore>, autolock_timeout: Duration) -> MultiLaneSecretsStore {
     MultiLaneSecretsStore {
       ciphers: vec![&OPEN_SSL_RSA_AES_GCM, &RUST_X25519CHA_CHA20POLY1305],
       key_derivation: &RUST_ARGON2_ID,
@@ -340,7 +340,7 @@ impl MultiLaneSecretsStore {
     nonce
   }
 
-  fn find_cipher(&self, key_type: KeyType) -> Option<&'static Cipher> {
+  fn find_cipher(&self, key_type: KeyType) -> Option<&'static dyn Cipher> {
     for cipher in self.ciphers.iter() {
       if cipher.key_type() == key_type {
         return Some(*cipher);

@@ -110,7 +110,7 @@ struct SecretVersion {
 
 struct PasswordStrength {
     entropy @0 : Float64;
-    crackTime @1 : UInt64;
+    crackTime @1 : Float64;
     crackTimeDisplay @2 : Text;
     score @3 : UInt8;
 }

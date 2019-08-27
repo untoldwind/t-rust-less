@@ -603,7 +603,7 @@ pub struct PasswordEstimate {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PasswordStrength {
   pub entropy: f64,
-  pub crack_time: u64,
+  pub crack_time: f64,
   pub crack_time_display: String,
   pub score: u8,
 }

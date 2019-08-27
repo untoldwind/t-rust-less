@@ -13,7 +13,7 @@ use t_rust_less_lib::api::Identity;
 use t_rust_less_lib::secrets_store::SecretsStore;
 use t_rust_less_lib::service::TrustlessService;
 
-pub fn add_identity_dialog(siv: &mut Cursive, secrets_store: Arc<SecretsStore>, title: &str) {
+pub fn add_identity_dialog(siv: &mut Cursive, secrets_store: Arc<dyn SecretsStore>, title: &str) {
   siv.set_user_data(secrets_store);
   siv.add_layer(
     Dialog::around(
@@ -40,7 +40,7 @@ pub fn add_identity_dialog(siv: &mut Cursive, secrets_store: Arc<SecretsStore>, 
   )
 }
 
-pub fn add_identity(service: Arc<TrustlessService>, store_name: String) {
+pub fn add_identity(service: Arc<dyn TrustlessService>, store_name: String) {
   if !atty::is(Stream::Stdout) {
     println!("Please use a terminal");
     process::exit(1);
@@ -79,7 +79,7 @@ fn create_identity(s: &mut Cursive) {
     return;
   }
 
-  let secrets_store: &Arc<SecretsStore> = s.user_data().unwrap();
+  let secrets_store: &Arc<dyn SecretsStore> = s.user_data().unwrap();
   match secrets_store.add_identity(identity, passphrase) {
     Ok(_) => s.quit(),
     Err(error) => s.add_layer(Dialog::info(format!("Failed to create identity: {}", error))),

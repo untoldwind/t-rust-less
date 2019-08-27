@@ -16,7 +16,7 @@ use std::sync::Arc;
 use t_rust_less_lib::service::{ServiceError, StoreConfig, TrustlessService};
 use url::Url;
 
-pub fn init(service: Arc<TrustlessService>, maybe_store_name: Option<String>) {
+pub fn init(service: Arc<dyn TrustlessService>, maybe_store_name: Option<String>) {
   if !atty::is(Stream::Stdout) {
     println!("Please use a terminal");
     process::exit(1);
@@ -97,7 +97,7 @@ macro_rules! try_with_dialog {
 }
 
 fn store_config(s: &mut Cursive) {
-  let service = s.user_data::<Arc<TrustlessService>>().unwrap().clone();
+  let service = s.user_data::<Arc<dyn TrustlessService>>().unwrap().clone();
   let store_name = s.find_id::<EditView>("store_name").unwrap().get_content();
   let store_path = expand_path(&s.find_id::<EditView>("store_dir").unwrap().get_content());
   let autolock_timeout = s.find_id::<EditView>("autolock_timeout").unwrap().get_content();

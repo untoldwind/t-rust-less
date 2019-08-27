@@ -12,7 +12,7 @@ use std::time::Duration;
 
 pub struct LocalTrustlessService {
   config: RwLock<Config>,
-  opened_stores: RwLock<HashMap<String, Arc<SecretsStore>>>,
+  opened_stores: RwLock<HashMap<String, Arc<dyn SecretsStore>>>,
   clipboard: RwLock<Option<Clipboard>>,
 }
 
@@ -88,7 +88,7 @@ impl TrustlessService for LocalTrustlessService {
     )
   }
 
-  fn open_store(&self, name: &str) -> ServiceResult<Arc<SecretsStore>> {
+  fn open_store(&self, name: &str) -> ServiceResult<Arc<dyn SecretsStore>> {
     {
       let opened_stores = self.opened_stores.read()?;
 

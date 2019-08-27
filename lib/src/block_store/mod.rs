@@ -102,7 +102,7 @@ pub trait BlockStore: Send + Sync {
   fn commit(&self, changes: &[Change]) -> StoreResult<()>;
 }
 
-pub fn open_block_store(url: &str, node_id: &str) -> StoreResult<Arc<BlockStore>> {
+pub fn open_block_store(url: &str, node_id: &str) -> StoreResult<Arc<dyn BlockStore>> {
   let store_url = Url::parse(url)?;
 
   match store_url.scheme() {

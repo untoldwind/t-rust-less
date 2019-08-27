@@ -21,7 +21,7 @@ pub trait TrustlessService {
 
   fn get_store_config(&self, name: &str) -> ServiceResult<StoreConfig>;
 
-  fn open_store(&self, name: &str) -> ServiceResult<Arc<SecretsStore>>;
+  fn open_store(&self, name: &str) -> ServiceResult<Arc<dyn SecretsStore>>;
 
   fn get_default_store(&self) -> ServiceResult<Option<String>>;
 
@@ -36,7 +36,7 @@ pub trait TrustlessService {
   ) -> ServiceResult<()>;
 }
 
-pub fn create_service() -> ServiceResult<Arc<TrustlessService>> {
+pub fn create_service() -> ServiceResult<Arc<dyn TrustlessService>> {
   #[cfg(unix)]
   {
     if let Some(remote) = self::unix::try_remote_service()? {

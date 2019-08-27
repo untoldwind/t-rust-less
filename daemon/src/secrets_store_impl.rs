@@ -6,11 +6,11 @@ use t_rust_less_lib::memguard::SecretBytes;
 use t_rust_less_lib::secrets_store::SecretsStore;
 
 pub struct SecretsStoreImpl {
-  secrets_store: Arc<SecretsStore>,
+  secrets_store: Arc<dyn SecretsStore>,
 }
 
 impl SecretsStoreImpl {
-  pub fn new(secrets_store: Arc<SecretsStore>) -> Self {
+  pub fn new(secrets_store: Arc<dyn SecretsStore>) -> Self {
     SecretsStoreImpl { secrets_store }
   }
 }

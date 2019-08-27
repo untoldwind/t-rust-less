@@ -9,14 +9,14 @@ use std::sync::Arc;
 use t_rust_less_lib::api::SecretVersion;
 use t_rust_less_lib::service::TrustlessService;
 
-pub fn import_v1(service: Arc<TrustlessService>, store_name: String, maybe_file_name: Option<&str>) {
+pub fn import_v1(service: Arc<dyn TrustlessService>, store_name: String, maybe_file_name: Option<&str>) {
   let secrets_store = service
     .open_store(&store_name)
     .ok_or_exit(format!("Failed opening store {}: ", store_name));
 
   let status = secrets_store.status().ok_or_exit("Get status");
 
-  let import_stream: Box<BufRead> = match maybe_file_name {
+  let import_stream: Box<dyn BufRead> = match maybe_file_name {
     Some(file_name) => {
       let file = File::open(file_name).ok_or_exit(format!("Failed opening {}", file_name));
       Box::new(BufReader::new(file))
