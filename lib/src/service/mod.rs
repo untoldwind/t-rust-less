@@ -14,6 +14,14 @@ pub use self::error::*;
 
 use crate::secrets_store::SecretsStore;
 
+pub trait ClipboardControl {
+  fn is_done(&self) -> ServiceResult<bool>;
+
+  fn currently_providing(&self) -> ServiceResult<Option<String>>;
+
+  fn destroy(&self) -> ServiceResult<()>;
+}
+
 pub trait TrustlessService {
   fn list_stores(&self) -> ServiceResult<Vec<String>>;
 
@@ -33,7 +41,7 @@ pub trait TrustlessService {
     secret_id: &str,
     properties: &[&str],
     display_name: &str,
-  ) -> ServiceResult<()>;
+  ) -> ServiceResult<Arc<dyn ClipboardControl>>;
 }
 
 pub fn create_service() -> ServiceResult<Arc<dyn TrustlessService>> {

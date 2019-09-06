@@ -38,6 +38,10 @@ where
 {
   type Content = C;
 
+  fn current_selection_name(&self) -> Option<String> {
+    self.underlying.current_selection_name()
+  }
+
   fn get_selection(&mut self) -> Option<Self::Content> {
     let now = SystemTime::now();
     if let Some(last_content) = &self.last_content {

@@ -20,7 +20,9 @@ fn main() {
     }
   };
 
-  if let Err(error) = processor::process(service, stdin(), stdout()) {
+  let mut processor = processor::Processor::new(service, stdin(), stdout());
+
+  if let Err(error) = processor.process() {
     error!("Error: {}", error);
     process::exit(1);
   }

@@ -517,16 +517,16 @@ mod tests {
 
     for (idx, w) in guarded1.borrow().iter().enumerate() {
       if idx % 2 == 0 {
-        assert_that(&w).is_equal_to(&word_from_u64(0x1234567812345678));
+        assert_that(&w).is_equal_to(&word_from_u64(0x1234_5678_1234_5678));
       } else {
-        assert_that(&w).is_equal_to(&word_from_u64(0xf0e1d2c3b4a59687));
+        assert_that(&w).is_equal_to(&word_from_u64(0xf0e1_d2c3_b4a5_9687));
       }
     }
     for (idx, w) in guarded2.borrow().iter().enumerate() {
       if idx % 2 == 0 {
-        assert_that(&w).is_equal_to(&word_from_u64(0x1234567812345678));
+        assert_that(&w).is_equal_to(&word_from_u64(0x1234_5678_1234_5678));
       } else {
-        assert_that(&w).is_equal_to(&word_from_u64(0xf0e1d2c3b4a59687));
+        assert_that(&w).is_equal_to(&word_from_u64(0xf0e1_d2c3_b4a5_9687));
       }
     }
   }

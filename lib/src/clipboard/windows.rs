@@ -9,4 +9,12 @@ impl Clipboard {
   {
     unimplemented!()
   }
+
+  pub fn is_open(&self) -> bool {
+    unimplemented!()
+  }
+
+  pub fn currently_providing(&self) -> Option<String> {
+    unimplemented!()
+  }
 }

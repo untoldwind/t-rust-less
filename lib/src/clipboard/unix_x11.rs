@@ -24,6 +24,7 @@ struct Context {
   window: xlib::Window,
   atoms: Atoms,
   open: AtomicBool,
+  providing: RwLock<Option<String>>,
 }
 
 impl Context {
@@ -70,6 +71,7 @@ impl Context {
         window,
         atoms,
         open: AtomicBool::new(true),
+        providing: RwLock::new(None),
       })
     }
   }
@@ -112,6 +114,14 @@ impl Context {
       xlib::XFlush(self.display);
     }
   }
+
+  fn is_open(&self) -> bool {
+    self.open.load(Ordering::Relaxed)
+  }
+
+  fn currently_providing(&self) -> Option<String> {
+    self.providing.read().unwrap().clone()
+  }
 }
 
 impl Drop for Context {
@@ -153,6 +163,14 @@ impl Clipboard {
     self.context.destroy()
   }
 
+  pub fn is_open(&self) -> bool {
+    self.context.is_open()
+  }
+
+  pub fn currently_providing(&self) -> Option<String> {
+    self.context.currently_providing()
+  }
+
   pub fn wait(&self) -> ClipboardResult<()> {
     let mut maybe_handle = self.handle.write().unwrap();
     if let Some(handle) = maybe_handle.take() {
@@ -182,6 +200,8 @@ where
     let mut event: xlib::XEvent = mem::uninitialized();
 
     loop {
+      *context.providing.write().unwrap() = debounce.current_selection_name();
+
       xlib::XFlush(context.display);
       debug!("Wating for event");
       xlib::XNextEvent(context.display, &mut event);
@@ -261,5 +281,8 @@ where
         ignored => debug!("Ignoring event: {}", ignored),
       }
     }
+
+    debug!("Ending event loop");
+    context.destroy();
   }
 }

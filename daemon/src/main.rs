@@ -2,6 +2,7 @@ mod cli;
 
 #[macro_use]
 pub mod macros;
+mod clipboard_control_impl;
 mod error;
 mod secrets_store_impl;
 mod service_impl;

@@ -1,8 +1,8 @@
 use crate::api::{read_option, set_text_list, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
-use crate::api_capnp::{secrets_store, service};
+use crate::api_capnp::{clipboard_control, secrets_store, service};
 use crate::memguard::SecretBytes;
 use crate::secrets_store::{SecretStoreResult, SecretsStore};
-use crate::service::{ServiceResult, StoreConfig, TrustlessService};
+use crate::service::{ClipboardControl, ServiceResult, StoreConfig, TrustlessService};
 use futures::Future;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -114,7 +114,7 @@ impl TrustlessService for RemoteTrustlessService {
     secret_id: &str,
     properties: &[&str],
     display_name: &str,
-  ) -> ServiceResult<()> {
+  ) -> ServiceResult<Arc<dyn ClipboardControl>> {
     let mut runtime = self.runtime.borrow_mut();
     let mut request = self.client.secret_to_clipboard_request();
 
@@ -123,13 +123,17 @@ impl TrustlessService for RemoteTrustlessService {
     set_text_list(request.get().init_properties(properties.len() as u32), properties)?;
     request.get().set_display_name(display_name);
 
-    runtime.block_on(request.send().promise.and_then(|response| {
-      response.get()?;
+    let clipboard_control_client = runtime.block_on(
+      request
+        .send()
+        .promise
+        .and_then(|response| Ok(response.get()?.get_clipboard_control()?)),
+    )?;
 
-      Ok(())
-    }))?;
-
-    Ok(())
+    Ok(Arc::new(RemoteClipboardControl::new(
+      clipboard_control_client,
+      self.runtime.clone(),
+    )?))
   }
 }
 
@@ -289,5 +293,62 @@ impl SecretsStore for RemoteSecretsStore {
     }))?;
 
     Ok(result)
+  }
+}
+
+pub struct RemoteClipboardControl {
+  client: clipboard_control::Client,
+  runtime: Rc<RefCell<current_thread::Runtime>>,
+}
+
+impl RemoteClipboardControl {
+  fn new(
+    client: clipboard_control::Client,
+    runtime: Rc<RefCell<current_thread::Runtime>>,
+  ) -> ServiceResult<RemoteClipboardControl> {
+    Ok(RemoteClipboardControl { client, runtime })
+  }
+}
+
+impl ClipboardControl for RemoteClipboardControl {
+  fn is_done(&self) -> ServiceResult<bool> {
+    let mut runtime = self.runtime.borrow_mut();
+    let request = self.client.is_done_request();
+
+    let result = runtime.block_on(
+      request
+        .send()
+        .promise
+        .and_then(|response| Ok(response.get()?.get_is_done())),
+    )?;
+
+    Ok(result)
+  }
+
+  fn currently_providing(&self) -> ServiceResult<Option<String>> {
+    let mut runtime = self.runtime.borrow_mut();
+    let request = self.client.currently_providing_request();
+
+    let result = runtime.block_on(request.send().promise.and_then(|response| {
+      match read_option(response.get()?.get_providing()?)? {
+        None => Ok(None),
+        Some(name) => Ok(Some(name.to_string())),
+      }
+    }))?;
+
+    Ok(result)
+  }
+
+  fn destroy(&self) -> ServiceResult<()> {
+    let mut runtime = self.runtime.borrow_mut();
+    let request = self.client.destroy_request();
+
+    runtime.block_on(request.send().promise.and_then(|response| {
+      response.get()?;
+
+      Ok(())
+    }))?;
+
+    Ok(())
   }
 }

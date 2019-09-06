@@ -61,6 +61,10 @@ pub enum Command {
     store_name: String,
     block_id: String,
   },
+
+  ClipboardIsDone,
+  ClipboardCurrentlyProviding,
+  ClipboardDestroy,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

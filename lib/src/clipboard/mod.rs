@@ -16,5 +16,7 @@ pub use self::windows::Clipboard;
 pub trait SelectionProvider: Send + Sync {
   type Content: AsRef<[u8]> + Send + Sync + Clone;
 
+  fn current_selection_name(&self) -> Option<String>;
+
   fn get_selection(&mut self) -> Option<Self::Content>;
 }

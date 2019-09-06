@@ -8,6 +8,7 @@ use xcb::{Atom, Connection, Window};
 
 use super::{ClipboardError, ClipboardResult, SelectionProvider};
 use crate::clipboard::debounce::SelectionDebounce;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Clone, Debug)]
 struct Atoms {
@@ -23,6 +24,8 @@ struct Context {
   pub screen: i32,
   pub window: Window,
   pub atoms: Atoms,
+  open: AtomicBool,
+  providing: RwLock<Option<String>>,
 }
 
 impl Context {
@@ -71,12 +74,16 @@ impl Context {
       screen,
       window,
       atoms,
+      open: AtomicBool::new(true),
+      providing: RwLock::new(None),
     })
   }
 
   fn destroy(&self) {
-    xcb::destroy_window(&self.connection, self.window);
-    self.connection.flush();
+    if self.open.swap(false, Ordering::Relaxed) {
+      xcb::destroy_window(&self.connection, self.window);
+      self.connection.flush();
+    }
   }
 
   fn get_atom(connection: &Connection, name: &str) -> ClipboardResult<Atom> {
@@ -84,6 +91,14 @@ impl Context {
       .get_reply()
       .map(|reply| reply.atom())
       .map_err(Into::into)
+  }
+
+  fn is_open(&self) -> bool {
+    self.open.load(Ordering::Relaxed)
+  }
+
+  fn currently_providing(&self) -> Option<String> {
+    self.providing.read().unwrap().clone()
   }
 }
 
@@ -112,6 +127,14 @@ impl Clipboard {
 
   pub fn destroy(&self) {
     self.context.destroy()
+  }
+
+  pub fn is_open(&self) -> bool {
+    self.context.is_open()
+  }
+
+  pub fn currently_providing(&self) -> Option<String> {
+    self.context.currently_providing()
   }
 
   pub fn wait(&self) -> ClipboardResult<()> {
@@ -150,6 +173,7 @@ where
   context.connection.flush();
 
   while let Some(event) = context.connection.wait_for_event() {
+    *context.providing.write().unwrap() = debounce.current_selection_name();
     match event.response_type() & !0x80 {
       xcb::SELECTION_REQUEST => {
         let event = unsafe { xcb::cast_event::<xcb::SelectionRequestEvent>(&event) };
@@ -233,4 +257,5 @@ where
   }
 
   debug!("Ending event loop");
+  context.destroy();
 }

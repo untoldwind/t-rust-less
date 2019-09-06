@@ -23,6 +23,10 @@ impl SecretsProvider {
 impl SelectionProvider for SecretsProvider {
   type Content = ZeroingString;
 
+  fn current_selection_name(&self) -> Option<String> {
+    self.properties_stack.first().cloned()
+  }
+
   fn get_selection(&mut self) -> Option<ZeroingString> {
     let property = self.properties_stack.pop()?;
     let value = self.secret_version.properties.get(&property)?;

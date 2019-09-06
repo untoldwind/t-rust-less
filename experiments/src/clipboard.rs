@@ -12,6 +12,14 @@ struct DummyProvider {
 impl SelectionProvider for DummyProvider {
   type Content = String;
 
+  fn current_selection_name(&self) -> Option<String> {
+    if self.counter < 10 {
+      Some("counter".to_string())
+    } else {
+      None
+    }
+  }
+
   fn get_selection(&mut self) -> Option<String> {
     self.counter += 1;
 

@@ -1,7 +1,8 @@
+use crate::clipboard_control_impl::ClipboardControlImpl;
 use crate::secrets_store_impl::SecretsStoreImpl;
 use capnp::capability::Promise;
 use std::sync::Arc;
-use t_rust_less_lib::api_capnp::{secrets_store, service};
+use t_rust_less_lib::api_capnp::{clipboard_control, secrets_store, service};
 use t_rust_less_lib::service::local::LocalTrustlessService;
 use t_rust_less_lib::service::{StoreConfig, TrustlessService};
 
@@ -113,7 +114,7 @@ impl service::Server for ServiceImpl {
   fn secret_to_clipboard(
     &mut self,
     params: service::SecretToClipboardParams,
-    _: service::SecretToClipboardResults,
+    mut results: service::SecretToClipboardResults,
   ) -> Promise<(), capnp::Error> {
     let store_name = stry!(params
       .get()
@@ -129,9 +130,13 @@ impl service::Server for ServiceImpl {
       .get()
       .and_then(service::secret_to_clipboard_params::Reader::get_display_name));
 
-    stry!(self
+    let clipboard_control = stry!(self
       .service
       .secret_to_clipboard(store_name, secret_id, &properties, &display_name));
+
+    results.get().set_clipboard_control(
+      clipboard_control::ToClient::new(ClipboardControlImpl::new(clipboard_control)).into_client::<capnp_rpc::Server>(),
+    );
 
     Promise::ok(())
   }

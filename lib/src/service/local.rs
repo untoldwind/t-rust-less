@@ -3,17 +3,45 @@ use crate::secrets_store::{open_secrets_store, SecretsStore};
 use crate::service::config::{read_config, write_config, Config};
 use crate::service::error::{ServiceError, ServiceResult};
 use crate::service::secrets_provider::SecretsProvider;
-use crate::service::{StoreConfig, TrustlessService};
+use crate::service::{ClipboardControl, StoreConfig, TrustlessService};
 use chrono::Utc;
 use log::{error, info};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
+pub enum ClipboardHolder {
+  Empty,
+  Providing(Clipboard),
+}
+
+impl ClipboardControl for ClipboardHolder {
+  fn is_done(&self) -> ServiceResult<bool> {
+    match self {
+      ClipboardHolder::Empty => Ok(true),
+      ClipboardHolder::Providing(clipboard) => Ok(!clipboard.is_open()),
+    }
+  }
+
+  fn currently_providing(&self) -> ServiceResult<Option<String>> {
+    match self {
+      ClipboardHolder::Empty => Ok(None),
+      ClipboardHolder::Providing(clipboard) => Ok(clipboard.currently_providing()),
+    }
+  }
+
+  fn destroy(&self) -> ServiceResult<()> {
+    if let ClipboardHolder::Providing(clipboard) = &self {
+      clipboard.destroy();
+    }
+    Ok(())
+  }
+}
+
 pub struct LocalTrustlessService {
   config: RwLock<Config>,
   opened_stores: RwLock<HashMap<String, Arc<dyn SecretsStore>>>,
-  clipboard: RwLock<Option<Clipboard>>,
+  clipboard: RwLock<Arc<ClipboardHolder>>,
 }
 
 impl LocalTrustlessService {
@@ -23,7 +51,7 @@ impl LocalTrustlessService {
     Ok(LocalTrustlessService {
       config: RwLock::new(config),
       opened_stores: RwLock::new(HashMap::new()),
-      clipboard: RwLock::new(None),
+      clipboard: RwLock::new(Arc::new(ClipboardHolder::Empty)),
     })
   }
 
@@ -138,7 +166,7 @@ impl TrustlessService for LocalTrustlessService {
     secret_id: &str,
     properties: &[&str],
     display_name: &str,
-  ) -> ServiceResult<()> {
+  ) -> ServiceResult<Arc<dyn ClipboardControl>> {
     #[cfg(unix)]
     {
       let store = self.open_store(store_name)?;
@@ -148,9 +176,13 @@ impl TrustlessService for LocalTrustlessService {
 
       info!("Providing {} for {} in {}", properties.join(","), secret_id, store_name);
 
-      clipboard.replace(Clipboard::new(display_name, secret_provider)?);
+      let next_clipboard = Arc::new(ClipboardHolder::Providing(Clipboard::new(
+        display_name,
+        secret_provider,
+      )?));
+      *clipboard = next_clipboard.clone();
 
-      Ok(())
+      Ok(next_clipboard)
     }
     #[cfg(not(unix))]
     {

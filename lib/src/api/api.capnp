@@ -14,6 +14,12 @@ struct Option(T) {
     }
 }
 
+interface ClipboardControl {
+    isDone @0 () -> (isDone: Bool);
+    currentlyProviding @1 () -> (providing: Option(Text));
+    destroy @2 ();
+}
+
 interface Service {
     listStores @0 () -> (storeNames : List(Text));
     setStoreConfig @1 (storeConfig : StoreConfig);
@@ -21,7 +27,7 @@ interface Service {
     getDefaultStore @3 () -> (storeName : Option(Text));
     setDefaultStore @4 (storeName : Text);
     openStore @5 (storeName : Text) -> (store: SecretsStore);
-    secretToClipboard @6 (storeName : Text, secretId : Text, properties : List(Text), displayName: Text);
+    secretToClipboard @6 (storeName : Text, secretId : Text, properties : List(Text), displayName: Text) -> (clipboardControl: ClipboardControl);
 }
 
 struct Identity {
