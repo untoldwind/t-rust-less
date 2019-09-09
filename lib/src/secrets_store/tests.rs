@@ -1,5 +1,5 @@
 use super::{open_secrets_store, SecretStoreError, SecretStoreResult, SecretsStore};
-use crate::api::{Identity, SecretType, SecretVersion};
+use crate::api::{Event, EventHub, Identity, SecretType, SecretVersion};
 use crate::memguard::weak::ZeroingStringExt;
 use crate::memguard::SecretBytes;
 use chrono::Utc;
@@ -124,10 +124,23 @@ fn secret_from_str(s: &str) -> SecretBytes {
   SecretBytes::from(raw)
 }
 
+struct TestEventHub;
+
+impl EventHub for TestEventHub {
+  fn send(&self, event: Event) {}
+}
+
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn test_multi_lane_secrets_store() {
-  let secrets_store = open_secrets_store("multilane+memory://", "node1", Duration::from_secs(300)).unwrap();
+  let secrets_store = open_secrets_store(
+    "test",
+    "multilane+memory://",
+    "node1",
+    Duration::from_secs(300),
+    Arc::new(TestEventHub),
+  )
+  .unwrap();
 
   common_secrets_store_tests(secrets_store)
 }

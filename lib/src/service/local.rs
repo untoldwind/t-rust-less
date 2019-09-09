@@ -1,3 +1,4 @@
+use crate::api::{Event, EventHandler, EventHub, EventSubscription};
 use crate::clipboard::Clipboard;
 use crate::secrets_store::{open_secrets_store, SecretsStore};
 use crate::service::config::{read_config, write_config, Config};
@@ -6,11 +7,12 @@ use crate::service::secrets_provider::SecretsProvider;
 use crate::service::{ClipboardControl, StoreConfig, TrustlessService};
 use chrono::Utc;
 use log::{error, info};
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
-pub enum ClipboardHolder {
+enum ClipboardHolder {
   Empty,
   Providing(Clipboard),
 }
@@ -38,10 +40,77 @@ impl ClipboardControl for ClipboardHolder {
   }
 }
 
+struct LocalEventHub {
+  event_handlers: RwLock<(Cell<u32>, HashMap<u32, Box<dyn EventHandler>>)>,
+}
+
+impl LocalEventHub {
+  fn new() -> LocalEventHub {
+    LocalEventHub {
+      event_handlers: RwLock::new((Cell::new(0), HashMap::new())),
+    }
+  }
+
+  fn add_event_handler(&self, handler: Box<dyn EventHandler>) -> ServiceResult<u32> {
+    let mut event_handlers = self.event_handlers.write()?;
+    let id = event_handlers.0.get();
+
+    event_handlers.1.insert(id, handler);
+    event_handlers.0.set(id + 1);
+
+    Ok(id)
+  }
+
+  fn remove_event_handler(&self, id: u32) {
+    match self.event_handlers.write() {
+      Ok(mut event_handlers) => {
+        event_handlers.1.remove(&id);
+      }
+      Err(_) => (),
+    }
+  }
+}
+
+impl EventHub for LocalEventHub {
+  fn send(&self, event: Event) {
+    let event_handlers = match self.event_handlers.read() {
+      Ok(event_handlers) => event_handlers,
+      Err(e) => {
+        error!("Queue event failed: {}", e);
+        return;
+      }
+    };
+
+    for event_handler in event_handlers.1.values() {
+      event_handler.handle(event.clone());
+    }
+  }
+}
+
+struct LocalEventSubscription {
+  event_hub: Arc<LocalEventHub>,
+  id: u32,
+}
+
+impl LocalEventSubscription {
+  fn new(event_hub: Arc<LocalEventHub>, id: u32) -> LocalEventSubscription {
+    LocalEventSubscription { event_hub, id }
+  }
+}
+
+impl Drop for LocalEventSubscription {
+  fn drop(&mut self) {
+    self.event_hub.remove_event_handler(self.id)
+  }
+}
+
+impl EventSubscription for LocalEventSubscription {}
+
 pub struct LocalTrustlessService {
   config: RwLock<Config>,
   opened_stores: RwLock<HashMap<String, Arc<dyn SecretsStore>>>,
   clipboard: RwLock<Arc<ClipboardHolder>>,
+  event_hub: Arc<LocalEventHub>,
 }
 
 impl LocalTrustlessService {
@@ -52,6 +121,7 @@ impl LocalTrustlessService {
       config: RwLock::new(config),
       opened_stores: RwLock::new(HashMap::new()),
       clipboard: RwLock::new(Arc::new(ClipboardHolder::Empty)),
+      event_hub: Arc::new(LocalEventHub::new()),
     })
   }
 
@@ -131,9 +201,11 @@ impl TrustlessService for LocalTrustlessService {
       .get(name)
       .ok_or_else(|| ServiceError::StoreNotFound(name.to_string()))?;
     let store = open_secrets_store(
+      name,
       &store_config.store_url,
       &store_config.client_id,
       Duration::from_secs(store_config.autolock_timeout_secs),
+      self.event_hub.clone(),
     )?;
 
     opened_stores.insert(name.to_string(), store.clone());
@@ -179,6 +251,9 @@ impl TrustlessService for LocalTrustlessService {
       let next_clipboard = Arc::new(ClipboardHolder::Providing(Clipboard::new(
         display_name,
         secret_provider,
+        store_name.to_string(),
+        secret_id.to_string(),
+        self.event_hub.clone(),
       )?));
       *clipboard = next_clipboard.clone();
 
@@ -188,5 +263,11 @@ impl TrustlessService for LocalTrustlessService {
     {
       Err(ServiceResult::NotAvailable)
     }
+  }
+
+  fn add_event_handler(&self, handler: Box<dyn EventHandler>) -> ServiceResult<Box<dyn EventSubscription>> {
+    let id = self.event_hub.add_event_handler(handler)?;
+
+    Ok(Box::new(LocalEventSubscription::new(self.event_hub.clone(), id)))
   }
 }

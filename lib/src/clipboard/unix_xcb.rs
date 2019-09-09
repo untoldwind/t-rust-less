@@ -7,6 +7,7 @@ use std::sync::{Arc, RwLock};
 use xcb::{Atom, Connection, Window};
 
 use super::{ClipboardError, ClipboardResult, SelectionProvider};
+use crate::api::{Event, EventHub};
 use crate::clipboard::debounce::SelectionDebounce;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -26,10 +27,18 @@ struct Context {
   pub atoms: Atoms,
   open: AtomicBool,
   providing: RwLock<Option<String>>,
+  store_name: String,
+  secret_id: String,
+  event_hub: Arc<dyn EventHub>,
 }
 
 impl Context {
-  fn new(display_name: &str) -> ClipboardResult<Self> {
+  fn new(
+    display_name: &str,
+    store_name: String,
+    secret_id: String,
+    event_hub: Arc<dyn EventHub>,
+  ) -> ClipboardResult<Self> {
     let (connection, screen) = Connection::connect(Some(display_name))?;
     let window = connection.generate_id();
 
@@ -76,6 +85,9 @@ impl Context {
       atoms,
       open: AtomicBool::new(true),
       providing: RwLock::new(None),
+      store_name,
+      secret_id,
+      event_hub,
     })
   }
 
@@ -108,11 +120,17 @@ pub struct Clipboard {
 }
 
 impl Clipboard {
-  pub fn new<T>(display_name: &str, selection_provider: T) -> ClipboardResult<Clipboard>
+  pub fn new<T>(
+    display_name: &str,
+    selection_provider: T,
+    store_name: String,
+    secret_id: String,
+    event_hub: Arc<dyn EventHub>,
+  ) -> ClipboardResult<Clipboard>
   where
     T: SelectionProvider + 'static,
   {
-    let context = Arc::new(Context::new(display_name)?);
+    let context = Arc::new(Context::new(display_name, store_name, secret_id, event_hub)?);
 
     let handle = thread::spawn({
       let cloned = context.clone();
@@ -204,6 +222,13 @@ where
         } else if target == context.atoms.string || target == context.atoms.utf8_string {
           match debounce.get_selection() {
             Some(value) => {
+              if let Some(property) = debounce.current_selection_name() {
+                context.event_hub.send(Event::ClipboardProviding {
+                  store_name: context.store_name.clone(),
+                  secret_id: context.secret_id.clone(),
+                  property,
+                });
+              }
               xcb::change_property(
                 &context.connection,
                 xcb::PROP_MODE_REPLACE as u8,
@@ -257,5 +282,6 @@ where
   }
 
   debug!("Ending event loop");
+  context.event_hub.send(Event::ClipboardDone);
   context.destroy();
 }

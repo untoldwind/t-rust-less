@@ -1,5 +1,6 @@
 #![cfg(all(unix, feature = "with_x11"))]
 
+use crate::api::{Event, EventHub};
 use crate::clipboard::debounce::SelectionDebounce;
 use crate::clipboard::{ClipboardError, ClipboardResult, SelectionProvider};
 use log::debug;
@@ -25,10 +26,18 @@ struct Context {
   atoms: Atoms,
   open: AtomicBool,
   providing: RwLock<Option<String>>,
+  store_name: String,
+  secret_id: String,
+  event_hub: Arc<dyn EventHub>,
 }
 
 impl Context {
-  fn new(display_name: &str) -> ClipboardResult<Self> {
+  fn new(
+    display_name: &str,
+    store_name: String,
+    secret_id: String,
+    event_hub: Arc<dyn EventHub>,
+  ) -> ClipboardResult<Self> {
     unsafe {
       let c_display_name = CString::new(display_name)?;
       let display = xlib::XOpenDisplay(c_display_name.as_ptr());
@@ -72,6 +81,9 @@ impl Context {
         atoms,
         open: AtomicBool::new(true),
         providing: RwLock::new(None),
+        store_name,
+        secret_id,
+        event_hub,
       })
     }
   }
@@ -142,11 +154,17 @@ pub struct Clipboard {
 }
 
 impl Clipboard {
-  pub fn new<T>(display_name: &str, selection_provider: T) -> ClipboardResult<Clipboard>
+  pub fn new<T>(
+    display_name: &str,
+    selection_provider: T,
+    store_name: String,
+    secret_id: String,
+    event_hub: Arc<dyn EventHub>,
+  ) -> ClipboardResult<Clipboard>
   where
     T: SelectionProvider + 'static,
   {
-    let context = Arc::new(Context::new(display_name)?);
+    let context = Arc::new(Context::new(display_name, store_name, secret_id, event_hub)?);
 
     let handle = thread::spawn({
       let cloned = context.clone();
@@ -236,6 +254,13 @@ where
           } else if selection.target == context.atoms.string || selection.target == context.atoms.utf8_string {
             match debounce.get_selection() {
               Some(value) => {
+                if let Some(property) = debounce.current_selection_name() {
+                  context.event_hub.send(Event::ClipboardProviding {
+                    store_name: context.store_name.clone(),
+                    secret_id: context.secret_id.clone(),
+                    property,
+                  });
+                }
                 let content: &[u8] = value.as_ref();
 
                 xlib::XChangeProperty(
@@ -283,6 +308,7 @@ where
     }
 
     debug!("Ending event loop");
+    context.event_hub.send(Event::ClipboardDone);
     context.destroy();
   }
 }

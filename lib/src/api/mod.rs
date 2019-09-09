@@ -11,6 +11,10 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::fmt;
 
+mod event;
+
+pub use event::*;
+
 pub const PROPERTY_USERNAME: &str = "username";
 pub const PROPERTY_PASSWORD: &str = "password";
 pub const PROPERTY_TOTP_URL: &str = "totpUrl";

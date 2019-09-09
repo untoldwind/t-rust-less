@@ -1,3 +1,4 @@
+use crate::api::{EventHandler, EventSubscription};
 use std::sync::Arc;
 
 mod config;
@@ -42,6 +43,8 @@ pub trait TrustlessService {
     properties: &[&str],
     display_name: &str,
   ) -> ServiceResult<Arc<dyn ClipboardControl>>;
+
+  fn add_event_handler(&self, handler: Box<dyn EventHandler>) -> ServiceResult<Box<dyn EventSubscription>>;
 }
 
 pub fn create_service() -> ServiceResult<Arc<dyn TrustlessService>> {

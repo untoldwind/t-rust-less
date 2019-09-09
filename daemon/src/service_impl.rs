@@ -1,8 +1,9 @@
 use crate::clipboard_control_impl::ClipboardControlImpl;
+use crate::event_handler_impl::{EventHandlerClient, EventSubscriptionImpl};
 use crate::secrets_store_impl::SecretsStoreImpl;
 use capnp::capability::Promise;
 use std::sync::Arc;
-use t_rust_less_lib::api_capnp::{clipboard_control, secrets_store, service};
+use t_rust_less_lib::api_capnp::{clipboard_control, event_subscription, secrets_store, service};
 use t_rust_less_lib::service::local::LocalTrustlessService;
 use t_rust_less_lib::service::{StoreConfig, TrustlessService};
 
@@ -136,6 +137,23 @@ impl service::Server for ServiceImpl {
 
     results.get().set_clipboard_control(
       clipboard_control::ToClient::new(ClipboardControlImpl::new(clipboard_control)).into_client::<capnp_rpc::Server>(),
+    );
+
+    Promise::ok(())
+  }
+
+  fn add_event_handler(
+    &mut self,
+    params: service::AddEventHandlerParams,
+    mut results: service::AddEventHandlerResults,
+  ) -> Promise<(), capnp::Error> {
+    let handler = EventHandlerClient::new(stry!(params
+      .get()
+      .and_then(service::add_event_handler_params::Reader::get_handler)));
+    let subscription = stry!(self.service.add_event_handler(Box::new(handler)));
+
+    results.get().set_subscription(
+      event_subscription::ToClient::new(EventSubscriptionImpl(subscription)).into_client::<capnp_rpc::Server>(),
     );
 
     Promise::ok(())

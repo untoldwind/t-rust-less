@@ -1,4 +1,4 @@
-use crate::api::{Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
+use crate::api::{EventHub, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -36,9 +36,11 @@ pub trait SecretsStore {
 }
 
 pub fn open_secrets_store(
+  name: &str,
   url: &str,
   node_id: &str,
   autolock_timeout: Duration,
+  event_hub: Arc<dyn EventHub>,
 ) -> SecretStoreResult<Arc<dyn SecretsStore>> {
   let (scheme, block_store_url) = match url.find('+') {
     Some(idx) => (&url[..idx], &url[idx + 1..]),
@@ -48,7 +50,12 @@ pub fn open_secrets_store(
   let block_store = open_block_store(block_store_url, node_id)?;
 
   let secrets_store = match scheme {
-    "multilane" => Arc::new(multi_lane::MultiLaneSecretsStore::new(block_store, autolock_timeout)),
+    "multilane" => Arc::new(multi_lane::MultiLaneSecretsStore::new(
+      name,
+      block_store,
+      autolock_timeout,
+      event_hub,
+    )),
     _ => return Err(SecretStoreError::InvalidStoreUrl(url.to_string())),
   };
 

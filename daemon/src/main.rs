@@ -4,6 +4,7 @@ mod cli;
 pub mod macros;
 mod clipboard_control_impl;
 mod error;
+mod event_handler_impl;
 mod secrets_store_impl;
 mod service_impl;
 

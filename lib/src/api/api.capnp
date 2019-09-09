@@ -20,6 +20,31 @@ interface ClipboardControl {
     destroy @2 ();
 }
 
+enum EventType {
+    storeUnlocked @0;
+    storeLocked @1;
+    secretOpened @2;
+    secretVersionAdded @3;
+    identityAdded @4;
+    clipboardProviding @5;
+    clipboardDone @6;
+}
+
+struct Event {
+    type @0: EventType;
+    storeName @1: Text;
+    identity @2: Identity;
+    secretId @3: Text;
+    property @4: Text;
+}
+
+interface EventSubscription {
+}
+
+interface EventHandler {
+    handle @0 (event: Event);
+}
+
 interface Service {
     listStores @0 () -> (storeNames : List(Text));
     setStoreConfig @1 (storeConfig : StoreConfig);
@@ -28,6 +53,7 @@ interface Service {
     setDefaultStore @4 (storeName : Text);
     openStore @5 (storeName : Text) -> (store: SecretsStore);
     secretToClipboard @6 (storeName : Text, secretId : Text, properties : List(Text), displayName: Text) -> (clipboardControl: ClipboardControl);
+    addEventHandler @7 (handler: EventHandler) -> (subscription: EventSubscription);
 }
 
 struct Identity {

@@ -3,6 +3,7 @@ use std::env;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
+use t_rust_less_lib::api::{Event, EventHub};
 use t_rust_less_lib::clipboard::{Clipboard, SelectionProvider};
 
 struct DummyProvider {
@@ -32,11 +33,20 @@ impl SelectionProvider for DummyProvider {
   }
 }
 
+struct TestEventHub;
+
+impl EventHub for TestEventHub {
+  fn send(&self, event: Event) {}
+}
+
 pub fn experimental_clipboard() {
   let clipboard = Arc::new(
     Clipboard::new(
       &env::var("DISPLAY").unwrap_or_else(|_| ":0".to_string()),
       DummyProvider { counter: 0 },
+      "Store".to_string(),
+      "SecretId".to_string(),
+      Arc::new(TestEventHub),
     )
     .unwrap(),
   );

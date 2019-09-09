@@ -1,5 +1,6 @@
 use crate::api::{read_option, set_text_list, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
-use crate::api_capnp::{clipboard_control, secrets_store, service};
+use crate::api::{Event, EventHandler, EventSubscription};
+use crate::api_capnp::{clipboard_control, event_handler, event_subscription, secrets_store, service};
 use crate::memguard::SecretBytes;
 use crate::secrets_store::{SecretStoreResult, SecretsStore};
 use crate::service::{ClipboardControl, ServiceResult, StoreConfig, TrustlessService};
@@ -123,6 +124,23 @@ impl TrustlessService for RemoteTrustlessService {
       clipboard_control_client?,
       self.local_pool.clone(),
     )?))
+  }
+
+  fn add_event_handler(&self, handler: Box<dyn EventHandler>) -> ServiceResult<Box<dyn EventSubscription>> {
+    let mut runtime = self.runtime.borrow_mut();
+    let mut request = self.client.add_event_handler_request();
+
+    request.get().set_handler(
+      event_handler::ToClient::new(RemoteEventHandlerImpl::new(handler)).into_client::<capnp_rpc::Server>(),
+    );
+    let subscription_client = runtime.block_on(
+      request
+        .send()
+        .promise
+        .and_then(|response| Ok(response.get()?.get_subscription()?)),
+    )?;
+
+    Ok(Box::new(RemoteEventSubscription(subscription_client)))
   }
 }
 
@@ -262,7 +280,7 @@ impl SecretsStore for RemoteSecretsStore {
   }
 }
 
-pub struct RemoteClipboardControl {
+struct RemoteClipboardControl {
   client: clipboard_control::Client,
   local_pool: Rc<RefCell<LocalPool>>,
 }
@@ -313,5 +331,39 @@ impl ClipboardControl for RemoteClipboardControl {
 
       Ok(())
     }))
+  }
+}
+
+struct RemoteEventSubscription(event_subscription::Client);
+
+impl EventSubscription for RemoteEventSubscription {}
+
+struct RemoteEventHandlerImpl {
+  event_handler: Box<dyn EventHandler>,
+}
+
+impl RemoteEventHandlerImpl {
+  fn new(event_handler: Box<dyn EventHandler>) -> RemoteEventHandlerImpl {
+    RemoteEventHandlerImpl { event_handler }
+  }
+}
+
+impl event_handler::Server for RemoteEventHandlerImpl {
+  fn handle(
+    &mut self,
+    params: event_handler::HandleParams,
+    _: event_handler::HandleResults,
+  ) -> Promise<(), capnp::Error> {
+    let event = match params
+      .get()
+      .and_then(event_handler::handle_params::Reader::get_event)
+      .and_then(Event::from_reader)
+    {
+      Ok(event) => event,
+      Err(err) => return Promise::err(err.into()),
+    };
+    self.event_handler.handle(event);
+
+    Promise::ok(())
   }
 }

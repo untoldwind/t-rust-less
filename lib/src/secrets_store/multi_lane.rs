@@ -3,7 +3,7 @@ use std::time::{Duration, SystemTime};
 
 use capnp::{message, serialize};
 
-use crate::api::{Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
+use crate::api::{Event, EventHub, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
 use crate::block_store::{BlockStore, Change, Operation, StoreError};
 use crate::memguard::weak::{ZeroingBytesExt, ZeroingHeapAllocator, ZeroingStringExt};
 use crate::memguard::SecretBytes;
@@ -34,21 +34,30 @@ struct RecipientsForCipher<'a> {
 }
 
 pub struct MultiLaneSecretsStore {
+  name: String,
   ciphers: Vec<&'static dyn Cipher>,
   key_derivation: &'static dyn KeyDerivation,
   unlocked_user: RwLock<Option<User>>,
   block_store: Arc<dyn BlockStore>,
   autolock_timeout: Duration,
+  event_hub: Arc<dyn EventHub>,
 }
 
 impl MultiLaneSecretsStore {
-  pub fn new(block_store: Arc<dyn BlockStore>, autolock_timeout: Duration) -> MultiLaneSecretsStore {
+  pub fn new(
+    name: &str,
+    block_store: Arc<dyn BlockStore>,
+    autolock_timeout: Duration,
+    event_hub: Arc<dyn EventHub>,
+  ) -> MultiLaneSecretsStore {
     MultiLaneSecretsStore {
+      name: name.to_string(),
       ciphers: vec![&OPEN_SSL_RSA_AES_GCM, &RUST_X25519CHA_CHA20POLY1305],
       key_derivation: &RUST_ARGON2_ID,
       unlocked_user: RwLock::new(None),
       block_store,
       autolock_timeout,
+      event_hub,
     }
   }
 }
@@ -69,6 +78,9 @@ impl SecretsStore for MultiLaneSecretsStore {
     info!("Locking store");
     let mut unlocked_user = self.unlocked_user.write()?;
     unlocked_user.take();
+    self.event_hub.send(Event::StoreLocked {
+      store_name: self.name.clone(),
+    });
 
     Ok(())
   }
@@ -124,12 +136,17 @@ impl SecretsStore for MultiLaneSecretsStore {
       self.store_index(identity_id, &index)?;
     }
 
+    let identity = Self::identity_from_ring(ring)?;
     unlocked_user.replace(User {
-      identity: Self::identity_from_ring(ring)?,
+      identity: identity.clone(),
       private_keys,
       public_keys,
       autolock_at: SystemTime::now() + self.autolock_timeout,
       index,
+    });
+    self.event_hub.send(Event::StoreUnlocked {
+      store_name: self.name.clone(),
+      identity,
     });
 
     Ok(())
@@ -194,6 +211,10 @@ impl SecretsStore for MultiLaneSecretsStore {
     let new_ring_raw = serialize::write_message_to_words(&ring_message);
 
     self.block_store.store_ring(&identity.id, &new_ring_raw)?;
+    self.event_hub.send(Event::IdentityAdded {
+      store_name: self.name.clone(),
+      identity,
+    });
 
     Ok(())
   }
@@ -284,6 +305,11 @@ impl SecretsStore for MultiLaneSecretsStore {
       op: Operation::Add,
       block: block_id.clone(),
     }])?;
+    self.event_hub.send(Event::SecretVersionAdded {
+      store_name: self.name.clone(),
+      secret_id: secret_version.secret_id.clone(),
+      identity: unlocked_user.identity.clone(),
+    });
 
     Ok(block_id)
   }
@@ -311,6 +337,12 @@ impl SecretsStore for MultiLaneSecretsStore {
         password_strengths.insert((*property).to_string(), strength);
       }
     }
+    self.event_hub.send(Event::SecretOpened {
+      store_name: self.name.clone(),
+      secret_id: current.secret_id.clone(),
+      identity: unlocked_user.identity.clone(),
+    });
+
     Ok(Secret {
       id: current.secret_id.clone(),
       secret_type: current.secret_type,

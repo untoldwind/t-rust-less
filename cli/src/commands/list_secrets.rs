@@ -1,13 +1,14 @@
 use crate::commands::tui::create_tui;
 use crate::commands::unlock_store;
 use crate::error::ExtResult;
-use crate::view::{SecretView, StatusView};
+use crate::view::SecretView;
 use atty::Stream;
+use chrono::{DateTime, Utc};
 use cursive::event::{Event, Key};
 use cursive::theme::Effect;
 use cursive::traits::{Boxable, Identifiable, Scrollable};
 use cursive::utils::markup::StyledString;
-use cursive::views::{EditView, LinearLayout, SelectView};
+use cursive::views::{EditView, LinearLayout, SelectView, TextContent, TextView};
 use cursive::Cursive;
 use std::env;
 use std::sync::Arc;
@@ -35,8 +36,10 @@ pub fn list_secrets(service: Arc<dyn TrustlessService>, store_name: String, filt
       store_name,
       secrets_store,
       filter,
+      status_text: TextContent::new(status_text(&status)),
+      last_update: None,
     };
-    list_secrets_ui(&mut siv, initial_state, status);
+    list_secrets_ui(&mut siv, initial_state);
   } else {
     let list = secrets_store.list(filter).ok_or_exit("List entries");
 
@@ -51,9 +54,11 @@ struct ListUIState {
   store_name: String,
   secrets_store: Arc<dyn SecretsStore>,
   filter: SecretListFilter,
+  status_text: TextContent,
+  last_update: Option<DateTime<Utc>>,
 }
 
-fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState, status: Status) {
+fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState) {
   let list = initial_state
     .secrets_store
     .list(initial_state.filter.clone())
@@ -73,7 +78,6 @@ fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState, status: Status
   let store_name = initial_state.store_name.clone();
   let secrets_store = initial_state.secrets_store.clone();
 
-  siv.set_user_data(initial_state);
   siv.set_fps(2);
   siv.add_global_callback(Key::Esc, Cursive::quit);
   siv.add_global_callback(
@@ -83,6 +87,7 @@ fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState, status: Status
   siv.add_global_callback(Event::CtrlChar('u'), secret_to_clipboard(&[PROPERTY_USERNAME]));
   siv.add_global_callback(Event::CtrlChar('p'), secret_to_clipboard(&[PROPERTY_PASSWORD]));
   siv.add_global_callback(Event::CtrlChar('o'), secret_to_clipboard(&[PROPERTY_TOTP_URL]));
+  siv.add_global_callback(Event::Refresh, update_status);
   siv.add_fullscreen_layer(
     LinearLayout::vertical()
       .child(
@@ -104,6 +109,7 @@ fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState, status: Status
           ),
       ),
   );
+  siv.set_user_data(initial_state);
 
   siv.run()
 }
@@ -178,6 +184,43 @@ fn secret_to_clipboard(properties: &'static [&'static str]) -> impl Fn(&mut Curs
           &env::var("DISPLAY").unwrap_or_else(|_| ":0".to_string()),
         )
         .ok_or_exit("Copy to clipboard");
+    }
+  }
+}
+
+fn update_status(s: &mut Cursive) {
+  let next_status = {
+    let state = s.user_data::<ListUIState>().unwrap();
+    let now = Utc::now();
+    if state.last_update.is_none() || (now - state.last_update.unwrap()).num_milliseconds() > 400 {
+      state.last_update.replace(now);
+      match state.secrets_store.status() {
+        Ok(status) => {
+          state.status_text.set_content(status_text(&status));
+          Some(status)
+        }
+        _ => None,
+      }
+    } else {
+      None
+    }
+  };
+  if next_status.is_some() && next_status.unwrap().locked {
+    s.quit()
+  }
+}
+
+fn status_text(status: &Status) -> String {
+  if status.locked {
+    " Locked".to_string()
+  } else {
+    match status.autolock_at {
+      Some(autolock_at) => {
+        let timeout = autolock_at - Utc::now();
+
+        format!(" Unlocked {}s", timeout.num_seconds())
+      }
+      None => " Unlocked".to_string(),
     }
   }
 }
