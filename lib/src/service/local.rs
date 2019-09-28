@@ -7,7 +7,6 @@ use crate::service::secrets_provider::SecretsProvider;
 use crate::service::{ClipboardControl, StoreConfig, TrustlessService};
 use chrono::Utc;
 use log::{error, info};
-use std::cell::Cell;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
@@ -40,50 +39,60 @@ impl ClipboardControl for ClipboardHolder {
   }
 }
 
+struct LocalEventHubInner {
+  next_id: u32,
+  handlers: HashMap<u32, Box<dyn EventHandler>>,
+}
+
 struct LocalEventHub {
-  event_handlers: RwLock<(Cell<u32>, HashMap<u32, Box<dyn EventHandler>>)>,
+  inner: RwLock<LocalEventHubInner>,
 }
 
 impl LocalEventHub {
   fn new() -> LocalEventHub {
     LocalEventHub {
-      event_handlers: RwLock::new((Cell::new(0), HashMap::new())),
+      inner: RwLock::new(LocalEventHubInner {
+        next_id: 0,
+        handlers: HashMap::new(),
+      }),
     }
   }
 
   fn add_event_handler(&self, handler: Box<dyn EventHandler>) -> ServiceResult<u32> {
-    let mut event_handlers = self.event_handlers.write()?;
-    let id = event_handlers.0.get();
+    let mut inner = self.inner.write()?;
+    let id = inner.next_id;
 
-    event_handlers.1.insert(id, handler);
-    event_handlers.0.set(id + 1);
+    inner.handlers.insert(id, handler);
+    inner.next_id += 1;
 
     Ok(id)
   }
 
   fn remove_event_handler(&self, id: u32) {
-    match self.event_handlers.write() {
-      Ok(mut event_handlers) => {
-        event_handlers.1.remove(&id);
+    match self.inner.write() {
+      Ok(mut inner) => {
+        inner.handlers.remove(&id);
       }
-      Err(_) => (),
+      Err(err) => {
+        error!("Unregister event handler failed: {}", err);
+      }
     }
   }
 }
 
 impl EventHub for LocalEventHub {
   fn send(&self, event: Event) {
-    let event_handlers = match self.event_handlers.read() {
-      Ok(event_handlers) => event_handlers,
+    match self.inner.read() {
+      Ok(inner) => {
+        for event_handler in inner.handlers.values() {
+          event_handler.handle(event.clone());
+        }
+      }
       Err(e) => {
         error!("Queue event failed: {}", e);
         return;
       }
     };
-
-    for event_handler in event_handlers.1.values() {
-      event_handler.handle(event.clone());
-    }
   }
 }
 

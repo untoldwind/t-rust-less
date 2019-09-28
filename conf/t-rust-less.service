@@ -1,0 +1,10 @@
+[Unit]
+Description=T-Rust-Less service
+
+[Service]
+Type=simple
+ExecStart=%h/.cargo/bin/t-rust-less-daemon
+
+[Install]
+WantedBy=default.target
+

@@ -1,5 +1,5 @@
 use serde_derive::{Deserialize, Serialize};
-use t_rust_less_lib::api::{Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
+use t_rust_less_lib::api::{Event, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
 use t_rust_less_lib::memguard::weak::ZeroingString;
 use t_rust_less_lib::service::{ServiceError, ServiceResult, StoreConfig};
 
@@ -182,9 +182,10 @@ pub struct Request {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Response {
-  pub id: u64,
-  pub result: CommandResult,
+#[serde(rename_all = "snake_case")]
+pub enum Response {
+  Command { id: u64, result: CommandResult },
+  Event(Event),
 }
 
 #[cfg(test)]

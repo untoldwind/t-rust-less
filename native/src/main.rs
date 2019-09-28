@@ -4,6 +4,7 @@ use std::process;
 use t_rust_less_lib::service::create_service;
 
 mod messages;
+mod output;
 mod processor;
 
 fn main() {
@@ -20,7 +21,13 @@ fn main() {
     }
   };
 
-  let mut processor = processor::Processor::new(service, stdin(), stdout());
+  let mut processor = match processor::Processor::new(service, stdin(), stdout()) {
+    Ok(processor) => processor,
+    Err(error) => {
+      error!("Failed creating processor: {}", error);
+      process::exit(1);
+    }
+  };
 
   if let Err(error) = processor.process() {
     error!("Error: {}", error);

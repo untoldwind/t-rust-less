@@ -1,8 +1,10 @@
 use crate::messages::{Command, CommandResult, Request, Response};
+use crate::output::Output;
 use byteorder::{ByteOrder, NativeEndian};
 use log::error;
-use std::io::{Read, Result, Write};
+use std::io::{ErrorKind, Read, Result, Write};
 use std::sync::Arc;
+use t_rust_less_lib::api::{Event, EventHandler, EventSubscription};
 use t_rust_less_lib::memguard::SecretBytes;
 use t_rust_less_lib::secrets_store::SecretsStore;
 use t_rust_less_lib::service::{ClipboardControl, ServiceResult, TrustlessService};
@@ -10,25 +12,38 @@ use t_rust_less_lib::service::{ClipboardControl, ServiceResult, TrustlessService
 pub struct Processor<I, O> {
   service: Arc<dyn TrustlessService>,
   input: I,
-  output: O,
+  output: Arc<Output<O>>,
   current_store: Option<(String, Arc<dyn SecretsStore>)>,
   current_clipboard: Option<Arc<dyn ClipboardControl>>,
+  _event_subscription: Box<dyn EventSubscription>,
 }
 
 impl<I, O> Processor<I, O>
 where
   I: Read,
-  O: Write,
+  O: Write + 'static,
 {
-  pub fn new(service: Arc<dyn TrustlessService>, input: I, output: O) -> Processor<I, O> {
-    Processor {
+  pub fn new(service: Arc<dyn TrustlessService>, input: I, raw_output: O) -> Result<Processor<I, O>> {
+    let output = Arc::new(Output::new(raw_output));
+
+    let _event_subscription = match service.add_event_handler(Box::new(EventForwarder::new(output.clone()))) {
+      Ok(subscription) => subscription,
+      Err(err) => {
+        error!("Failed subscribing to events: {}", err);
+        return Err(ErrorKind::Other.into());
+      }
+    };
+
+    Ok(Processor {
       service,
       input,
       output,
       current_store: None,
       current_clipboard: None,
-    }
+      _event_subscription,
+    })
   }
+
   pub fn process(&mut self) -> Result<()> {
     let mut length_buffer = [0u8; 4];
     let mut buffer: Vec<u8> = vec![];
@@ -43,19 +58,14 @@ where
         Ok(request) => self.process_request(request),
         Err(error) => {
           error!("Invalid request: {}", error);
-          Response {
+          Response::Command {
             id: 0,
             result: CommandResult::Invalid,
           }
         }
       };
       Self::clear_buffer(&mut buffer);
-      serde_json::to_writer(&mut buffer, &response)?;
-      NativeEndian::write_u32(&mut length_buffer, buffer.len() as u32);
-      self.output.write_all(&length_buffer)?;
-      self.output.write_all(&buffer)?;
-      self.output.flush()?;
-      Self::clear_buffer(&mut buffer);
+      self.output.send(&response)?;
     }
   }
 
@@ -169,7 +179,7 @@ where
       _ => CommandResult::Invalid,
     };
 
-    Response { id: request.id, result }
+    Response::Command { id: request.id, result }
   }
 
   fn open_store(&mut self, store_name: &str) -> ServiceResult<Arc<dyn SecretsStore>> {
@@ -182,6 +192,30 @@ where
         }
         err => err,
       },
+    }
+  }
+}
+
+struct EventForwarder<O> {
+  output: Arc<Output<O>>,
+}
+
+impl<O> EventForwarder<O>
+where
+  O: Write + 'static,
+{
+  fn new(output: Arc<Output<O>>) -> EventForwarder<O> {
+    EventForwarder { output }
+  }
+}
+
+impl<O> EventHandler for EventForwarder<O>
+where
+  O: Write + 'static,
+{
+  fn handle(&self, event: Event) {
+    if let Err(err) = self.output.send(Response::Event(event)) {
+      error!("Failed forwarding event: {}", err)
     }
   }
 }
