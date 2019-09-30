@@ -43,13 +43,6 @@ impl<O> OutputInner<O>
 where
   O: Write,
 {
-  fn clear_buffer(&mut self) {
-    for b in self.buffer.iter_mut() {
-      *b = 0
-    }
-    self.buffer.clear()
-  }
-
   fn send<M>(&mut self, message: M) -> Result<()>
   where
     M: Serialize,
@@ -64,5 +57,12 @@ where
     self.clear_buffer();
 
     Ok(())
+  }
+
+  fn clear_buffer(&mut self) {
+    for b in self.buffer.iter_mut() {
+      *b = 0
+    }
+    self.buffer.clear()
   }
 }

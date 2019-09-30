@@ -1,6 +1,6 @@
+use crate::input::Input;
 use crate::messages::{Command, CommandResult, Request, Response};
 use crate::output::Output;
-use byteorder::{ByteOrder, NativeEndian};
 use log::error;
 use std::io::{ErrorKind, Read, Result, Write};
 use std::sync::Arc;
@@ -11,7 +11,7 @@ use t_rust_less_lib::service::{ClipboardControl, ServiceResult, TrustlessService
 
 pub struct Processor<I, O> {
   service: Arc<dyn TrustlessService>,
-  input: I,
+  input: Input<I>,
   output: Arc<Output<O>>,
   current_store: Option<(String, Arc<dyn SecretsStore>)>,
   current_clipboard: Option<Arc<dyn ClipboardControl>>,
@@ -36,7 +36,7 @@ where
 
     Ok(Processor {
       service,
-      input,
+      input: Input::new(input),
       output,
       current_store: None,
       current_clipboard: None,
@@ -45,35 +45,20 @@ where
   }
 
   pub fn process(&mut self) -> Result<()> {
-    let mut length_buffer = [0u8; 4];
-    let mut buffer: Vec<u8> = vec![];
-
     loop {
-      self.input.read_exact(&mut length_buffer)?;
-      let length = NativeEndian::read_u32(&length_buffer) as usize;
-      buffer.resize(length, 0);
-      self.input.read_exact(&mut buffer)?;
-
-      let response = match serde_json::from_slice::<Request>(&buffer) {
-        Ok(request) => self.process_request(request),
-        Err(error) => {
-          error!("Invalid request: {}", error);
+      let response = match self.input.read::<Request>()? {
+        Some(request) => self.process_request(request),
+        None => {
+          error!("Invalid request");
           Response::Command {
             id: 0,
             result: CommandResult::Invalid,
           }
         }
       };
-      Self::clear_buffer(&mut buffer);
+      self.input.clear_buffer();
       self.output.send(&response)?;
     }
-  }
-
-  fn clear_buffer(buffer: &mut Vec<u8>) {
-    for b in buffer.iter_mut() {
-      *b = 0
-    }
-    buffer.clear()
   }
 
   fn process_request(&mut self, request: Request) -> Response {

@@ -3,6 +3,7 @@ use std::io::{stdin, stdout};
 use std::process;
 use t_rust_less_lib::service::create_service;
 
+mod input;
 mod messages;
 mod output;
 mod processor;
