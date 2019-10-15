@@ -127,7 +127,7 @@ fn secret_from_str(s: &str) -> SecretBytes {
 struct TestEventHub;
 
 impl EventHub for TestEventHub {
-  fn send(&self, event: Event) {}
+  fn send(&self, _event: Event) {}
 }
 
 #[test]

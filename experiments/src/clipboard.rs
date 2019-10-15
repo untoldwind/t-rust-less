@@ -36,7 +36,7 @@ impl SelectionProvider for DummyProvider {
 struct TestEventHub;
 
 impl EventHub for TestEventHub {
-  fn send(&self, event: Event) {}
+  fn send(&self, _event: Event) {}
 }
 
 pub fn experimental_clipboard() {

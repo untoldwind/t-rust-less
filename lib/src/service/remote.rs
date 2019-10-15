@@ -360,7 +360,7 @@ impl event_handler::Server for RemoteEventHandlerImpl {
       .and_then(Event::from_reader)
     {
       Ok(event) => event,
-      Err(err) => return Promise::err(err.into()),
+      Err(err) => return Promise::err(err),
     };
     self.event_handler.handle(event);
 

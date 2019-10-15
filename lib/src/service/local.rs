@@ -90,7 +90,6 @@ impl EventHub for LocalEventHub {
       }
       Err(e) => {
         error!("Queue event failed: {}", e);
-        return;
       }
     };
   }
