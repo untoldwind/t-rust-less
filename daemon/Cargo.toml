@@ -10,9 +10,9 @@ log = "0"
 env_logger = "0"
 clap = { version = "2", default-features = false, features = ["suggestions", "color"]}
 t-rust-less-lib = { path = "../lib" }
-capnp = "0"
+capnp = { version = "0", features = ["rpc"] }
 capnp-rpc = "0"
-futures = "0"
+futures = "0.1"
 tokio = "0"
 
 [target.'cfg(unix)'.dependencies]
