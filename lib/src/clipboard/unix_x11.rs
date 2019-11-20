@@ -4,7 +4,7 @@ use crate::clipboard::debounce::SelectionDebounce;
 use crate::clipboard::{ClipboardError, ClipboardResult, SelectionProvider};
 use log::debug;
 use std::ffi::CString;
-use std::mem;
+use std::mem::MaybeUninit;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread;
@@ -197,7 +197,7 @@ where
       return;
     }
 
-    let mut event: xlib::XEvent = mem::uninitialized();
+    let mut event: xlib::XEvent = MaybeUninit::zeroed().assume_init();
 
     loop {
       *context.providing.write().unwrap() = debounce.current_selection_name();
@@ -210,7 +210,7 @@ where
 
       match event.get_type() {
         xlib::SelectionRequest => {
-          let mut selection: xlib::XSelectionEvent = mem::uninitialized();
+          let mut selection: xlib::XSelectionEvent = MaybeUninit::zeroed().assume_init();
           selection.type_ = xlib::SelectionNotify;
           selection.display = event.selection_request.display;
           selection.requestor = event.selection_request.requestor;
