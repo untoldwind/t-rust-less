@@ -4,6 +4,7 @@ use std::time::SystemTime;
 struct LastContext<C> {
   content: C,
   timestamp: SystemTime,
+  initial: bool,
 }
 
 /// Debounce selections.
@@ -16,6 +17,7 @@ struct LastContext<C> {
 pub struct SelectionDebounce<T, C> {
   underlying: T,
   last_content: Option<LastContext<C>>,
+  startup_timestamp: SystemTime,
 }
 
 impl<T, C> SelectionDebounce<T, C>
@@ -27,6 +29,7 @@ where
     SelectionDebounce {
       underlying,
       last_content: None,
+      startup_timestamp: SystemTime::now(),
     }
   }
 }
@@ -44,18 +47,33 @@ where
 
   fn get_selection(&mut self) -> Option<Self::Content> {
     let now = SystemTime::now();
-    if let Some(last_content) = &self.last_content {
+    if let Some(last_content) = self.last_content.take() {
+      if last_content.initial {
+        self.last_content.replace(LastContext {
+          content: last_content.content.clone(),
+          timestamp: now,
+          initial: false,
+        });
+        return Some(last_content.content);
+      }
       if let Ok(elapsed) = now.duration_since(last_content.timestamp) {
         if elapsed.as_millis() < 200 {
-          return Some(last_content.content.clone());
+          let content = last_content.content.clone();
+          self.last_content.replace(last_content);
+          return Some(content);
         }
       }
     }
     match self.underlying.get_selection() {
       Some(content) => {
+        let initial = match now.duration_since(self.startup_timestamp) {
+          Ok(elapsed) if elapsed.as_millis() < 200 => true,
+          _ => false,
+        };
         self.last_content = Some(LastContext {
           content: content.clone(),
           timestamp: now,
+          initial
         });
         Some(content)
       }
