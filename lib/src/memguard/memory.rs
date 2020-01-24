@@ -3,6 +3,10 @@ use std::ptr;
 // -- memcmp --
 
 /// Secure `memeq`.
+///
+/// # Safety
+///
+/// `b1` and `b2` have to point to a memory section of at least `len` bytes
 #[inline(never)]
 pub unsafe fn memeq(b1: *const u8, b2: *const u8, len: usize) -> bool {
   (0..len as isize)
@@ -12,6 +16,10 @@ pub unsafe fn memeq(b1: *const u8, b2: *const u8, len: usize) -> bool {
 }
 
 /// Secure `memcmp`.
+///
+/// # Safety
+///
+/// `b1` and `b2` have to point to a memory section of at least `len` bytes
 #[inline(never)]
 #[allow(dead_code)]
 pub unsafe fn memcmp(b1: *const u8, b2: *const u8, len: usize) -> i32 {
@@ -26,6 +34,10 @@ pub unsafe fn memcmp(b1: *const u8, b2: *const u8, len: usize) -> i32 {
 // -- memset / memzero --
 
 /// General `memset`.
+///
+/// # Safety
+///
+/// `s` has to point to a memory section of at least `n` bytes
 #[cfg(feature = "nightly")]
 #[cfg(any(not(apple), not(feature = "use_os")))]
 #[inline(never)]
@@ -34,6 +46,10 @@ pub unsafe fn memset(s: *mut u8, c: u8, n: usize) {
 }
 
 /// General `memset`.
+///
+/// # Safety
+///
+/// `s` has to point to a memory section of at least `n` bytes
 #[cfg(not(feature = "nightly"))]
 #[cfg(any(not(apple), not(feature = "use_os")))]
 #[inline(never)]
@@ -59,6 +75,10 @@ pub unsafe fn memset(s: *mut u8, c: u8, n: usize) {
 }
 
 /// General `memzero`.
+///
+/// # Safety
+///
+/// `dest` has to point to a memory section of at least `n` bytes
 #[cfg(any(
   not(any(all(windows, not(target_env = "msvc")), freebsdlike, netbsdlike)),
   not(feature = "use_os")
@@ -69,6 +89,10 @@ pub unsafe fn memzero(dest: *mut u8, n: usize) {
 }
 
 /// Call `explicit_bzero`.
+///
+/// # Safety
+///
+/// `dest` has to point to a memory section of at least `n` bytes
 #[cfg(all(any(freebsdlike, netbsdlike), feature = "use_os"))]
 pub unsafe fn memzero(dest: *mut u8, n: usize) {
   extern "C" {
@@ -78,6 +102,10 @@ pub unsafe fn memzero(dest: *mut u8, n: usize) {
 }
 
 /// Call `SecureZeroMemory`.
+///
+/// # Safety
+///
+/// `s` has to point to a memory section of at least `n` bytes
 #[cfg(all(windows, not(target_env = "msvc"), feature = "use_os"))]
 pub unsafe fn memzero(s: *mut u8, n: usize) {
   extern "system" {
@@ -87,6 +115,10 @@ pub unsafe fn memzero(s: *mut u8, n: usize) {
 }
 
 /// Unix `mlock`.
+///
+/// # Safety
+///
+/// `addr` has to point to a memory section of at least `len` bytes
 #[cfg(unix)]
 pub unsafe fn mlock(addr: *mut u8, len: usize) -> bool {
   #[cfg(target_os = "linux")]
@@ -99,6 +131,10 @@ pub unsafe fn mlock(addr: *mut u8, len: usize) -> bool {
 }
 
 /// Windows `VirtualLock`.
+///
+/// # Safety
+///
+/// `addr` has to point to a memory section of at least `len` bytes
 #[cfg(windows)]
 pub unsafe fn mlock(addr: *mut u8, len: usize) -> bool {
   winapi::um::memoryapi::VirtualLock(
@@ -108,6 +144,10 @@ pub unsafe fn mlock(addr: *mut u8, len: usize) -> bool {
 }
 
 /// Unix `munlock`.
+///
+/// # Safety
+///
+/// `addr` has to point to a memory section of at least `len` bytes
 #[cfg(unix)]
 pub unsafe fn munlock(addr: *mut u8, len: usize) -> bool {
   memzero(addr, len);

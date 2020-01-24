@@ -308,7 +308,7 @@ impl SecretsStore for MultiLaneSecretsStore {
       if let Some(value) = current.properties.get(*property) {
         let strength = ZxcvbnEstimator::estimate_strength(value, &[&current.name, &unlocked_user.identity.name]);
 
-        password_strengths.insert(property.to_string(), strength);
+        password_strengths.insert((*property).to_string(), strength);
       }
     }
     Ok(Secret {

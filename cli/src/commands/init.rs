@@ -107,7 +107,7 @@ fn store_config(s: &mut Cursive) {
     "Autolock timeout has to be a positive integer:\n{}"
   );
   let client_id = match service.get_store_config(&store_name) {
-    Ok(previous) => previous.client_id.clone(),
+    Ok(previous) => previous.client_id,
     Err(ServiceError::StoreNotFound(_)) => generate_id(64),
     Err(err) => {
       s.add_layer(Dialog::info(format!("Failed checking previous config.\n{}", err)));

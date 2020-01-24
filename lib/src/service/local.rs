@@ -171,7 +171,7 @@ impl TrustlessService for LocalTrustlessService {
     {
       let store = self.open_store(store_name)?;
       let secret = store.get(secret_id)?;
-      let secret_provider = SecretsProvider::new(secret.current.clone(), properties);
+      let secret_provider = SecretsProvider::new(secret.current, properties);
       let mut clipboard = self.clipboard.write()?;
 
       info!("Providing {} for {} in {}", properties.join(","), secret_id, store_name);
