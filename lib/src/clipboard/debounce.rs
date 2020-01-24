@@ -73,7 +73,7 @@ where
         self.last_content = Some(LastContext {
           content: content.clone(),
           timestamp: now,
-          initial
+          initial,
         });
         Some(content)
       }

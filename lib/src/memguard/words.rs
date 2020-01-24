@@ -393,7 +393,7 @@ mod tests {
 
   #[test]
   fn test_borrow_read_only() {
-    let mut rng = thread_rng();
+    let rng = thread_rng();
     let mut source = rng
       .sample_iter::<u64, _>(&distributions::Standard)
       .filter(|w| *w != 0)
@@ -452,7 +452,7 @@ mod tests {
 
   #[test]
   fn test_borrow_read_write() {
-    let mut rng = thread_rng();
+    let rng = thread_rng();
     let mut source = rng
       .sample_iter::<u64, _>(&distributions::Standard)
       .filter(|w| *w != 0)

@@ -391,7 +391,7 @@ mod tests {
 
   #[test]
   fn test_borrow_read_only() {
-    let mut rng = thread_rng();
+    let rng = thread_rng();
     let mut source = rng
       .sample_iter(&distributions::Standard)
       .filter(|b| *b != 0)
@@ -449,7 +449,7 @@ mod tests {
 
   #[test]
   fn test_borrow_read_write() {
-    let mut rng = thread_rng();
+    let rng = thread_rng();
     let mut source = rng
       .sample_iter(&distributions::Standard)
       .filter(|b| *b != 0)

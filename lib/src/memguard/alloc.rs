@@ -3,7 +3,8 @@ use std::mem;
 use std::ptr::{self, NonNull};
 use std::sync::Once;
 
-use rand::{OsRng, RngCore};
+use rand::rngs::OsRng;
+use rand::RngCore;
 
 use super::memory;
 
@@ -33,7 +34,7 @@ unsafe fn alloc_init() {
 
   PAGE_MASK = PAGE_SIZE - 1;
 
-  OsRng::new().unwrap().fill_bytes(&mut CANARY);
+  OsRng.fill_bytes(&mut CANARY);
 }
 
 #[inline]

@@ -27,7 +27,7 @@ where
 
   assert_that(&public_key.len()).is_greater_than_or_equal_to(30);
 
-  let mut rng = thread_rng();
+  let rng = thread_rng();
   let seal_key_raw = rng
     .sample_iter(&distributions::Standard)
     .take(cipher.seal_key_length())

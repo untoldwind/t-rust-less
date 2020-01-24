@@ -13,7 +13,7 @@ data-encoding = "2"
 openssl = { version = "0", features = ["vendored"] }
 byteorder = "1"
 chrono = { version = "0", features = ["serde"] }
-url = "1"
+url = "2"
 num-derive = "0"
 num-traits = "0"
 sha-1 = "0"
@@ -23,7 +23,7 @@ x25519-dalek = "0"
 chacha20-poly1305-aead = "0"
 capnp = { version = "0.10", features = ["rpc"] }
 capnp-rpc = "0.10"
-rand = "0.5"
+rand = "0.7"
 rust-argon2 = "0"
 zxcvbn = "1"
 log = "0"
@@ -33,7 +33,7 @@ itertools = "0"
 toml = "0"
 dirs = "1"
 futures = "0.1"
-tokio = "0"
+tokio = "0.1"
 
 [dev-dependencies]
 tempdir = "0"

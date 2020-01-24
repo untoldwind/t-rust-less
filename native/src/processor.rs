@@ -157,15 +157,15 @@ where
       Command::ClipboardIsDone => match &self.current_clipboard {
         Some(clipboard) => clipboard.is_done().into(),
         None => CommandResult::Bool(true),
-      }
+      },
       Command::ClipboardCurrentlyProviding => match &self.current_clipboard {
         Some(clipboard) => clipboard.currently_providing().into(),
         None => CommandResult::Empty,
-      }
+      },
       Command::ClipboardDestroy => match &self.current_clipboard {
         Some(clipboard) => clipboard.destroy().into(),
         None => CommandResult::Success,
-      }
+      },
       _ => CommandResult::Invalid,
     };
 
