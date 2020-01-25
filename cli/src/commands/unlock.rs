@@ -70,7 +70,11 @@ fn unlock_dialog(siv: &mut Cursive, secrets_store: &Arc<dyn SecretsStore>, name:
         )
         .child(DummyView {})
         .child(TextView::new("Passphrase"))
-        .child(PasswordView::new(100).on_submit(do_unlock_store).with_name("passphrase")),
+        .child(
+          PasswordView::new(100)
+            .on_submit(do_unlock_store)
+            .with_name("passphrase"),
+        ),
     )
     .title(format!("Unlock store {}", name))
     .button("Unlock", do_unlock_store)

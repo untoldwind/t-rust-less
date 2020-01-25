@@ -1,7 +1,7 @@
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, SystemTime};
 
-use capnp::{message, serialize, Word};
+use capnp::{message, serialize};
 
 use crate::api::{Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
 use crate::block_store::{BlockStore, Change, Operation, StoreError};
@@ -81,7 +81,7 @@ impl SecretsStore for MultiLaneSecretsStore {
       return Err(SecretStoreError::AlreadyUnlocked);
     }
 
-    let mut raw: &[Word] = &self.block_store.get_ring(identity_id)?;
+    let mut raw: &[u8] = &self.block_store.get_ring(identity_id)?;
     let reader = serialize::read_message_from_flat_slice(&mut raw, Default::default())?;
     let ring = reader.get_root::<ring::Reader>()?;
     let mut private_keys = Vec::with_capacity(self.ciphers.len());
@@ -140,7 +140,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     let mut identities = Vec::with_capacity(ring_ids.len());
 
     for ring_id in ring_ids {
-      let mut raw: &[Word] = &self.block_store.get_ring(&ring_id)?;
+      let mut raw: &[u8] = &self.block_store.get_ring(&ring_id)?;
       let reader = serialize::read_message_from_flat_slice(&mut raw, Default::default())?;
       let ring = reader.get_root::<ring::Reader>()?;
 
@@ -369,7 +369,7 @@ impl MultiLaneSecretsStore {
 
     for recipient in recipients {
       let identity_id = recipient.as_ref();
-      let mut raw: &[Word] = &self.block_store.get_ring(identity_id).map_err(|e| match e {
+      let mut raw: &[u8] = &self.block_store.get_ring(identity_id).map_err(|e| match e {
         StoreError::InvalidBlock(_) => SecretStoreError::InvalidRecipient(identity_id.to_string()),
         err => err.into(),
       })?;
@@ -440,7 +440,7 @@ impl MultiLaneSecretsStore {
     &self,
     recipients: &[T],
     mut secret_content: SecretBytes,
-  ) -> SecretStoreResult<Vec<Word>> {
+  ) -> SecretStoreResult<Vec<u8>> {
     let recipients_for_cipher = self.find_recipients(recipients)?;
     let mut block_message = message::Builder::new(ZeroingHeapAllocator::default());
     let mut block = block_message.init_root::<block::Builder>();
@@ -460,7 +460,7 @@ impl MultiLaneSecretsStore {
     &self,
     identity_id: &str,
     private_keys: &[(KeyType, PrivateKey)],
-    mut block_words: &[Word],
+    mut block_words: &[u8],
   ) -> SecretStoreResult<Option<SecretBytes>> {
     let reader = serialize::read_message_from_flat_slice(&mut block_words, Default::default())?;
     let index_block = reader.get_root::<block::Reader>()?;

@@ -5,7 +5,7 @@ use data_encoding::HEXLOWER;
 use sha2::{Digest, Sha256};
 
 use super::{BlockStore, Change, ChangeLog, StoreError, StoreResult};
-use capnp::Word;
+use crate::memguard::weak::ZeroingWords;
 
 /// Memory based reference implementation of a block store.
 ///
@@ -14,9 +14,9 @@ use capnp::Word;
 ///
 pub struct MemoryBlockStore {
   node_id: String,
-  rings: RwLock<HashMap<String, Vec<Word>>>,
-  indexes: RwLock<HashMap<String, Vec<Word>>>,
-  blocks: RwLock<HashMap<String, Vec<Word>>>,
+  rings: RwLock<HashMap<String, ZeroingWords>>,
+  indexes: RwLock<HashMap<String, ZeroingWords>>,
+  blocks: RwLock<HashMap<String, ZeroingWords>>,
   changes: RwLock<HashMap<String, Vec<Change>>>,
 }
 
@@ -31,10 +31,10 @@ impl MemoryBlockStore {
     }
   }
 
-  fn generate_id(data: &[Word]) -> String {
+  fn generate_id(data: &[u8]) -> String {
     let mut hasher = Sha256::new();
 
-    hasher.input(Word::words_to_bytes(data));
+    hasher.input(data);
 
     HEXLOWER.encode(&hasher.result())
   }
@@ -51,7 +51,7 @@ impl BlockStore for MemoryBlockStore {
     Ok(rings.keys().cloned().collect())
   }
 
-  fn get_ring(&self, ring_id: &str) -> StoreResult<Vec<Word>> {
+  fn get_ring(&self, ring_id: &str) -> StoreResult<ZeroingWords> {
     let rings = self.rings.read()?;
 
     rings
@@ -60,10 +60,10 @@ impl BlockStore for MemoryBlockStore {
       .ok_or_else(|| StoreError::InvalidBlock(ring_id.to_string()))
   }
 
-  fn store_ring(&self, ring_id: &str, raw: &[Word]) -> StoreResult<()> {
+  fn store_ring(&self, ring_id: &str, raw: &[u8]) -> StoreResult<()> {
     let mut rings = self.rings.write()?;
 
-    rings.insert(ring_id.to_string(), raw.to_vec());
+    rings.insert(ring_id.to_string(), raw.into());
 
     Ok(())
   }
@@ -82,28 +82,28 @@ impl BlockStore for MemoryBlockStore {
     )
   }
 
-  fn get_index(&self, node: &str) -> StoreResult<Option<Vec<Word>>> {
+  fn get_index(&self, node: &str) -> StoreResult<Option<ZeroingWords>> {
     let indexes = self.indexes.read()?;
 
     Ok(indexes.get(node).cloned())
   }
 
-  fn store_index(&self, node: &str, raw: &[Word]) -> StoreResult<()> {
+  fn store_index(&self, node: &str, raw: &[u8]) -> StoreResult<()> {
     let mut indexes = self.indexes.write()?;
 
-    indexes.insert(node.to_string(), raw.to_vec());
+    indexes.insert(node.to_string(), raw.into());
     Ok(())
   }
 
-  fn add_block(&self, raw: &[Word]) -> StoreResult<String> {
+  fn add_block(&self, raw: &[u8]) -> StoreResult<String> {
     let block_id = Self::generate_id(raw);
     let mut blocks = self.blocks.write()?;
 
-    blocks.insert(block_id.clone(), raw.to_vec());
+    blocks.insert(block_id.clone(), raw.into());
     Ok(block_id)
   }
 
-  fn get_block(&self, block: &str) -> StoreResult<Vec<Word>> {
+  fn get_block(&self, block: &str) -> StoreResult<ZeroingWords> {
     let blocks = self.blocks.read()?;
 
     blocks

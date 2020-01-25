@@ -238,19 +238,23 @@ impl From<&mut [Word]> for SecretWords {
   }
 }
 
-impl From<Vec<Word>> for SecretWords {
-  fn from(mut words: Vec<Word>) -> Self {
+impl From<Vec<u8>> for SecretWords {
+  fn from(mut bytes: Vec<u8>) -> Self {
+    if bytes.len() % 8 != 0 {
+      warn!("Bytes not aligned to 8 bytes. Probably these are not the bytes you are looking for.");
+    }
     unsafe {
-      let ptr = alloc::malloc(words.len() * 8).cast();
+      let len = bytes.len() / 8;
+      let ptr = alloc::malloc(len * 8).cast();
 
-      copy_nonoverlapping(words.as_ptr(), ptr.as_ptr(), words.len());
-      memory::memzero(words.as_mut_ptr() as *mut u8, words.len() * 8);
+      copy_nonoverlapping(bytes.as_ptr(), ptr.as_ptr() as *mut u8, len * 8);
+      memory::memzero(bytes.as_mut_ptr(), bytes.len());
       alloc::mprotect(ptr, alloc::Prot::NoAccess);
 
       SecretWords {
         ptr,
-        size: words.len(),
-        capacity: words.len(),
+        size: len,
+        capacity: len,
         locks: AtomicIsize::new(0),
       }
     }
@@ -281,16 +285,10 @@ impl<'a> Drop for Ref<'a> {
 }
 
 impl<'a> Deref for Ref<'a> {
-  type Target = [Word];
+  type Target = [u8];
 
   fn deref(&self) -> &Self::Target {
-    unsafe { slice::from_raw_parts(self.words.ptr.as_ptr(), self.words.size) }
-  }
-}
-
-impl<'a> AsRef<[Word]> for Ref<'a> {
-  fn as_ref(&self) -> &[Word] {
-    self.as_words()
+    unsafe { slice::from_raw_parts(self.words.ptr.as_ptr() as *const u8, self.words.size * 8) }
   }
 }
 
@@ -311,28 +309,28 @@ impl<'a> Drop for RefMut<'a> {
 }
 
 impl<'a> Deref for RefMut<'a> {
-  type Target = [Word];
+  type Target = [u8];
 
   fn deref(&self) -> &Self::Target {
-    unsafe { slice::from_raw_parts(self.words.ptr.as_ptr(), self.words.size) }
+    unsafe { slice::from_raw_parts(self.words.ptr.as_ptr() as *const u8, self.words.size * 8) }
   }
 }
 
 impl<'a> DerefMut for RefMut<'a> {
   fn deref_mut(&mut self) -> &mut Self::Target {
-    unsafe { slice::from_raw_parts_mut(self.words.ptr.as_ptr(), self.words.size) }
+    unsafe { slice::from_raw_parts_mut(self.words.ptr.as_ptr() as *mut u8, self.words.size * 8) }
   }
 }
 
-impl<'a> AsRef<[Word]> for RefMut<'a> {
-  fn as_ref(&self) -> &[Word] {
-    unsafe { slice::from_raw_parts(self.words.ptr.as_ptr(), self.words.size) }
+impl<'a> AsRef<[u8]> for RefMut<'a> {
+  fn as_ref(&self) -> &[u8] {
+    unsafe { slice::from_raw_parts(self.words.ptr.as_ptr() as *const u8, self.words.size * 8) }
   }
 }
 
-impl<'a> AsMut<[Word]> for RefMut<'a> {
-  fn as_mut(&mut self) -> &mut [Word] {
-    unsafe { slice::from_raw_parts_mut(self.words.ptr.as_ptr(), self.words.size) }
+impl<'a> AsMut<[u8]> for RefMut<'a> {
+  fn as_mut(&mut self) -> &mut [u8] {
+    unsafe { slice::from_raw_parts_mut(self.words.ptr.as_ptr() as *mut u8, self.words.size * 8) }
   }
 }
 
@@ -343,10 +341,10 @@ pub struct SecureHHeapAllocator {
 }
 
 unsafe impl Allocator for SecureHHeapAllocator {
-  fn allocate_segment(&mut self, minimum_size: u32) -> (*mut Word, u32) {
+  fn allocate_segment(&mut self, minimum_size: u32) -> (*mut u8, u32) {
     let size = ::std::cmp::max(minimum_size, self.next_size);
     let mut new_words = SecretWords::zeroed(size as usize);
-    let ptr = new_words.as_mut_ptr();
+    let ptr = new_words.as_mut_ptr() as *mut u8;
     self.owned_memory.push(new_words);
 
     if let AllocationStrategy::GrowHeuristically = self.allocation_strategy {
@@ -368,13 +366,13 @@ impl Default for SecureHHeapAllocator {
 
 #[cfg(test)]
 mod tests {
-  use byteorder::{ByteOrder, NativeEndian};
+  use byteorder::{BigEndian, ByteOrder};
   use rand::{distributions, thread_rng, Rng};
   use spectral::prelude::*;
 
   use super::*;
 
-  fn assert_slices_equal(actual: &[Word], expected: &[Word]) {
+  fn assert_slices_equal(actual: &[u8], expected: &[u8]) {
     assert!(actual == expected)
   }
 
@@ -395,24 +393,23 @@ mod tests {
   fn test_borrow_read_only() {
     let rng = thread_rng();
     let mut source = rng
-      .sample_iter::<u64, _>(&distributions::Standard)
+      .sample_iter::<u8, _>(&distributions::Standard)
       .filter(|w| *w != 0)
-      .take(200)
-      .map(word_from_u64)
-      .collect::<Vec<Word>>();
+      .take(200 * 8)
+      .collect::<Vec<u8>>();
     let expected = source.clone();
 
     for w in source.iter() {
-      assert_that(&w).is_not_equal_to(&word_from_u64(0));
+      assert_that(&w).is_not_equal_to(&0);
     }
 
     let guarded = SecretWords::from(source.as_mut_slice());
 
-    assert_that(&guarded.len()).is_equal_to(source.len());
-    assert_that(&guarded.borrow().as_words().len()).is_equal_to(source.len());
+    assert_that(&guarded.len()).is_equal_to(source.len() / 8);
+    assert_that(&guarded.borrow().as_words().len()).is_equal_to(source.len() / 8);
 
     for w in source.iter() {
-      assert_that(&w).is_equal_to(&word_from_u64(0));
+      assert_that(&w).is_equal_to(&0);
     }
 
     assert_that(&guarded.locks()).is_equal_to(0);
@@ -424,7 +421,7 @@ mod tests {
       let ref2 = guarded.borrow();
       let ref3 = guarded.borrow();
 
-      assert_that(&ref1.len()).is_equal_to(200);
+      assert_that(&ref1.len()).is_equal_to(200 * 8);
       assert_that(&guarded.locks()).is_equal_to(3);
       assert_slices_equal(&ref1, &expected);
       assert_slices_equal(&ref2, &expected);
@@ -443,7 +440,7 @@ mod tests {
     {
       let ref1 = guarded.borrow();
 
-      assert_that(&ref1.len()).is_equal_to(200);
+      assert_that(&ref1.len()).is_equal_to(200 * 8);
       for w in ref1.as_words() {
         assert_that(&w).is_equal_to(&word_from_u64(0));
       }
@@ -454,28 +451,26 @@ mod tests {
   fn test_borrow_read_write() {
     let rng = thread_rng();
     let mut source = rng
-      .sample_iter::<u64, _>(&distributions::Standard)
+      .sample_iter::<u8, _>(&distributions::Standard)
       .filter(|w| *w != 0)
-      .take(200)
-      .map(word_from_u64)
-      .collect::<Vec<Word>>();
+      .take(200 * 8)
+      .collect::<Vec<u8>>();
     let source2 = rng
-      .sample_iter::<u64, _>(&distributions::Standard)
+      .sample_iter::<u8, _>(&distributions::Standard)
       .filter(|w| *w != 0)
-      .take(200)
-      .map(word_from_u64)
-      .collect::<Vec<Word>>();
+      .take(200 * 8)
+      .collect::<Vec<u8>>();
     let expected = source.clone();
     let expected2 = source2.clone();
 
     for w in source.iter() {
-      assert_that(&w).is_not_equal_to(&word_from_u64(0));
+      assert_that(&w).is_not_equal_to(&0);
     }
 
     let mut guarded = SecretWords::from(source.as_mut_slice());
 
     for w in source.iter() {
-      assert_that(&w).is_equal_to(&word_from_u64(0));
+      assert_that(&w).is_equal_to(&0);
     }
 
     assert_that(&guarded.locks()).is_equal_to(0);
@@ -491,8 +486,8 @@ mod tests {
   fn test_from_unaligned_source() {
     let mut chunks = [0u8; 16];
 
-    NativeEndian::write_u64(&mut chunks[0..8], 0x1234_5678_1234_5678);
-    NativeEndian::write_u64(&mut chunks[8..16], 0xf0e1_d2c3_b4a5_9687);
+    BigEndian::write_u64(&mut chunks[0..8], 0x1234_5678_1234_5678);
+    BigEndian::write_u64(&mut chunks[8..16], 0xf0e1_d2c3_b4a5_9687);
 
     let mut bytes1 = [0u8; 100 * 16 + 1];
     let mut bytes2 = [0u8; 100 * 16 + 3];
@@ -515,18 +510,18 @@ mod tests {
     assert_that(&guarded1.len()).is_equal_to(200);
     assert_that(&guarded2.len()).is_equal_to(200);
 
-    for (idx, w) in guarded1.borrow().iter().enumerate() {
+    for (idx, w) in guarded1.borrow().chunks(8).enumerate() {
       if idx % 2 == 0 {
-        assert_that(&w).is_equal_to(&word_from_u64(0x1234_5678_1234_5678));
+        assert_that(&w).is_equal_to(&[0x12u8, 0x34u8, 0x56u8, 0x78u8, 0x12u8, 0x34u8, 0x56u8, 0x78u8][..]);
       } else {
-        assert_that(&w).is_equal_to(&word_from_u64(0xf0e1_d2c3_b4a5_9687));
+        assert_that(&w).is_equal_to(&[0xf0u8, 0xe1u8, 0xd2u8, 0xc3u8, 0xb4u8, 0xa5u8, 0x96u8, 0x87u8][..]);
       }
     }
-    for (idx, w) in guarded2.borrow().iter().enumerate() {
+    for (idx, w) in guarded2.borrow().chunks(8).enumerate() {
       if idx % 2 == 0 {
-        assert_that(&w).is_equal_to(&word_from_u64(0x1234_5678_1234_5678));
+        assert_that(&w).is_equal_to(&[0x12u8, 0x34u8, 0x56u8, 0x78u8, 0x12u8, 0x34u8, 0x56u8, 0x78u8][..]);
       } else {
-        assert_that(&w).is_equal_to(&word_from_u64(0xf0e1_d2c3_b4a5_9687));
+        assert_that(&w).is_equal_to(&[0xf0u8, 0xe1u8, 0xd2u8, 0xc3u8, 0xb4u8, 0xa5u8, 0x96u8, 0x87u8][..]);
       }
     }
   }

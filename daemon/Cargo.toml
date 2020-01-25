@@ -10,8 +10,8 @@ log = "0"
 env_logger = "0"
 clap = { version = "2", default-features = false, features = ["suggestions", "color"]}
 t-rust-less-lib = { path = "../lib" }
-capnp = "0.11"
-capnp-rpc = "0.11"
+capnp = "0.12"
+capnp-rpc = "0.12"
 futures = "0.3"
 async-std = "1"
 async-timer = { version = "0", features = ["stream"] }

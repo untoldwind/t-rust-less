@@ -11,7 +11,7 @@ mod model;
 mod tests;
 
 pub use self::error::{StoreError, StoreResult};
-use capnp::Word;
+use crate::memguard::weak::ZeroingWords;
 
 /// Common interface of all block stores
 ///
@@ -51,14 +51,14 @@ pub trait BlockStore: Send + Sync {
   ///
   /// Theses block should be protected by some sort of passphrase/key-derivation
   ///
-  fn get_ring(&self, ring_id: &str) -> StoreResult<Vec<Word>>;
+  fn get_ring(&self, ring_id: &str) -> StoreResult<ZeroingWords>;
 
   /// Set/write a ring block.
   ///
   /// Implementors should ensure a sort of backup in case this operation fails, since
   /// loosing the (private) ring will render the entire store useless to a user
   ///
-  fn store_ring(&self, ring_id: &str, raw: &[Word]) -> StoreResult<()>;
+  fn store_ring(&self, ring_id: &str, raw: &[u8]) -> StoreResult<()>;
 
   /// Get all the change logs of the store.
   ///
@@ -75,11 +75,11 @@ pub trait BlockStore: Send + Sync {
   /// Index blocks should not be shared among clients or user. I.e. every client/user
   /// should have its own set index blocks.
   ///
-  fn get_index(&self, index_id: &str) -> StoreResult<Option<Vec<Word>>>;
+  fn get_index(&self, index_id: &str) -> StoreResult<Option<ZeroingWords>>;
 
   /// Store the index block of a specific client/user.
   ///
-  fn store_index(&self, index_id: &str, raw: &[Word]) -> StoreResult<()>;
+  fn store_index(&self, index_id: &str, raw: &[u8]) -> StoreResult<()>;
 
   /// Add a new data block to the store.
   ///
@@ -88,10 +88,10 @@ pub trait BlockStore: Send + Sync {
   ///
   /// The result of an add operation is a unique key of the data block.
   ///
-  fn add_block(&self, raw: &[Word]) -> StoreResult<String>;
+  fn add_block(&self, raw: &[u8]) -> StoreResult<String>;
   /// Get a block by its id.
   ///
-  fn get_block(&self, block: &str) -> StoreResult<Vec<Word>>;
+  fn get_block(&self, block: &str) -> StoreResult<ZeroingWords>;
 
   /// Commit a set of changes to the store.
   ///

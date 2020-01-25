@@ -11,6 +11,7 @@
 use super::memory;
 use capnp::message::{AllocationStrategy, Allocator, SUGGESTED_ALLOCATION_STRATEGY, SUGGESTED_FIRST_SEGMENT_WORDS};
 use capnp::Word;
+use log::warn;
 use serde_derive::{Deserialize, Serialize};
 use std::borrow::Borrow;
 use std::ops::{Deref, DerefMut};
@@ -66,12 +67,16 @@ impl ZeroingBytesExt for &[u8] {
   }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ZeroingWords(Vec<Word>);
 
 impl ZeroingWords {
   pub fn allocate_zeroed_vec(size: usize) -> ZeroingWords {
     ZeroingWords(Word::allocate_zeroed_vec(size))
+  }
+
+  pub fn len(&self) -> usize {
+    self.0.len()
   }
 }
 
@@ -84,16 +89,31 @@ impl Drop for ZeroingWords {
 }
 
 impl Deref for ZeroingWords {
-  type Target = Vec<Word>;
+  type Target = [u8];
 
   fn deref(&self) -> &Self::Target {
-    &self.0
+    unsafe { std::slice::from_raw_parts(self.0.as_ptr() as *const u8, self.0.len() * 8) }
   }
 }
 
 impl DerefMut for ZeroingWords {
   fn deref_mut(&mut self) -> &mut Self::Target {
-    &mut self.0
+    unsafe { std::slice::from_raw_parts_mut(self.0.as_mut_ptr() as *mut u8, self.0.len() * 8) }
+  }
+}
+
+impl From<&[u8]> for ZeroingWords {
+  fn from(bytes: &[u8]) -> Self {
+    if bytes.len() % 8 != 0 {
+      warn!("Bytes not aligned to 8 bytes. Probably these are not the bytes you are looking for.");
+    }
+    let len = bytes.len() / 8;
+    let mut target = ZeroingWords::allocate_zeroed_vec(len);
+    unsafe {
+      std::ptr::copy_nonoverlapping(bytes.as_ptr(), target.as_mut_ptr() as *mut u8, len * 8);
+    }
+
+    target
   }
 }
 
@@ -201,10 +221,10 @@ impl Default for ZeroingHeapAllocator {
 }
 
 unsafe impl Allocator for ZeroingHeapAllocator {
-  fn allocate_segment(&mut self, minimum_size: u32) -> (*mut Word, u32) {
+  fn allocate_segment(&mut self, minimum_size: u32) -> (*mut u8, u32) {
     let size = ::std::cmp::max(minimum_size, self.next_size);
     let mut new_words = ZeroingWords::allocate_zeroed_vec(size as usize);
-    let ptr = new_words.as_mut_ptr();
+    let ptr = new_words.as_mut_ptr() as *mut u8;
     self.owned_memory.push(new_words);
 
     if let AllocationStrategy::GrowHeuristically = self.allocation_strategy {
@@ -237,7 +257,7 @@ mod tests {
       assert_eq!(zeroing.len(), 200);
 
       for w in zeroing.iter() {
-        assert_eq!(w, &capnp::word(0, 0, 0, 0, 0, 0, 0, 0));
+        assert_eq!(*w, 0);
       }
     }
   }

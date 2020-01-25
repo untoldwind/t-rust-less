@@ -1,7 +1,7 @@
 use super::{open_block_store, BlockStore, StoreError};
 use crate::block_store::model::Operation;
 use crate::block_store::{Change, ChangeLog};
-use capnp::Word;
+use crate::memguard::weak::ZeroingWords;
 use rand::rngs::ThreadRng;
 use rand::{distributions, thread_rng, Rng};
 use spectral::prelude::*;
@@ -15,55 +15,35 @@ fn common_store_tests(store: Arc<dyn BlockStore>) {
   common_test_blocks_commits(store.as_ref(), &mut rng);
 }
 
-fn word_from_u64(w: u64) -> Word {
-  capnp::word(
-    ((w >> 56) & 0xff) as u8,
-    ((w >> 48) & 0xff) as u8,
-    ((w >> 40) & 0xff) as u8,
-    ((w >> 32) & 0xff) as u8,
-    ((w >> 24) & 0xff) as u8,
-    ((w >> 16) & 0xff) as u8,
-    ((w >> 8) & 0xff) as u8,
-    (w & 0xff) as u8,
-  )
-}
-
 fn common_test_ring(store: &dyn BlockStore, rng: &mut ThreadRng) {
   let ring1a = rng
     .sample_iter(&distributions::Standard)
-    .map(word_from_u64)
-    .take(200)
-    .collect::<Vec<Word>>();
-  let ring1b = rng
-    .sample_iter(&distributions::Standard)
-    .map(word_from_u64)
-    .take(200)
-    .collect::<Vec<Word>>();
+    .take(200 * 8)
+    .collect::<Vec<u8>>();
+  let ring1b = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
   let ring2a = rng
     .sample_iter(&distributions::Standard)
-    .map(word_from_u64)
-    .take(300)
-    .collect::<Vec<Word>>();
+    .take(300 * 8)
+    .collect::<Vec<u8>>();
   let ring2b = rng
     .sample_iter(&distributions::Standard)
-    .map(word_from_u64)
-    .take(300)
-    .collect::<Vec<Word>>();
+    .take(300 * 8)
+    .collect::<Vec<u8>>();
 
   assert_that(&store.list_ring_ids()).is_ok_containing(vec![]);
   assert_that(&store.store_ring("ring1", &ring1a)).is_ok();
-  assert_that(&store.get_ring("ring1")).is_ok_containing(ring1a);
+  assert_that(&store.get_ring("ring1")).is_ok_containing(ZeroingWords::from(ring1a.as_ref()));
   assert_that(&store.store_ring("ring1", &ring1b)).is_ok();
-  assert_that(&store.get_ring("ring1")).is_ok_containing(ring1b);
+  assert_that(&store.get_ring("ring1")).is_ok_containing(ZeroingWords::from(ring1b.as_ref()));
 
   let mut ring_ids1 = store.list_ring_ids().unwrap();
   ring_ids1.sort();
   assert_that(&ring_ids1).is_equal_to(vec!["ring1".to_string()]);
 
   assert_that(&store.store_ring("ring2", &ring2a)).is_ok();
-  assert_that(&store.get_ring("ring2")).is_ok_containing(ring2a);
+  assert_that(&store.get_ring("ring2")).is_ok_containing(ZeroingWords::from(ring2a.as_ref()));
   assert_that(&store.store_ring("ring2", &ring2b)).is_ok();
-  assert_that(&store.get_ring("ring2")).is_ok_containing(ring2b);
+  assert_that(&store.get_ring("ring2")).is_ok_containing(ZeroingWords::from(ring2b.as_ref()));
 
   let mut ring_ids2 = store.list_ring_ids().unwrap();
   ring_ids2.sort();
@@ -77,39 +57,35 @@ fn common_test_index(store: &dyn BlockStore, rng: &mut ThreadRng) {
     .collect::<String>();
   let node1_index1 = rng
     .sample_iter(&distributions::Standard)
-    .map(word_from_u64)
-    .take(200)
-    .collect::<Vec<Word>>();
+    .take(200 * 8)
+    .collect::<Vec<u8>>();
   let node1_index2 = rng
     .sample_iter(&distributions::Standard)
-    .map(word_from_u64)
-    .take(200)
-    .collect::<Vec<Word>>();
+    .take(200 * 8)
+    .collect::<Vec<u8>>();
   let node2 = rng
     .sample_iter(&distributions::Alphanumeric)
     .take(40)
     .collect::<String>();
   let node2_index1 = rng
     .sample_iter(&distributions::Standard)
-    .map(word_from_u64)
-    .take(200)
-    .collect::<Vec<Word>>();
+    .take(200 * 8)
+    .collect::<Vec<u8>>();
   let node2_index2 = rng
     .sample_iter(&distributions::Standard)
-    .map(word_from_u64)
-    .take(200)
-    .collect::<Vec<Word>>();
+    .take(200 * 8)
+    .collect::<Vec<u8>>();
 
   assert_that(&store.get_index(&node1)).is_ok_containing(None);
   assert_that(&store.store_index(&node1, &node1_index1)).is_ok();
   assert_that(&store.get_index(&node2)).is_ok_containing(None);
   assert_that(&store.store_index(&node2, &node2_index1)).is_ok();
-  assert_that(&store.get_index(&node1)).is_ok_containing(Some(node1_index1));
-  assert_that(&store.get_index(&node2)).is_ok_containing(Some(node2_index1));
+  assert_that(&store.get_index(&node1)).is_ok_containing(Some(ZeroingWords::from(node1_index1.as_ref())));
+  assert_that(&store.get_index(&node2)).is_ok_containing(Some(ZeroingWords::from(node2_index1.as_ref())));
   assert_that(&store.store_index(&node1, &node1_index2)).is_ok();
   assert_that(&store.store_index(&node2, &node2_index2)).is_ok();
-  assert_that(&store.get_index(&node1)).is_ok_containing(Some(node1_index2));
-  assert_that(&store.get_index(&node2)).is_ok_containing(Some(node2_index2));
+  assert_that(&store.get_index(&node1)).is_ok_containing(Some(ZeroingWords::from(node1_index2.as_ref())));
+  assert_that(&store.get_index(&node2)).is_ok_containing(Some(ZeroingWords::from(node2_index2.as_ref())));
 }
 
 fn common_test_blocks_commits(store: &dyn BlockStore, rng: &mut ThreadRng) {
@@ -117,19 +93,16 @@ fn common_test_blocks_commits(store: &dyn BlockStore, rng: &mut ThreadRng) {
 
   let block1 = rng
     .sample_iter(&distributions::Standard)
-    .map(word_from_u64)
-    .take(200)
-    .collect::<Vec<Word>>();
+    .take(200 * 8)
+    .collect::<Vec<u8>>();
   let block2 = rng
     .sample_iter(&distributions::Standard)
-    .map(word_from_u64)
-    .take(200)
-    .collect::<Vec<Word>>();
+    .take(200 * 8)
+    .collect::<Vec<u8>>();
   let block3 = rng
     .sample_iter(&distributions::Standard)
-    .map(word_from_u64)
-    .take(200)
-    .collect::<Vec<Word>>();
+    .take(200 * 8)
+    .collect::<Vec<u8>>();
 
   let block1_id = store.add_block(&block1).unwrap();
   let block2_id = store.add_block(&block2).unwrap();
@@ -139,9 +112,9 @@ fn common_test_blocks_commits(store: &dyn BlockStore, rng: &mut ThreadRng) {
   assert_that(&block1_id).is_not_equal_to(&block3_id);
   assert_that(&block2_id).is_not_equal_to(&block3_id);
 
-  assert_that(&store.get_block(&block1_id)).is_ok_containing(block1);
-  assert_that(&store.get_block(&block2_id)).is_ok_containing(block2);
-  assert_that(&store.get_block(&block3_id)).is_ok_containing(block3);
+  assert_that(&store.get_block(&block1_id)).is_ok_containing(ZeroingWords::from(block1.as_ref()));
+  assert_that(&store.get_block(&block2_id)).is_ok_containing(ZeroingWords::from(block2.as_ref()));
+  assert_that(&store.get_block(&block3_id)).is_ok_containing(ZeroingWords::from(block3.as_ref()));
 
   assert_that(&store.commit(&[
     Change {
