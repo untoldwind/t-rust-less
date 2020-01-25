@@ -65,12 +65,12 @@ fn unlock_dialog(siv: &mut Cursive, secrets_store: &Arc<dyn SecretsStore>, name:
                 .into_iter()
                 .map(|i| (format!("{} <{}>", i.name, i.email), i.id)),
             )
-            .with_id("identity")
+            .with_name("identity")
             .fixed_width(50),
         )
         .child(DummyView {})
         .child(TextView::new("Passphrase"))
-        .child(PasswordView::new(100).on_submit(do_unlock_store).with_id("passphrase")),
+        .child(PasswordView::new(100).on_submit(do_unlock_store).with_name("passphrase")),
     )
     .title(format!("Unlock store {}", name))
     .button("Unlock", do_unlock_store)
@@ -81,15 +81,15 @@ fn unlock_dialog(siv: &mut Cursive, secrets_store: &Arc<dyn SecretsStore>, name:
     .padding_bottom(1),
   );
 
-  siv.focus_id("passphrase").unwrap();
+  siv.focus_name("passphrase").unwrap();
 
   siv.run();
 }
 
 fn do_unlock_store(s: &mut Cursive) {
   let secrets_store = s.user_data::<Arc<dyn SecretsStore>>().unwrap().clone();
-  let maybe_identity = s.find_id::<SelectView>("identity").unwrap().selection();
-  let passphrase = s.find_id::<PasswordView>("passphrase").unwrap().get_content();
+  let maybe_identity = s.find_name::<SelectView>("identity").unwrap().selection();
+  let passphrase = s.find_name::<PasswordView>("passphrase").unwrap().get_content();
   let identity_id = match maybe_identity {
     Some(id) => id,
     _ => {

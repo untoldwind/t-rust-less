@@ -19,16 +19,16 @@ pub fn add_identity_dialog(siv: &mut Cursive, secrets_store: Arc<dyn SecretsStor
     Dialog::around(
       LinearLayout::vertical()
         .child(TextView::new("Id"))
-        .child(EditView::new().content(generate_id(40)).disabled().with_id("id"))
+        .child(EditView::new().content(generate_id(40)).disabled().with_name("id"))
         .child(DummyView {})
         .child(TextView::new("Name"))
-        .child(EditView::new().with_id("name").fixed_width(50))
+        .child(EditView::new().with_name("name").fixed_width(50))
         .child(DummyView {})
         .child(TextView::new("Email"))
-        .child(EditView::new().with_id("email").fixed_width(50))
+        .child(EditView::new().with_name("email").fixed_width(50))
         .child(DummyView {})
         .child(TextView::new("Passphrase"))
-        .child(PasswordView::new(100).with_id("passphrase")),
+        .child(PasswordView::new(100).with_name("passphrase")),
     )
     .title(title)
     .button("Create", create_identity)
@@ -60,11 +60,11 @@ pub fn add_identity(service: Arc<dyn TrustlessService>, store_name: String) {
 
 fn create_identity(s: &mut Cursive) {
   let identity = Identity {
-    id: s.find_id::<EditView>("id").unwrap().get_content().to_string(),
-    name: s.find_id::<EditView>("name").unwrap().get_content().to_string(),
-    email: s.find_id::<EditView>("email").unwrap().get_content().to_string(),
+    id: s.find_name::<EditView>("id").unwrap().get_content().to_string(),
+    name: s.find_name::<EditView>("name").unwrap().get_content().to_string(),
+    email: s.find_name::<EditView>("email").unwrap().get_content().to_string(),
   };
-  let passphrase = s.find_id::<PasswordView>("passphrase").unwrap().get_content();
+  let passphrase = s.find_name::<PasswordView>("passphrase").unwrap().get_content();
 
   if identity.id.is_empty() {
     s.add_layer(Dialog::info("Id must not be empty"));

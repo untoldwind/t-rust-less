@@ -87,19 +87,19 @@ fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState, status: Status
     LinearLayout::vertical()
       .child(
         LinearLayout::horizontal()
-          .child(name_search.with_id("name_search").full_width())
+          .child(name_search.with_name("name_search").full_width())
           .child(
             StatusView::new(secrets_store.clone(), status)
-              .with_id("status")
+              .with_name("status")
               .fixed_width(14),
           ),
       )
       .child(
         LinearLayout::horizontal()
-          .child(entry_select.with_id("entry_list").full_width().scrollable())
+          .child(entry_select.with_name("entry_list").full_width().scrollable())
           .child(
             SecretView::new(service, store_name, secrets_store, initial_selected)
-              .with_id("secret_view")
+              .with_name("secret_view")
               .full_screen(),
           ),
       ),
@@ -125,8 +125,8 @@ fn update_name_filter(s: &mut Cursive, name_filter: &str, _: usize) {
     list.entries
   };
 
-  let mut entry_select = s.find_id::<SelectView<SecretEntry>>("entry_list").unwrap();
-  let mut secret_view = s.find_id::<SecretView>("secret_view").unwrap();
+  let mut entry_select = s.find_name::<SelectView<SecretEntry>>("entry_list").unwrap();
+  let mut secret_view = s.find_name::<SecretView>("secret_view").unwrap();
   match next_entries.first() {
     Some(new_selection) => secret_view.show_secret(&new_selection.entry.id),
     None => secret_view.clear(),
@@ -136,7 +136,7 @@ fn update_name_filter(s: &mut Cursive, name_filter: &str, _: usize) {
 }
 
 fn update_selection(s: &mut Cursive, entry: &SecretEntry) {
-  let mut secret_view = s.find_id::<SecretView>("secret_view").unwrap();
+  let mut secret_view = s.find_name::<SecretView>("secret_view").unwrap();
   secret_view.show_secret(&entry.id);
 }
 
@@ -163,7 +163,7 @@ fn entry_list_item(entry_match: SecretEntryMatch) -> (StyledString, SecretEntry)
 fn secret_to_clipboard(properties: &'static [&'static str]) -> impl Fn(&mut Cursive) -> () {
   move |s: &mut Cursive| {
     let maybe_entry = {
-      let entry_select = s.find_id::<SelectView<SecretEntry>>("entry_list").unwrap();
+      let entry_select = s.find_name::<SelectView<SecretEntry>>("entry_list").unwrap();
       entry_select.selection()
     };
     let state = s.user_data::<ListUIState>().unwrap();

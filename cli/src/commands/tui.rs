@@ -1,4 +1,4 @@
-use cursive::{theme, Cursive};
+use cursive::Cursive;
 use log::error;
 
 const THEME: &str = r##"
@@ -25,13 +25,8 @@ borders = "simple"
 pub fn create_tui() -> Cursive {
   let mut siv = Cursive::default();
 
-  match theme::load_toml(THEME) {
-    Ok(theme) => {
-      siv.set_theme(theme);
-    }
-    Err(error) => {
-      error!("{:?}", error);
-    }
+  if let Err(error) = siv.load_toml(THEME) {
+    error!("{:?}", error);
   }
 
   siv

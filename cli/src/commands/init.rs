@@ -55,13 +55,13 @@ pub fn init(service: Arc<dyn TrustlessService>, maybe_store_name: Option<String>
     Dialog::around(
       LinearLayout::vertical()
         .child(TextView::new("Store name"))
-        .child(EditView::new().content(store_name).disabled().with_id("store_name"))
+        .child(EditView::new().content(store_name).disabled().with_name("store_name"))
         .child(DummyView {})
         .child(TextView::new("Store directory"))
         .child(
           EditView::new()
             .content(collapse_path(store_path))
-            .with_id("store_dir")
+            .with_name("store_dir")
             .fixed_width(60),
         )
         .child(DummyView {})
@@ -69,7 +69,7 @@ pub fn init(service: Arc<dyn TrustlessService>, maybe_store_name: Option<String>
         .child(
           EditView::new()
             .content(autolock_timeout_secs.to_string())
-            .with_id("autolock_timeout"),
+            .with_name("autolock_timeout"),
         ),
     )
     .button("Abort", Cursive::quit)
@@ -98,9 +98,9 @@ macro_rules! try_with_dialog {
 
 fn store_config(s: &mut Cursive) {
   let service = s.user_data::<Arc<dyn TrustlessService>>().unwrap().clone();
-  let store_name = s.find_id::<EditView>("store_name").unwrap().get_content();
-  let store_path = expand_path(&s.find_id::<EditView>("store_dir").unwrap().get_content());
-  let autolock_timeout = s.find_id::<EditView>("autolock_timeout").unwrap().get_content();
+  let store_name = s.find_name::<EditView>("store_name").unwrap().get_content();
+  let store_path = expand_path(&s.find_name::<EditView>("store_dir").unwrap().get_content());
+  let autolock_timeout = s.find_name::<EditView>("autolock_timeout").unwrap().get_content();
   let autolock_timeout_secs = try_with_dialog!(
     autolock_timeout.parse::<u64>(),
     s,

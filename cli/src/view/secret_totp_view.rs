@@ -35,13 +35,13 @@ impl SecretTOTPView {
     let token_display_id = format!("token_display_{}", property);
     let token_valid_id = format!("token_valid_{}", property);
     let mut token_display =
-      LinearLayout::vertical().child(TextView::new(token).with_id(token_display_id.clone()).full_width());
+      LinearLayout::vertical().child(TextView::new(token).with_name(token_display_id.clone()).full_width());
 
     if let Some(period) = maybe_period {
       token_display = token_display.child(
         ProgressBar::new()
           .max(period as usize)
-          .with_id(token_valid_id.clone())
+          .with_name(token_valid_id.clone())
           .full_width(),
       )
     }
@@ -78,12 +78,12 @@ impl ViewWrapper for SecretTOTPView {
       if valid_until <= now {
         if let Ok(otpauth) = OTPAuthUrl::parse(&self.otp_url) {
           let (token, valid_until) = otpauth.generate(now);
-          let mut token_display = self.base_view.find_id::<TextView>(&self.token_display_id).unwrap();
+          let mut token_display = self.base_view.find_name::<TextView>(&self.token_display_id).unwrap();
           token_display.set_content(token);
           self.maybe_valid_until = Some(valid_until);
         }
       }
-      if let Some(mut token_valid) = self.base_view.find_id::<ProgressBar>(&self.token_valid_id) {
+      if let Some(mut token_valid) = self.base_view.find_name::<ProgressBar>(&self.token_valid_id) {
         token_valid.set_value((valid_until - now) as usize);
       }
     }

@@ -23,8 +23,8 @@ serde_json = "1"
 chrono = { version = "0", features = ["serde"] }
 
 [features]
-termion_backend = ["termion", "cursive/termion-backend"]
-crossterm_backend = ["cursive/crossterm-backend"]
+termion_backend = ["termion", "cursive/termion-backend", "cursive/toml"]
+crossterm_backend = ["cursive/crossterm-backend", "cursive/toml"]
 default = ["termion_backend"]
 
 [dev-dependencies]
