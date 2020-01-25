@@ -5,7 +5,7 @@ use crate::memguard::weak::{ZeroingHeapAllocator, ZeroingStringExt};
 use crate::memguard::SecretWords;
 use crate::secrets_store::{SecretStoreError, SecretStoreResult};
 use crate::secrets_store_capnp::index;
-use capnp::{message, serialize};
+use capnp::{message, serialize, Word};
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 
@@ -35,8 +35,8 @@ impl Index {
   }
 
   pub fn find_versions(&self, secret_id: &str) -> SecretStoreResult<Vec<SecretVersionRef>> {
-    let data_borrow = self.data.borrow();
-    let reader = serialize::read_message_from_words(&data_borrow, message::ReaderOptions::new())?;
+    let mut data_borrow: &[Word] = &self.data.borrow();
+    let reader = serialize::read_message_from_flat_slice(&mut data_borrow, message::ReaderOptions::new())?;
     let index = reader.get_root::<index::Reader>()?;
 
     for index_entry in index.get_entries()? {
@@ -54,8 +54,8 @@ impl Index {
   }
 
   pub fn filter_entries(&self, filter: SecretListFilter) -> SecretStoreResult<SecretList> {
-    let data_borrow = self.data.borrow();
-    let reader = serialize::read_message_from_words(&data_borrow, message::ReaderOptions::new())?;
+    let mut data_borrow: &[Word] = &self.data.borrow();
+    let reader = serialize::read_message_from_flat_slice(&mut data_borrow, message::ReaderOptions::new())?;
     let index = reader.get_root::<index::Reader>()?;
     let mut entries = Vec::new();
     let mut all_tags = HashSet::new();
@@ -98,8 +98,8 @@ impl Index {
       .count();
     let mut index_message = message::Builder::new(ZeroingHeapAllocator::default());
     {
-      let index_borrow = self.data.borrow();
-      let reader = serialize::read_message_from_words(&index_borrow, message::ReaderOptions::new())?;
+      let mut index_borrow: &[Word] = &self.data.borrow();
+      let reader = serialize::read_message_from_flat_slice(&mut index_borrow, message::ReaderOptions::new())?;
       let old_index = reader.get_root::<index::Reader>()?;
       let mut new_index = index_message.init_root::<index::Builder>();
 
@@ -150,8 +150,8 @@ impl Index {
   }
 
   fn read_heads(index_data: &SecretWords) -> SecretStoreResult<HashMap<String, Change>> {
-    let index_borrow = index_data.borrow();
-    let reader = serialize::read_message_from_words(&index_borrow, message::ReaderOptions::new())?;
+    let mut index_borrow: &[Word] = &index_data.borrow();
+    let reader = serialize::read_message_from_flat_slice(&mut index_borrow, message::ReaderOptions::new())?;
     let index = reader.get_root::<index::Reader>()?;
     let mut heads = HashMap::with_capacity(index.get_heads()?.len() as usize);
 
@@ -184,8 +184,8 @@ impl Index {
   }
 
   fn collect_entries_to_keep(&self, deleted_blocks: &HashSet<String>) -> SecretStoreResult<HashSet<String>> {
-    let data_borrow = self.data.borrow();
-    let reader = serialize::read_message_from_words(&data_borrow, message::ReaderOptions::new())?;
+    let mut data_borrow: &[Word] = &self.data.borrow();
+    let reader = serialize::read_message_from_flat_slice(&mut data_borrow, message::ReaderOptions::new())?;
     let index = reader.get_root::<index::Reader>()?;
     let mut to_keep = HashSet::new();
 

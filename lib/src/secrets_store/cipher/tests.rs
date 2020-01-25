@@ -6,6 +6,7 @@ use crate::secrets_store::cipher::{OPEN_SSL_RSA_AES_GCM, RUST_X25519CHA_CHA20POL
 use crate::secrets_store_capnp::block;
 
 use super::Cipher;
+use capnp::Word;
 
 fn assert_slices_equal(actual: &[u8], expected: &[u8]) {
   assert!(actual == expected)
@@ -66,10 +67,10 @@ where
     .unwrap();
   block.set_content(&crypted_data);
 
-  let message_payload = capnp::serialize::write_message_to_words(&message);
+  let mut message_payload: &[Word] = &capnp::serialize::write_message_to_words(&message);
 
   let message_reader =
-    capnp::serialize::read_message_from_words(&message_payload, capnp::message::ReaderOptions::new()).unwrap();
+    capnp::serialize::read_message_from_flat_slice(&mut message_payload, capnp::message::ReaderOptions::new()).unwrap();
   let block_reader = message_reader.get_root::<block::Reader>().unwrap();
   let cryped_content = block_reader.get_content().unwrap();
 

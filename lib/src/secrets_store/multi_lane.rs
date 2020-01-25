@@ -81,8 +81,8 @@ impl SecretsStore for MultiLaneSecretsStore {
       return Err(SecretStoreError::AlreadyUnlocked);
     }
 
-    let raw = self.block_store.get_ring(identity_id)?;
-    let reader = serialize::read_message_from_words(&raw, Default::default())?;
+    let mut raw: &[Word] = &self.block_store.get_ring(identity_id)?;
+    let reader = serialize::read_message_from_flat_slice(&mut raw, Default::default())?;
     let ring = reader.get_root::<ring::Reader>()?;
     let mut private_keys = Vec::with_capacity(self.ciphers.len());
     let mut public_keys = Vec::with_capacity(self.ciphers.len());
@@ -140,8 +140,8 @@ impl SecretsStore for MultiLaneSecretsStore {
     let mut identities = Vec::with_capacity(ring_ids.len());
 
     for ring_id in ring_ids {
-      let raw = self.block_store.get_ring(&ring_id)?;
-      let reader = serialize::read_message_from_words(&raw, Default::default())?;
+      let mut raw: &[Word] = &self.block_store.get_ring(&ring_id)?;
+      let reader = serialize::read_message_from_flat_slice(&mut raw, Default::default())?;
       let ring = reader.get_root::<ring::Reader>()?;
 
       identities.push(Self::identity_from_ring(ring)?)
@@ -369,11 +369,11 @@ impl MultiLaneSecretsStore {
 
     for recipient in recipients {
       let identity_id = recipient.as_ref();
-      let raw = self.block_store.get_ring(identity_id).map_err(|e| match e {
+      let mut raw: &[Word] = &self.block_store.get_ring(identity_id).map_err(|e| match e {
         StoreError::InvalidBlock(_) => SecretStoreError::InvalidRecipient(identity_id.to_string()),
         err => err.into(),
       })?;
-      let reader = serialize::read_message_from_words(&raw, Default::default())?;
+      let reader = serialize::read_message_from_flat_slice(&mut raw, Default::default())?;
       let ring = reader.get_root::<ring::Reader>()?;
       let user_public_keys = ring.get_public_keys()?;
 
@@ -395,7 +395,7 @@ impl MultiLaneSecretsStore {
 
   fn read_index(&self, identity_id: &str, private_keys: &[(KeyType, PrivateKey)]) -> SecretStoreResult<Index> {
     match self.block_store.get_index(identity_id)? {
-      Some(crypted_index) => match self.decrypt_block(identity_id, private_keys, crypted_index)? {
+      Some(crypted_index) => match self.decrypt_block(identity_id, private_keys, &crypted_index)? {
         Some(padded_index_data) => {
           let borrowed = padded_index_data.borrow();
           let index_data = RandomFrontBack::unpad_data(&borrowed)?;
@@ -425,7 +425,7 @@ impl MultiLaneSecretsStore {
   ) -> SecretStoreResult<Option<SecretVersion>> {
     let block_words = self.block_store.get_block(block_id)?;
 
-    match self.decrypt_block(identity_id, &private_keys, block_words)? {
+    match self.decrypt_block(identity_id, &private_keys, &block_words)? {
       Some(padded_content) => {
         let borrowed = padded_content.borrow();
         let version = serde_json::from_slice(NonZeroPadding::unpad_data(&borrowed)?)?;
@@ -460,9 +460,9 @@ impl MultiLaneSecretsStore {
     &self,
     identity_id: &str,
     private_keys: &[(KeyType, PrivateKey)],
-    block_words: Vec<Word>,
+    mut block_words: &[Word],
   ) -> SecretStoreResult<Option<SecretBytes>> {
-    let reader = serialize::read_message_from_words(&block_words, Default::default())?;
+    let reader = serialize::read_message_from_flat_slice(&mut block_words, Default::default())?;
     let index_block = reader.get_root::<block::Reader>()?;
     let headers = index_block.reborrow().get_headers()?;
 

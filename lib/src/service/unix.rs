@@ -1,12 +1,12 @@
 use crate::api_capnp::service;
 use crate::service::remote::RemoteTrustlessService;
 use crate::service::ServiceResult;
+use async_std::os::unix::net::UnixStream;
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
-use futures::Future;
+use futures::executor::LocalPool;
+use futures::task::LocalSpawn;
+use futures::{AsyncReadExt, FutureExt};
 use std::path::PathBuf;
-use tokio::io::AsyncRead;
-use tokio::net::UnixStream;
-use tokio::runtime::current_thread;
 
 pub fn daemon_socket_path() -> PathBuf {
   dirs::runtime_dir()
@@ -25,18 +25,23 @@ pub fn try_remote_service() -> ServiceResult<Option<RemoteTrustlessService>> {
     return Ok(None);
   }
 
-  let mut runtime = current_thread::Runtime::new()?;
-  let stream = runtime.block_on(UnixStream::connect(socket_path))?;
-  let (reader, writer) = stream.split();
-  let network = Box::new(twoparty::VatNetwork::new(
-    reader,
-    std::io::BufWriter::new(writer),
-    rpc_twoparty_capnp::Side::Client,
-    Default::default(),
-  ));
-  let mut rpc_system = RpcSystem::new(network, None);
-  let client: service::Client = rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
-  runtime.spawn(rpc_system.map_err(|_e| ()));
+  let mut exec = LocalPool::new();
+  let spawner = exec.spawner();
+  let client: ServiceResult<service::Client> = exec.run_until(async move {
+    let stream = UnixStream::connect(socket_path).await?;
+    let (reader, writer) = stream.split();
+    let network = Box::new(twoparty::VatNetwork::new(
+      reader,
+      writer,
+      rpc_twoparty_capnp::Side::Client,
+      Default::default(),
+    ));
+    let mut rpc_system = RpcSystem::new(network, None);
+    let client: service::Client = rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
+    spawner.spawn_local_obj(Box::pin(rpc_system.map(|_| ())).into())?;
 
-  Ok(Some(RemoteTrustlessService::new(client, runtime)))
+    Ok(client)
+  });
+
+  Ok(Some(RemoteTrustlessService::new(client?, exec)))
 }

@@ -3,109 +3,98 @@ use crate::api_capnp::{clipboard_control, secrets_store, service};
 use crate::memguard::SecretBytes;
 use crate::secrets_store::{SecretStoreResult, SecretsStore};
 use crate::service::{ClipboardControl, ServiceResult, StoreConfig, TrustlessService};
-use futures::Future;
+use futures::executor::LocalPool;
+use futures::FutureExt;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
-use tokio::runtime::current_thread;
 
 pub struct RemoteTrustlessService {
   client: service::Client,
-  runtime: Rc<RefCell<current_thread::Runtime>>,
+  local_pool: Rc<RefCell<LocalPool>>,
 }
 
 impl RemoteTrustlessService {
-  pub fn new(client: service::Client, runtime: current_thread::Runtime) -> RemoteTrustlessService {
+  pub fn new(client: service::Client, local_pool: LocalPool) -> RemoteTrustlessService {
     RemoteTrustlessService {
       client,
-      runtime: Rc::new(RefCell::new(runtime)),
+      local_pool: Rc::new(RefCell::new(local_pool)),
     }
   }
 }
 
 impl TrustlessService for RemoteTrustlessService {
   fn list_stores(&self) -> ServiceResult<Vec<String>> {
-    let mut runtime = self.runtime.borrow_mut();
+    let mut local_pool = self.local_pool.borrow_mut();
     let request = self.client.list_stores_request();
-    let result = runtime.block_on(request.send().promise.and_then(|response| {
-      let names = response
+    local_pool.run_until(request.send().promise.map(|response| {
+      let names = response?
         .get()?
         .get_store_names()?
         .into_iter()
         .map(|name| name.map(ToString::to_string))
         .collect::<capnp::Result<Vec<String>>>()?;
       Ok(names)
-    }))?;
-
-    Ok(result)
+    }))
   }
 
   fn set_store_config(&self, store_config: StoreConfig) -> ServiceResult<()> {
-    let mut runtime = self.runtime.borrow_mut();
+    let mut local_pool = self.local_pool.borrow_mut();
     let mut request = self.client.set_store_config_request();
     store_config.to_builder(request.get().init_store_config());
 
-    runtime.block_on(request.send().promise.and_then(|response| {
-      response.get()?;
+    local_pool.run_until(request.send().promise.map(|response| {
+      response?.get()?;
 
       Ok(())
-    }))?;
-
-    Ok(())
+    }))
   }
 
   fn get_store_config(&self, name: &str) -> ServiceResult<StoreConfig> {
-    let mut runtime = self.runtime.borrow_mut();
+    let mut local_pool = self.local_pool.borrow_mut();
     let mut request = self.client.get_store_config_request();
     request.get().set_store_name(&name);
-    let result = runtime.block_on(request.send().promise.and_then(|response| {
-      let store_config = StoreConfig::from_reader(response.get()?.get_store_config()?)?;
+    local_pool.run_until(request.send().promise.map(|response| {
+      let store_config = StoreConfig::from_reader(response?.get()?.get_store_config()?)?;
 
       Ok(store_config)
-    }))?;
-
-    Ok(result)
+    }))
   }
 
   fn open_store(&self, name: &str) -> ServiceResult<Arc<dyn SecretsStore>> {
-    let mut runtime = self.runtime.borrow_mut();
+    let mut local_pool = self.local_pool.borrow_mut();
     let mut request = self.client.open_store_request();
     request.get().set_store_name(name);
-    let store_client = runtime.block_on(
-      request
-        .send()
-        .promise
-        .and_then(|response| Ok(response.get()?.get_store()?)),
-    )?;
+    let store_client: ServiceResult<secrets_store::Client> =
+      local_pool.run_until(request.send().promise.map(|response| Ok(response?.get()?.get_store()?)));
 
-    Ok(Arc::new(RemoteSecretsStore::new(store_client, self.runtime.clone())?))
+    Ok(Arc::new(RemoteSecretsStore::new(
+      store_client?,
+      self.local_pool.clone(),
+    )?))
   }
 
   fn get_default_store(&self) -> ServiceResult<Option<String>> {
-    let mut runtime = self.runtime.borrow_mut();
+    let mut local_pool = self.local_pool.borrow_mut();
     let request = self.client.get_default_store_request();
-    let result = runtime.block_on(
+    local_pool.run_until(
       request
         .send()
         .promise
-        .and_then(|response| Ok(read_option(response.get()?.get_store_name()?)?.map(ToString::to_string))),
-    )?;
-
-    Ok(result)
+        .map(|response| Ok(read_option(response?.get()?.get_store_name()?)?.map(ToString::to_string))),
+    )
   }
 
   fn set_default_store(&self, name: &str) -> ServiceResult<()> {
-    let mut runtime = self.runtime.borrow_mut();
+    let mut local_pool = self.local_pool.borrow_mut();
     let mut request = self.client.set_default_store_request();
     request.get().set_store_name(&name);
 
-    runtime.block_on(request.send().promise.and_then(|response| {
-      response.get()?;
+    local_pool.run_until(request.send().promise.map(|response| {
+      response?.get()?;
 
       Ok(())
-    }))?;
-
-    Ok(())
+    }))
   }
 
   fn secret_to_clipboard(
@@ -115,7 +104,7 @@ impl TrustlessService for RemoteTrustlessService {
     properties: &[&str],
     display_name: &str,
   ) -> ServiceResult<Arc<dyn ClipboardControl>> {
-    let mut runtime = self.runtime.borrow_mut();
+    let mut local_pool = self.local_pool.borrow_mut();
     let mut request = self.client.secret_to_clipboard_request();
 
     request.get().set_store_name(store_name);
@@ -123,232 +112,206 @@ impl TrustlessService for RemoteTrustlessService {
     set_text_list(request.get().init_properties(properties.len() as u32), properties)?;
     request.get().set_display_name(display_name);
 
-    let clipboard_control_client = runtime.block_on(
+    let clipboard_control_client: ServiceResult<clipboard_control::Client> = local_pool.run_until(
       request
         .send()
         .promise
-        .and_then(|response| Ok(response.get()?.get_clipboard_control()?)),
-    )?;
+        .map(|response| Ok(response?.get()?.get_clipboard_control()?)),
+    );
 
     Ok(Arc::new(RemoteClipboardControl::new(
-      clipboard_control_client,
-      self.runtime.clone(),
+      clipboard_control_client?,
+      self.local_pool.clone(),
     )?))
   }
 }
 
 pub struct RemoteSecretsStore {
   client: secrets_store::Client,
-  runtime: Rc<RefCell<current_thread::Runtime>>,
+  local_pool: Rc<RefCell<LocalPool>>,
 }
 
 impl RemoteSecretsStore {
-  fn new(
-    client: secrets_store::Client,
-    runtime: Rc<RefCell<current_thread::Runtime>>,
-  ) -> ServiceResult<RemoteSecretsStore> {
-    Ok(RemoteSecretsStore { client, runtime })
+  fn new(client: secrets_store::Client, local_pool: Rc<RefCell<LocalPool>>) -> ServiceResult<RemoteSecretsStore> {
+    Ok(RemoteSecretsStore { client, local_pool })
   }
 }
 
 impl SecretsStore for RemoteSecretsStore {
   fn status(&self) -> SecretStoreResult<Status> {
-    let mut runtime = self.runtime.borrow_mut();
+    let mut local_pool = self.local_pool.borrow_mut();
     let request = self.client.status_request();
-    let result = runtime.block_on(
+    local_pool.run_until(
       request
         .send()
         .promise
-        .and_then(|response| Ok(Status::from_reader(response.get()?.get_status()?)?)),
-    )?;
-
-    Ok(result)
+        .map(|response| Ok(Status::from_reader(response?.get()?.get_status()?)?)),
+    )
   }
 
   fn lock(&self) -> SecretStoreResult<()> {
-    let mut runtime = self.runtime.borrow_mut();
+    let mut local_pool = self.local_pool.borrow_mut();
     let request = self.client.lock_request();
 
-    runtime.block_on(request.send().promise.and_then(|response| {
-      response.get()?;
+    local_pool.run_until(request.send().promise.map(|response| {
+      response?.get()?;
 
       Ok(())
-    }))?;
-
-    Ok(())
+    }))
   }
 
   fn unlock(&self, identity_id: &str, passphrase: SecretBytes) -> SecretStoreResult<()> {
-    let mut runtime = self.runtime.borrow_mut();
+    let mut local_pool = self.local_pool.borrow_mut();
     let mut request = self.client.unlock_request();
     request.get().set_identity_id(&identity_id);
     request.get().set_passphrase(&passphrase.borrow());
 
-    runtime.block_on(request.send().promise.and_then(|response| {
-      response.get()?;
+    local_pool.run_until(request.send().promise.map(|response| {
+      response?.get()?;
 
       Ok(())
-    }))?;
-
-    Ok(())
+    }))
   }
 
   fn identities(&self) -> SecretStoreResult<Vec<Identity>> {
-    let mut runtime = self.runtime.borrow_mut();
+    let mut local_pool = self.local_pool.borrow_mut();
     let request = self.client.identities_request();
-    let result = runtime.block_on(request.send().promise.and_then(|response| {
-      let names = response
+    local_pool.run_until(request.send().promise.map(|response| {
+      let names = response?
         .get()?
         .get_identities()?
         .into_iter()
         .map(Identity::from_reader)
         .collect::<capnp::Result<Vec<Identity>>>()?;
       Ok(names)
-    }))?;
-
-    Ok(result)
+    }))
   }
 
   fn add_identity(&self, identity: Identity, passphrase: SecretBytes) -> SecretStoreResult<()> {
-    let mut runtime = self.runtime.borrow_mut();
+    let mut local_pool = self.local_pool.borrow_mut();
     let mut request = self.client.add_identity_request();
 
     identity.to_builder(request.get().init_identity());
     request.get().set_passphrase(&passphrase.borrow());
-    runtime.block_on(request.send().promise.and_then(|response| {
-      response.get()?;
+    local_pool.run_until(request.send().promise.map(|response| {
+      response?.get()?;
 
       Ok(())
-    }))?;
-
-    Ok(())
+    }))
   }
 
   fn change_passphrase(&self, passphrase: SecretBytes) -> SecretStoreResult<()> {
-    let mut runtime = self.runtime.borrow_mut();
+    let mut local_pool = self.local_pool.borrow_mut();
     let mut request = self.client.change_passphrase_request();
     request.get().set_passphrase(&passphrase.borrow());
 
-    runtime.block_on(request.send().promise.and_then(|response| {
-      response.get()?;
+    local_pool.run_until(request.send().promise.map(|response| {
+      response?.get()?;
 
       Ok(())
-    }))?;
-
-    Ok(())
+    }))
   }
 
   fn list(&self, filter: SecretListFilter) -> SecretStoreResult<SecretList> {
-    let mut runtime = self.runtime.borrow_mut();
+    let mut local_pool = self.local_pool.borrow_mut();
     let mut request = self.client.list_request();
     filter.to_builder(request.get().init_filter())?;
 
-    let result = runtime.block_on(request.send().promise.and_then(|response| {
-      let list = SecretList::from_reader(response.get()?.get_list()?)?;
+    local_pool.run_until(request.send().promise.map(|response| {
+      let list = SecretList::from_reader(response?.get()?.get_list()?)?;
 
       Ok(list)
-    }))?;
-
-    Ok(result)
+    }))
   }
 
   fn add(&self, secret_version: SecretVersion) -> SecretStoreResult<String> {
-    let mut runtime = self.runtime.borrow_mut();
+    let mut local_pool = self.local_pool.borrow_mut();
     let mut request = self.client.add_request();
 
     secret_version.to_builder(request.get().init_version())?;
-    let result = runtime.block_on(
+    local_pool.run_until(
       request
         .send()
         .promise
-        .and_then(|response| Ok(response.get()?.get_block_id()?.to_string())),
-    )?;
-
-    Ok(result)
+        .map(|response| Ok(response?.get()?.get_block_id()?.to_string())),
+    )
   }
 
   fn get(&self, secret_id: &str) -> SecretStoreResult<Secret> {
-    let mut runtime = self.runtime.borrow_mut();
+    let mut local_pool = self.local_pool.borrow_mut();
     let mut request = self.client.get_request();
     request.get().set_id(&secret_id);
 
-    let result = runtime.block_on(request.send().promise.and_then(|response| {
-      let secret = Secret::from_reader(response.get()?.get_secret()?)?;
+    local_pool.run_until(request.send().promise.map(|response| {
+      let secret = Secret::from_reader(response?.get()?.get_secret()?)?;
 
       Ok(secret)
-    }))?;
-
-    Ok(result)
+    }))
   }
 
   fn get_version(&self, block_id: &str) -> SecretStoreResult<SecretVersion> {
-    let mut runtime = self.runtime.borrow_mut();
+    let mut local_pool = self.local_pool.borrow_mut();
     let mut request = self.client.get_version_request();
     request.get().set_block_id(&block_id);
 
-    let result = runtime.block_on(request.send().promise.and_then(|response| {
-      let secret_version = SecretVersion::from_reader(response.get()?.get_version()?)?;
+    local_pool.run_until(request.send().promise.map(|response| {
+      let secret_version = SecretVersion::from_reader(response?.get()?.get_version()?)?;
 
       Ok(secret_version)
-    }))?;
-
-    Ok(result)
+    }))
   }
 }
 
 pub struct RemoteClipboardControl {
   client: clipboard_control::Client,
-  runtime: Rc<RefCell<current_thread::Runtime>>,
+  local_pool: Rc<RefCell<LocalPool>>,
 }
 
 impl RemoteClipboardControl {
   fn new(
     client: clipboard_control::Client,
-    runtime: Rc<RefCell<current_thread::Runtime>>,
+    local_pool: Rc<RefCell<LocalPool>>,
   ) -> ServiceResult<RemoteClipboardControl> {
-    Ok(RemoteClipboardControl { client, runtime })
+    Ok(RemoteClipboardControl { client, local_pool })
   }
 }
 
 impl ClipboardControl for RemoteClipboardControl {
   fn is_done(&self) -> ServiceResult<bool> {
-    let mut runtime = self.runtime.borrow_mut();
+    let mut local_pool = self.local_pool.borrow_mut();
     let request = self.client.is_done_request();
 
-    let result = runtime.block_on(
+    local_pool.run_until(
       request
         .send()
         .promise
-        .and_then(|response| Ok(response.get()?.get_is_done())),
-    )?;
-
-    Ok(result)
+        .map(|response| Ok(response?.get()?.get_is_done())),
+    )
   }
 
   fn currently_providing(&self) -> ServiceResult<Option<String>> {
-    let mut runtime = self.runtime.borrow_mut();
+    let mut local_pool = self.local_pool.borrow_mut();
     let request = self.client.currently_providing_request();
 
-    let result = runtime.block_on(request.send().promise.and_then(|response| {
-      match read_option(response.get()?.get_providing()?)? {
-        None => Ok(None),
-        Some(name) => Ok(Some(name.to_string())),
-      }
-    }))?;
-
-    Ok(result)
+    local_pool.run_until(
+      request
+        .send()
+        .promise
+        .map(|response| match read_option(response?.get()?.get_providing()?)? {
+          None => Ok(None),
+          Some(name) => Ok(Some(name.to_string())),
+        }),
+    )
   }
 
   fn destroy(&self) -> ServiceResult<()> {
-    let mut runtime = self.runtime.borrow_mut();
+    let mut local_pool = self.local_pool.borrow_mut();
     let request = self.client.destroy_request();
 
-    runtime.block_on(request.send().promise.and_then(|response| {
-      response.get()?;
+    local_pool.run_until(request.send().promise.map(|response| {
+      response?.get()?;
 
       Ok(())
-    }))?;
-
-    Ok(())
+    }))
   }
 }
