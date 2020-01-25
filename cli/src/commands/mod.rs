@@ -22,7 +22,7 @@ pub use self::unlock::*;
 use rand::{distributions, thread_rng, Rng};
 
 fn generate_id(length: usize) -> String {
-  let mut rng = thread_rng();
+  let rng = thread_rng();
 
   rng
     .sample_iter(&distributions::Alphanumeric)

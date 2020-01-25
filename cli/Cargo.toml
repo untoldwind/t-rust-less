@@ -15,9 +15,9 @@ atty = "0.2"
 t-rust-less-lib = { path = "../lib" }
 serde = "1"
 serde_derive = "1"
-rand = "0.5"
-dirs = "1"
-url = "1"
+rand = "0.7"
+dirs = "2"
+url = "2"
 crossterm_style = "0"
 serde_json = "1"
 chrono = { version = "0", features = ["serde"] }
@@ -25,7 +25,7 @@ chrono = { version = "0", features = ["serde"] }
 [features]
 termion_backend = ["termion", "cursive/termion-backend", "cursive/toml"]
 crossterm_backend = ["cursive/crossterm-backend", "cursive/toml"]
-default = ["termion_backend"]
+default = ["crossterm_backend"]
 
 [dev-dependencies]
 tempdir = "0"
