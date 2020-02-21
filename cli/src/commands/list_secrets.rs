@@ -1,14 +1,14 @@
 use crate::commands::tui::create_tui;
 use crate::commands::unlock_store;
 use crate::error::ExtResult;
-use crate::view::SecretView;
+use crate::view::{SecretView, StatusView};
 use atty::Stream;
 use chrono::{DateTime, Utc};
 use cursive::event::{Event, Key};
 use cursive::theme::Effect;
 use cursive::traits::{Boxable, Identifiable, Scrollable};
 use cursive::utils::markup::StyledString;
-use cursive::views::{EditView, LinearLayout, SelectView, TextContent, TextView};
+use cursive::views::{EditView, LinearLayout, SelectView, TextContent};
 use cursive::Cursive;
 use std::env;
 use std::sync::Arc;
@@ -39,7 +39,7 @@ pub fn list_secrets(service: Arc<dyn TrustlessService>, store_name: String, filt
       status_text: TextContent::new(status_text(&status)),
       last_update: None,
     };
-    list_secrets_ui(&mut siv, initial_state);
+    list_secrets_ui(&mut siv, initial_state, status);
   } else {
     let list = secrets_store.list(filter).ok_or_exit("List entries");
 
@@ -58,7 +58,7 @@ struct ListUIState {
   last_update: Option<DateTime<Utc>>,
 }
 
-fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState) {
+fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState, status: Status) {
   let list = initial_state
     .secrets_store
     .list(initial_state.filter.clone())

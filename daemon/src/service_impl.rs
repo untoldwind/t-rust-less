@@ -2,6 +2,7 @@ use crate::clipboard_control_impl::ClipboardControlImpl;
 use crate::event_handler_impl::{EventHandlerClient, EventSubscriptionImpl};
 use crate::secrets_store_impl::SecretsStoreImpl;
 use capnp::capability::Promise;
+use futures::executor::LocalSpawner;
 use std::sync::Arc;
 use t_rust_less_lib::api_capnp::{clipboard_control, event_subscription, secrets_store, service};
 use t_rust_less_lib::service::local::LocalTrustlessService;
@@ -9,11 +10,12 @@ use t_rust_less_lib::service::{StoreConfig, TrustlessService};
 
 pub struct ServiceImpl {
   service: Arc<LocalTrustlessService>,
+  spawner: LocalSpawner,
 }
 
 impl ServiceImpl {
-  pub fn new(service: Arc<LocalTrustlessService>) -> Self {
-    ServiceImpl { service }
+  pub fn new(service: Arc<LocalTrustlessService>, spawner: LocalSpawner) -> Self {
+    ServiceImpl { service, spawner }
   }
 }
 
@@ -147,9 +149,7 @@ impl service::Server for ServiceImpl {
     params: service::AddEventHandlerParams,
     mut results: service::AddEventHandlerResults,
   ) -> Promise<(), capnp::Error> {
-    let handler = EventHandlerClient::new(stry!(params
-      .get()
-      .and_then(service::add_event_handler_params::Reader::get_handler)));
+    let handler = EventHandlerClient::new(stry!(stry!(params.get()).get_handler()), self.spawner.clone());
     let subscription = stry!(self.service.add_event_handler(Box::new(handler)));
 
     results.get().set_subscription(

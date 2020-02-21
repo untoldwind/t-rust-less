@@ -4,6 +4,7 @@ use crate::api_capnp::{clipboard_control, event_handler, event_subscription, sec
 use crate::memguard::SecretBytes;
 use crate::secrets_store::{SecretStoreResult, SecretsStore};
 use crate::service::{ClipboardControl, ServiceResult, StoreConfig, TrustlessService};
+use capnp::capability::Promise;
 use futures::executor::LocalPool;
 use futures::FutureExt;
 use std::cell::RefCell;
@@ -127,20 +128,20 @@ impl TrustlessService for RemoteTrustlessService {
   }
 
   fn add_event_handler(&self, handler: Box<dyn EventHandler>) -> ServiceResult<Box<dyn EventSubscription>> {
-    let mut runtime = self.runtime.borrow_mut();
+    let mut local_pool = self.local_pool.borrow_mut();
     let mut request = self.client.add_event_handler_request();
 
     request.get().set_handler(
       event_handler::ToClient::new(RemoteEventHandlerImpl::new(handler)).into_client::<capnp_rpc::Server>(),
     );
-    let subscription_client = runtime.block_on(
+    let subscription_client: ServiceResult<event_subscription::Client> = local_pool.run_until(
       request
         .send()
         .promise
-        .and_then(|response| Ok(response.get()?.get_subscription()?)),
-    )?;
+        .map(|response| Ok(response?.get()?.get_subscription()?)),
+    );
 
-    Ok(Box::new(RemoteEventSubscription(subscription_client)))
+    Ok(Box::new(RemoteEventSubscription(subscription_client?)))
   }
 }
 

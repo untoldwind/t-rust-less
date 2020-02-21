@@ -3,7 +3,7 @@ use async_std::os::unix::net::UnixListener;
 use async_timer::Interval;
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
 use futures::channel::mpsc;
-use futures::executor::LocalPool;
+use futures::executor::{LocalPool, LocalSpawner};
 use futures::task::LocalSpawn;
 use futures::{future, AsyncReadExt, FutureExt, StreamExt};
 use log::{error, info};
@@ -13,7 +13,7 @@ use t_rust_less_lib::service::unix::daemon_socket_path;
 
 pub fn run_server<F, A>(handler_factory: F, check_autolock: A)
 where
-  F: Fn() -> capnp::capability::Client,
+  F: Fn(LocalSpawner) -> capnp::capability::Client,
   A: Fn() -> (),
 {
   let socket_path = daemon_socket_path();
@@ -40,7 +40,7 @@ where
         let (reader, writer) = stream?.split();
 
         let network = twoparty::VatNetwork::new(reader, writer, rpc_twoparty_capnp::Side::Server, Default::default());
-        let rpc_system = RpcSystem::new(Box::new(network), Some(handler_factory()));
+        let rpc_system = RpcSystem::new(Box::new(network), Some(handler_factory(spawner.clone())));
 
         spawner.spawn_local_obj(Box::pin(rpc_system.map(|_| ())).into())?;
       }

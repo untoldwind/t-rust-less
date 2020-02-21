@@ -33,13 +33,17 @@ fn main() {
   log_builder.init();
 
   let service = Arc::new(LocalTrustlessService::new().ok_or_exit("Open local store"));
-  let service_server =
-    service::ToClient::new(service_impl::ServiceImpl::new(service.clone())).into_client::<capnp_rpc::Server>();
 
   run_server(
-    move || {
-      info!("New client connection");
-      service_server.clone().client
+    {
+      let cloned = service.clone();
+      move |spawner| {
+        info!("New client connection");
+        let service_server = service::ToClient::new(service_impl::ServiceImpl::new(cloned.clone(), spawner))
+          .into_client::<capnp_rpc::Server>();
+
+        service_server.clone().client
+      }
     },
     move || service.check_autolock(),
   );
