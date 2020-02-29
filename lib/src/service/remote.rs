@@ -243,6 +243,17 @@ impl SecretsStore for RemoteSecretsStore {
     }))
   }
 
+  fn update_index(&self) -> SecretStoreResult<()> {
+    let mut local_pool = self.local_pool.borrow_mut();
+    let request = self.client.update_index_request();
+
+    local_pool.run_until(request.send().promise.map(|response| {
+      response?.get()?;
+
+      Ok(())
+    }))
+  }
+
   fn add(&self, secret_version: SecretVersion) -> SecretStoreResult<String> {
     let mut local_pool = self.local_pool.borrow_mut();
     let mut request = self.client.add_request();

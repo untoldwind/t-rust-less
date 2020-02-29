@@ -174,7 +174,8 @@ interface SecretsStore {
     addIdentity @4 (identity: Identity, passphrase: Data);
     changePassphrase @5 (passphrase: Data);
     list @6 (filter: SecretListFilter) -> (list: SecretList);
-    add @7 (version: SecretVersion) -> (blockId: Text);
-    get @8 (id: Text) -> (secret: Secret);
-    getVersion @9 (blockId: Text) -> (version: SecretVersion);
+    updateIndex @7 ();
+    add @8 (version: SecretVersion) -> (blockId: Text);
+    get @9 (id: Text) -> (secret: Secret);
+    getVersion @10 (blockId: Text) -> (version: SecretVersion);
 }

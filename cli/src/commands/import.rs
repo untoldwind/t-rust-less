@@ -58,4 +58,6 @@ pub fn import_v1(service: Arc<dyn TrustlessService>, store_name: String, maybe_f
       secrets_store.add(version).ok_or_exit("Add secret version");
     }
   }
+
+  secrets_store.update_index().ok_or_exit("Index update");
 }

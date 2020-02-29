@@ -86,64 +86,61 @@ impl SecretsStore for MultiLaneSecretsStore {
   }
 
   fn unlock(&self, identity_id: &str, passphrase: SecretBytes) -> SecretStoreResult<()> {
-    info!("Unlocking store for {}", identity_id);
-    let mut unlocked_user = self.unlocked_user.write()?;
+    let identity = {
+      info!("Unlocking store for {}", identity_id);
+      let mut unlocked_user = self.unlocked_user.write()?;
 
-    if unlocked_user.is_some() {
-      return Err(SecretStoreError::AlreadyUnlocked);
-    }
+      if unlocked_user.is_some() {
+        return Err(SecretStoreError::AlreadyUnlocked);
+      }
 
-    let mut raw: &[u8] = &self.block_store.get_ring(identity_id)?;
-    let reader = serialize::read_message_from_flat_slice(&mut raw, Default::default())?;
-    let ring = reader.get_root::<ring::Reader>()?;
-    let mut private_keys = Vec::with_capacity(self.ciphers.len());
-    let mut public_keys = Vec::with_capacity(self.ciphers.len());
+      let mut raw: &[u8] = &self.block_store.get_ring(identity_id)?;
+      let reader = serialize::read_message_from_flat_slice(&mut raw, Default::default())?;
+      let ring = reader.get_root::<ring::Reader>()?;
+      let mut private_keys = Vec::with_capacity(self.ciphers.len());
+      let mut public_keys = Vec::with_capacity(self.ciphers.len());
 
-    for user_private_key in ring.get_private_keys()? {
-      if let Some(cipher) = self.find_cipher(user_private_key.get_type()?) {
-        let nonce = user_private_key.get_nonce()?;
-        if user_private_key.get_derivation_type()? != self.key_derivation.key_derivation_type() {
-          return Err(SecretStoreError::KeyDerivation(
-            "Key derivation method is not compatible".to_string(),
-          ));
+      for user_private_key in ring.get_private_keys()? {
+        if let Some(cipher) = self.find_cipher(user_private_key.get_type()?) {
+          let nonce = user_private_key.get_nonce()?;
+          if user_private_key.get_derivation_type()? != self.key_derivation.key_derivation_type() {
+            return Err(SecretStoreError::KeyDerivation(
+              "Key derivation method is not compatible".to_string(),
+            ));
+          }
+          let seal_key = self.key_derivation.derive(
+            &passphrase,
+            user_private_key.get_preset(),
+            nonce,
+            cipher.seal_key_length(),
+          )?;
+          let private_key = cipher
+            .open_private_key(&seal_key, nonce, user_private_key.get_crypted_key()?)
+            .map_err(|_| SecretStoreError::InvalidPassphrase)?;
+
+          private_keys.push((cipher.key_type(), private_key));
         }
-        let seal_key = self.key_derivation.derive(
-          &passphrase,
-          user_private_key.get_preset(),
-          nonce,
-          cipher.seal_key_length(),
-        )?;
-        let private_key = cipher
-          .open_private_key(&seal_key, nonce, user_private_key.get_crypted_key()?)
-          .map_err(|_| SecretStoreError::InvalidPassphrase)?;
-
-        private_keys.push((cipher.key_type(), private_key));
       }
-    }
-    for user_public_key in ring.get_public_keys()? {
-      if let Some(cipher) = self.find_cipher(user_public_key.get_type()?) {
-        public_keys.push((cipher.key_type(), user_public_key.get_key()?.to_vec()));
+      for user_public_key in ring.get_public_keys()? {
+        if let Some(cipher) = self.find_cipher(user_public_key.get_type()?) {
+          public_keys.push((cipher.key_type(), user_public_key.get_key()?.to_vec()));
+        }
       }
-    }
-    let mut index = self.read_index(identity_id, &private_keys)?;
-    let change_logs = self.block_store.change_logs()?;
-    let index_updated = index.process_change_logs(&change_logs, |block_id| {
-      self.get_secret_version(identity_id, &private_keys, block_id)
-    })?;
+      let index = self.read_index(identity_id, &private_keys)?;
+      let identity = Self::identity_from_ring(ring)?;
+      unlocked_user.replace(User {
+        identity: identity.clone(),
+        private_keys,
+        public_keys,
+        autolock_at: SystemTime::now() + self.autolock_timeout,
+        index,
+      });
 
-    if index_updated {
-      info!("Index has been updated");
-      self.store_index(identity_id, &index)?;
-    }
+      identity
+    };
 
-    let identity = Self::identity_from_ring(ring)?;
-    unlocked_user.replace(User {
-      identity: identity.clone(),
-      private_keys,
-      public_keys,
-      autolock_at: SystemTime::now() + self.autolock_timeout,
-      index,
-    });
+    self.update_index()?;
+
     self.event_hub.send(Event::StoreUnlocked {
       store_name: self.name.clone(),
       identity,
@@ -274,6 +271,24 @@ impl SecretsStore for MultiLaneSecretsStore {
     let unlocked_user = maybe_unlocked_user.as_ref().ok_or(SecretStoreError::Locked)?;
 
     unlocked_user.index.filter_entries(filter)
+  }
+
+  fn update_index(&self) -> SecretStoreResult<()> {
+    let mut maybe_unlocked_user = self.unlocked_user.write()?;
+    let unlocked_user = maybe_unlocked_user.as_mut().ok_or(SecretStoreError::Locked)?;
+    let change_logs = self.block_store.change_logs()?;
+    let identity_id = &unlocked_user.identity.id;
+    let private_keys = &unlocked_user.private_keys;
+    let index_updated = unlocked_user.index.process_change_logs(&change_logs, |block_id| {
+      self.get_secret_version(identity_id, private_keys, block_id)
+    })?;
+
+    if index_updated {
+      info!("Index has been updated");
+      self.store_index(&unlocked_user.identity.id, &unlocked_user.index)?;
+    }
+
+    Ok(())
   }
 
   fn add(&self, mut secret_version: SecretVersion) -> SecretStoreResult<String> {

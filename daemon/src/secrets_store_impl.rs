@@ -114,6 +114,16 @@ impl secrets_store::Server for SecretsStoreImpl {
     Promise::ok(())
   }
 
+  fn update_index(
+    &mut self,
+    _: secrets_store::UpdateIndexParams,
+    _: secrets_store::UpdateIndexResults,
+  ) -> Promise<(), capnp::Error> {
+    stry!(self.secrets_store.update_index());
+
+    Promise::ok(())
+  }
+
   fn add(
     &mut self,
     params: secrets_store::AddParams,

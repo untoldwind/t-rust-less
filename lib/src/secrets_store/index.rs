@@ -21,6 +21,7 @@ impl EffectiveChanges {
   }
 }
 
+#[derive(Clone)]
 pub struct Index {
   heads: HashMap<String, Change>,
   pub(super) data: SecretWords,
