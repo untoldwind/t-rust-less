@@ -101,12 +101,11 @@ fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState, status: Status
       )
       .child(
         LinearLayout::horizontal()
-          .child(entry_select.with_name("entry_list").full_width().scrollable())
+          .child(entry_select.with_name("entry_list").scrollable()).weight(1)
           .child(
             SecretView::new(service, store_name, secrets_store, initial_selected)
               .with_name("secret_view")
-              .full_screen(),
-          ),
+          ).weight(2).full_height(),
       ),
   );
   siv.set_user_data(initial_state);
