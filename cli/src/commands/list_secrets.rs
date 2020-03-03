@@ -8,8 +8,9 @@ use cursive::event::{Event, Key};
 use cursive::theme::Effect;
 use cursive::traits::{Boxable, Identifiable, Scrollable};
 use cursive::utils::markup::StyledString;
-use cursive::views::{EditView, LinearLayout, SelectView, TextContent};
-use cursive::Cursive;
+use cursive::view::View;
+use cursive::views::{EditView, LinearLayout, ResizedView, SelectView, TextContent};
+use cursive::{Cursive, Vec2};
 use std::env;
 use std::sync::Arc;
 use t_rust_less_lib::api::{
@@ -59,23 +60,12 @@ struct ListUIState {
 }
 
 fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState, status: Status) {
-  let list = initial_state
-    .secrets_store
-    .list(initial_state.filter.clone())
-    .ok_or_exit("List entries");
-
   let mut name_search = EditView::new();
   if let Some(name_filter) = &initial_state.filter.name {
     name_search.set_content(name_filter.to_string());
   }
   name_search.set_on_edit(update_name_filter);
-  let mut entry_select = SelectView::new();
-  let initial_selected = list.entries.first().map(|e| e.entry.id.clone());
-  entry_select.add_all(list.entries.into_iter().map(entry_list_item));
-  entry_select.set_on_select(update_selection);
 
-  let service = initial_state.service.clone();
-  let store_name = initial_state.store_name.clone();
   let secrets_store = initial_state.secrets_store.clone();
 
   siv.set_fps(2);
@@ -88,6 +78,7 @@ fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState, status: Status
   siv.add_global_callback(Event::CtrlChar('p'), secret_to_clipboard(&[PROPERTY_PASSWORD]));
   siv.add_global_callback(Event::CtrlChar('o'), secret_to_clipboard(&[PROPERTY_TOTP_URL]));
   siv.add_global_callback(Event::Refresh, update_status);
+  siv.add_global_callback(Event::WindowResize, on_event);
   siv.add_fullscreen_layer(
     LinearLayout::vertical()
       .child(
@@ -99,14 +90,8 @@ fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState, status: Status
               .fixed_width(14),
           ),
       )
-      .child(
-        LinearLayout::horizontal()
-          .child(entry_select.with_name("entry_list").scrollable()).weight(1)
-          .child(
-            SecretView::new(service, store_name, secrets_store, initial_selected)
-              .with_name("secret_view")
-          ).weight(2).full_height(),
-      ),
+      .child(create_list_view(siv.screen_size(), &initial_state))
+      .with_name("list_view"),
   );
   siv.set_user_data(initial_state);
 
@@ -222,4 +207,65 @@ fn status_text(status: &Status) -> String {
       None => " Unlocked".to_string(),
     }
   }
+}
+
+fn create_list_view(screen_size: Vec2, state: &ListUIState) -> ResizedView<LinearLayout> {
+  let mut entry_select = SelectView::new();
+  let list = state
+    .secrets_store
+    .list(state.filter.clone())
+    .ok_or_exit("List entries");
+  let initial_selected = list.entries.first().map(|e| e.entry.id.clone());
+  entry_select.add_all(list.entries.into_iter().map(entry_list_item));
+  entry_select.set_on_select(update_selection);
+  let select_width = entry_select.required_size(Vec2::zero());
+
+  if select_width.x < screen_size.x / 2 {
+    LinearLayout::horizontal()
+      .child(
+        entry_select
+          .with_name("entry_list")
+          .scrollable()
+          .min_width(screen_size.x / 2),
+      )
+      .child(
+        SecretView::new(
+          state.service.clone(),
+          state.store_name.clone(),
+          state.secrets_store.clone(),
+          initial_selected,
+        )
+        .with_name("secret_view")
+        .min_width(screen_size.x / 2),
+      )
+      .full_screen()
+  } else {
+    LinearLayout::vertical()
+      .child(
+        entry_select
+          .with_name("entry_list")
+          .scrollable()
+          .min_height(screen_size.y / 2),
+      )
+      .child(
+        SecretView::new(
+          state.service.clone(),
+          state.store_name.clone(),
+          state.secrets_store.clone(),
+          initial_selected,
+        )
+        .with_name("secret_view")
+        .min_height(screen_size.y / 2),
+      )
+      .full_screen()
+  }
+}
+
+fn on_event(s: &mut Cursive) {
+  let screen_size = s.screen_size();
+  let mut list_view = s.find_name::<LinearLayout>("list_view").unwrap();
+  s.with_user_data(|state: &mut ListUIState| {
+    list_view.remove_child(1);
+    list_view.add_child(create_list_view(screen_size, state));
+  });
 }
