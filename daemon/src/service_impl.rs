@@ -4,7 +4,7 @@ use crate::secrets_store_impl::SecretsStoreImpl;
 use capnp::capability::Promise;
 use futures::executor::LocalSpawner;
 use std::sync::Arc;
-use t_rust_less_lib::api_capnp::{clipboard_control, event_subscription, secrets_store, service};
+use t_rust_less_lib::api_capnp::service;
 use t_rust_less_lib::service::local::LocalTrustlessService;
 use t_rust_less_lib::service::{StoreConfig, TrustlessService};
 
@@ -109,7 +109,7 @@ impl service::Server for ServiceImpl {
 
     results
       .get()
-      .set_store(secrets_store::ToClient::new(SecretsStoreImpl::new(store)).into_client::<capnp_rpc::Server>());
+      .set_store(capnp_rpc::new_client(SecretsStoreImpl::new(store)));
 
     Promise::ok(())
   }
@@ -138,7 +138,7 @@ impl service::Server for ServiceImpl {
       .secret_to_clipboard(store_name, secret_id, &properties, &display_name));
 
     results.get().set_clipboard_control(
-      clipboard_control::ToClient::new(ClipboardControlImpl::new(clipboard_control)).into_client::<capnp_rpc::Server>(),
+      capnp_rpc::new_client(ClipboardControlImpl::new(clipboard_control)),
     );
 
     Promise::ok(())
@@ -153,7 +153,7 @@ impl service::Server for ServiceImpl {
     let subscription = stry!(self.service.add_event_handler(Box::new(handler)));
 
     results.get().set_subscription(
-      event_subscription::ToClient::new(EventSubscriptionImpl(subscription)).into_client::<capnp_rpc::Server>(),
+      capnp_rpc::new_client(EventSubscriptionImpl(subscription)),
     );
 
     Promise::ok(())

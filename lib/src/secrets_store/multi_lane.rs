@@ -322,7 +322,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     }])?;
     self.event_hub.send(Event::SecretVersionAdded {
       store_name: self.name.clone(),
-      secret_id: secret_version.secret_id.clone(),
+      secret_id: secret_version.secret_id,
       identity: unlocked_user.identity.clone(),
     });
 

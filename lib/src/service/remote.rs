@@ -132,7 +132,7 @@ impl TrustlessService for RemoteTrustlessService {
     let mut request = self.client.add_event_handler_request();
 
     request.get().set_handler(
-      event_handler::ToClient::new(RemoteEventHandlerImpl::new(handler)).into_client::<capnp_rpc::Server>(),
+      capnp_rpc::new_client(RemoteEventHandlerImpl::new(handler)),
     );
     let subscription_client: ServiceResult<event_subscription::Client> = local_pool.run_until(
       request

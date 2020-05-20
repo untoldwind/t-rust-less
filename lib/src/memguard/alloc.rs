@@ -59,11 +59,11 @@ pub mod Prot {
   pub const NoAccess: Ty = libc::PROT_NONE;
   pub const ReadOnly: Ty = libc::PROT_READ;
   pub const WriteOnly: Ty = libc::PROT_WRITE;
-  pub const ReadWrite: Ty = (libc::PROT_READ | libc::PROT_WRITE);
+  pub const ReadWrite: Ty = libc::PROT_READ | libc::PROT_WRITE;
   pub const Execute: Ty = libc::PROT_EXEC;
-  pub const ReadExec: Ty = (libc::PROT_READ | libc::PROT_EXEC);
-  pub const WriteExec: Ty = (libc::PROT_WRITE | libc::PROT_EXEC);
-  pub const ReadWriteExec: Ty = (libc::PROT_READ | libc::PROT_WRITE | libc::PROT_EXEC);
+  pub const ReadExec: Ty = libc::PROT_READ | libc::PROT_EXEC;
+  pub const WriteExec: Ty = libc::PROT_WRITE | libc::PROT_EXEC;
+  pub const ReadWriteExec: Ty = libc::PROT_READ | libc::PROT_WRITE | libc::PROT_EXEC;
 }
 
 /// Prot enum.
