@@ -33,7 +33,8 @@ itertools = "0"
 toml = "0"
 dirs = "2"
 futures = "0.3"
-async-std = "~1.5"
+tokio = { version = "0.2", features = ["net", "rt-util" ] }
+tokio-util = { version = "0.3", features = ["compat"] }
 
 [dev-dependencies]
 tempdir = "0"

@@ -37,9 +37,9 @@ fn main() {
   run_server(
     {
       let cloned = service.clone();
-      move |spawner| {
+      move || {
         info!("New client connection");
-        let service_server : service::Client = capnp_rpc::new_client(service_impl::ServiceImpl::new(cloned.clone(), spawner));
+        let service_server: service::Client = capnp_rpc::new_client(service_impl::ServiceImpl::new(cloned.clone()));
 
         service_server.client
       }

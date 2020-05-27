@@ -1,18 +1,16 @@
-use futures::executor::LocalSpawner;
-use futures::task::LocalSpawn;
 use futures::FutureExt;
 use log::error;
 use t_rust_less_lib::api::{Event, EventHandler, EventSubscription};
 use t_rust_less_lib::api_capnp::{event_handler, event_subscription};
+use tokio::task;
 
 pub struct EventHandlerClient {
   client: event_handler::Client,
-  spawner: LocalSpawner,
 }
 
 impl EventHandlerClient {
-  pub fn new(client: event_handler::Client, spawner: LocalSpawner) -> EventHandlerClient {
-    EventHandlerClient { client, spawner }
+  pub fn new(client: event_handler::Client) -> EventHandlerClient {
+    EventHandlerClient { client }
   }
 }
 
@@ -25,17 +23,11 @@ impl EventHandler for EventHandlerClient {
       return;
     }
 
-    if let Err(err) = self.spawner.spawn_local_obj(
-      Box::pin(request.send().promise.map(|r| {
-        if let Err(err) = r {
-          error!("Event receiver error: {}", err);
-        }
-      }))
-      .into(),
-    ) {
-      error!("Failed sending event: {}", err);
-      return;
-    }
+    task::spawn_local(Box::pin(request.send().promise.map(|r| {
+      if let Err(err) = r {
+        error!("Event receiver error: {}", err);
+      }
+    })));
   }
 }
 

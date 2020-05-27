@@ -1,19 +1,19 @@
 use crate::error::ExtResult;
-use async_std::os::unix::net::UnixListener;
 use async_timer::Interval;
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
 use futures::channel::mpsc;
-use futures::executor::{LocalPool, LocalSpawner};
-use futures::task::LocalSpawn;
 use futures::{future, AsyncReadExt, FutureExt, StreamExt};
 use log::{error, info};
 use std::fs;
 use std::time::Duration;
 use t_rust_less_lib::service::unix::daemon_socket_path;
+use tokio::net::UnixListener;
+use tokio::runtime::Builder;
+use tokio::task::{self, LocalSet};
 
 pub fn run_server<F, A>(handler_factory: F, check_autolock: A)
 where
-  F: Fn(LocalSpawner) -> capnp::capability::Client,
+  F: Fn() -> capnp::capability::Client,
   A: Fn() -> (),
 {
   let socket_path = daemon_socket_path();
@@ -21,28 +21,26 @@ where
 
   info!("Listening on socket {}", socket_path.to_string_lossy());
 
-  let mut exec = LocalPool::new();
-  let spawner = exec.spawner();
-  let result: Result<(), Box<dyn std::error::Error>> = exec.run_until(async move {
+  let mut rt = Builder::new().basic_scheduler().enable_all().build().unwrap();
+  let local_set = LocalSet::new();
+  let result: Result<(), Box<dyn std::error::Error>> = local_set.block_on(&mut rt, async move {
     let prev_mask = unsafe {
       // Dirty little trick to set permissions on the socket
       libc::umask(0o177)
     };
-    let socket = UnixListener::bind(&socket_path_cloned).await?;
+    let mut socket = UnixListener::bind(&socket_path_cloned)?;
     unsafe {
       libc::umask(prev_mask);
     }
 
-    let mut incoming = socket.incoming();
-
     let handle_incoming = async move {
-      while let Some(stream) = incoming.next().await {
-        let (reader, writer) = stream?.split();
+      while let Ok((stream, _)) = socket.accept().await {
+        let (reader, writer) = tokio_util::compat::Tokio02AsyncReadCompatExt::compat(stream).split();
 
         let network = twoparty::VatNetwork::new(reader, writer, rpc_twoparty_capnp::Side::Server, Default::default());
-        let rpc_system = RpcSystem::new(Box::new(network), Some(handler_factory(spawner.clone())));
+        let rpc_system = RpcSystem::new(Box::new(network), Some(handler_factory()));
 
-        spawner.spawn_local_obj(Box::pin(rpc_system.map(|_| ())).into())?;
+        task::spawn_local(Box::pin(rpc_system.map(|_| ())));
       }
 
       Ok::<(), Box<dyn std::error::Error>>(())

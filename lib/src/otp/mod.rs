@@ -108,8 +108,7 @@ impl OTPAuthUrl {
         account_name = account.to_string();
       }
     }
-    let algorithm = match Self::find_parameter::<String>(&url, "algorithm")?.as_deref()
-    {
+    let algorithm = match Self::find_parameter::<String>(&url, "algorithm")?.as_deref() {
       Some("SHA1") | None => OTPAlgorithm::SHA1,
       Some("SHA256") => OTPAlgorithm::SHA256,
       Some("SHA512") => OTPAlgorithm::SHA512,
