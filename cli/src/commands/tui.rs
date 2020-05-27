@@ -23,7 +23,7 @@ borders = "simple"
 "##;
 
 pub fn create_tui() -> Cursive {
-  let mut siv = Cursive::default();
+  let mut siv = cursive::default();
 
   if let Err(error) = siv.load_toml(THEME) {
     error!("{:?}", error);

@@ -33,7 +33,7 @@ itertools = "0"
 toml = "0"
 dirs = "2"
 futures = "0.3"
-async-std = "1"
+async-std = "~1.5"
 
 [dev-dependencies]
 tempdir = "0"
