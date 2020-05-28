@@ -276,14 +276,15 @@ where
               }
               None => {
                 context.clear_selection();
-                break;
+                debug!("Last part: Reply with NONE");
+                selection.property = 0;
               }
             }
           } else {
             debug!("Reply with NONE");
             selection.property = 0;
           }
-
+          
           xlib::XSendEvent(
             context.display,
             selection.requestor,
