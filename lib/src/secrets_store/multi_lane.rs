@@ -71,6 +71,7 @@ impl SecretsStore for MultiLaneSecretsStore {
       unlocked_by: unlocked_user.as_ref().map(|u| u.identity.clone()),
       autolock_at: unlocked_user.as_ref().map(|u| DateTime::from(u.autolock_at)),
       version: env!("CARGO_PKG_VERSION").to_string(),
+      autolock_timeout: self.autolock_timeout.as_secs(),
     })
   }
 

@@ -28,6 +28,7 @@ pub struct Status {
   pub unlocked_by: Option<Identity>,
   pub autolock_at: Option<DateTime<Utc>>,
   pub version: String,
+  pub autolock_timeout: u64,
 }
 
 impl Status {
@@ -46,6 +47,7 @@ impl Status {
         }
       },
       version: reader.get_version()?.to_string(),
+      autolock_timeout: reader.get_autolock_timeout(),
     })
   }
 
@@ -60,6 +62,7 @@ impl Status {
       None => builder.set_autolock_at(std::i64::MIN),
     }
     builder.set_version(&self.version);
+    builder.set_autolock_timeout(self.autolock_timeout);
 
     Ok(())
   }

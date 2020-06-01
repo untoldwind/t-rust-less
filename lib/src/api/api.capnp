@@ -67,6 +67,7 @@ struct Status {
     unlockedBy @1: Option(Identity);
     autolockAt @2 : Int64;
     version @3 : Text;
+    autolockTimeout @4: UInt64;
 }
 
 enum SecretType {
