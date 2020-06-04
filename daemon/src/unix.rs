@@ -1,6 +1,5 @@
 use crate::error::ExtResult;
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
-use futures::channel::mpsc;
 use futures::{future, AsyncReadExt, FutureExt, StreamExt};
 use log::{error, info};
 use std::fs;
@@ -8,8 +7,10 @@ use std::time::Duration;
 use t_rust_less_lib::service::unix::daemon_socket_path;
 use tokio::net::UnixListener;
 use tokio::runtime::Builder;
-use tokio::time::interval;
+use tokio::signal;
+use tokio::signal::unix::{signal, SignalKind};
 use tokio::task::{self, LocalSet};
+use tokio::time::interval;
 
 pub fn run_server<F, A>(handler_factory: F, check_autolock: A)
 where
@@ -53,14 +54,15 @@ where
       })
       .map(|_| Ok::<(), Box<dyn std::error::Error>>(()));
 
-    let (signal_sender, signal_receiver) = mpsc::unbounded::<()>();
-
-    ctrlc::set_handler(move || {
-      signal_sender.close_channel();
-    })?;
-
     future::select(
-      Box::pin(signal_receiver.into_future()),
+      future::select(
+        Box::pin(signal::ctrl_c().map(|_| Ok::<(), Box<dyn std::error::Error>>(()))),
+        Box::pin(
+          signal(SignalKind::terminate())?
+            .recv()
+            .map(|_| Ok::<(), Box<dyn std::error::Error>>(())),
+        ),
+      ),
       Box::pin(future::try_join(handle_incoming, autolocker)),
     )
     .await;

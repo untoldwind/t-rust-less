@@ -13,8 +13,7 @@ t-rust-less-lib = { path = "../lib" }
 capnp = "0.12"
 capnp-rpc = "0.12"
 futures = "0.3"
-ctrlc = { version = "3", features = ["termination"] }
-tokio = { version = "0.2", features = ["net", "rt-util", "stream", "time"] }
+tokio = { version = "0.2", features = ["net", "rt-util", "signal", "stream", "time"] }
 tokio-util = { version = "0.3", features = ["compat"] }
 
 [target.'cfg(unix)'.dependencies]
