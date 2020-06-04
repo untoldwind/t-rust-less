@@ -1,5 +1,4 @@
 use crate::error::ExtResult;
-use async_timer::Interval;
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
 use futures::channel::mpsc;
 use futures::{future, AsyncReadExt, FutureExt, StreamExt};
@@ -9,6 +8,7 @@ use std::time::Duration;
 use t_rust_less_lib::service::unix::daemon_socket_path;
 use tokio::net::UnixListener;
 use tokio::runtime::Builder;
+use tokio::time::interval;
 use tokio::task::{self, LocalSet};
 
 pub fn run_server<F, A>(handler_factory: F, check_autolock: A)
@@ -46,7 +46,7 @@ where
       Ok::<(), Box<dyn std::error::Error>>(())
     };
 
-    let autolocker = Interval::platform_new(Duration::from_secs(1))
+    let autolocker = interval(Duration::from_secs(1))
       .for_each(|_| {
         check_autolock();
         future::ready(())
