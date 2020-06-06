@@ -65,4 +65,35 @@ pub fn app() -> App<'static, 'static> {
         )
         .arg(Arg::with_name("deleted").long("deleted").help("List deleted items")),
     )
+    .subcommand(
+      SubCommand::with_name("generate")
+        .about("Generate password")
+        .arg(Arg::with_name("words").long("words"))
+        .arg(
+          Arg::with_name("length")
+            .long("length")
+            .value_name("length")
+            .number_of_values(1),
+        )
+        .arg(
+          Arg::with_name("delim")
+            .long("delim")
+            .value_name("delim")
+            .number_of_values(1),
+        )
+        .arg(Arg::with_name("exclude-uppers").long("exclude-uppers"))
+        .arg(Arg::with_name("exclude-numbers").long("exclude-numbers"))
+        .arg(Arg::with_name("exclude-symbols").long("exclude-symbols"))
+        .arg(Arg::with_name("require-upper").long("require-upper"))
+        .arg(Arg::with_name("require-number").long("require-number"))
+        .arg(Arg::with_name("require-symbol").long("require-symbol"))
+        .arg(Arg::with_name("include-ambiguous").long("include-ambiguous"))
+        .arg(Arg::with_name("include-similar").long("include-similar"))
+        .arg(
+          Arg::with_name("count")
+            .value_name("count")
+            .number_of_values(1)
+            .default_value("5"),
+        ),
+    )
 }

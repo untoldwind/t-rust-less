@@ -1,9 +1,10 @@
-use crate::api::{EventHandler, EventSubscription};
+use crate::api::{EventHandler, EventSubscription, PasswordGeneratorParam};
 use std::sync::Arc;
 
 mod config;
 mod error;
 pub mod local;
+pub mod pw_generator;
 mod remote;
 mod secrets_provider;
 
@@ -45,6 +46,10 @@ pub trait TrustlessService {
   ) -> ServiceResult<Arc<dyn ClipboardControl>>;
 
   fn add_event_handler(&self, handler: Box<dyn EventHandler>) -> ServiceResult<Box<dyn EventSubscription>>;
+
+  fn generate_id(&self) -> ServiceResult<String>;
+
+  fn generate_password(&self, param: PasswordGeneratorParam) -> ServiceResult<String>;
 }
 
 pub fn create_service() -> ServiceResult<Arc<dyn TrustlessService>> {

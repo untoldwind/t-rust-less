@@ -96,6 +96,18 @@ fn main() {
         process::exit(1)
       }
     }
+    ("generate", Some(sub_matches)) => {
+      let param = commands::password_generate_param_from_args(sub_matches);
+
+      commands::generate(
+        service,
+        param,
+        sub_matches
+          .value_of("count")
+          .and_then(|v| v.parse::<usize>().ok())
+          .unwrap_or(5),
+      );
+    }
     (command, _) => {
       println!("Command {} not implemented", command);
       process::exit(1)

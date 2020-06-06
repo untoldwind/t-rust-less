@@ -284,7 +284,7 @@ where
             debug!("Reply with NONE");
             selection.property = 0;
           }
-          
+
           xlib::XSendEvent(
             context.display,
             selection.requestor,

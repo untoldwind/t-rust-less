@@ -1,5 +1,5 @@
 use crate::api::{read_option, set_text_list, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
-use crate::api::{Event, EventHandler, EventSubscription};
+use crate::api::{Event, EventHandler, EventSubscription, PasswordGeneratorParam};
 use crate::api_capnp::{clipboard_control, event_handler, event_subscription, secrets_store, service};
 use crate::memguard::SecretBytes;
 use crate::secrets_store::{SecretStoreResult, SecretsStore};
@@ -164,6 +164,33 @@ impl TrustlessService for RemoteTrustlessService {
     );
 
     Ok(Box::new(RemoteEventSubscription(subscription_client?)))
+  }
+
+  fn generate_id(&self) -> ServiceResult<String> {
+    let mut rt = self.runtime.borrow_mut();
+    let request = self.client.generate_id_request();
+
+    self.local_set.block_on(
+      &mut rt,
+      request
+        .send()
+        .promise
+        .map(|response| Ok(response?.get()?.get_id()?.to_string())),
+    )
+  }
+
+  fn generate_password(&self, param: PasswordGeneratorParam) -> ServiceResult<String> {
+    let mut rt = self.runtime.borrow_mut();
+    let mut request = self.client.generate_password_request();
+    param.to_builder(request.get().init_param())?;
+
+    self.local_set.block_on(
+      &mut rt,
+      request
+        .send()
+        .promise
+        .map(|response| Ok(response?.get()?.get_password()?.to_string())),
+    )
   }
 }
 

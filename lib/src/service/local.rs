@@ -1,4 +1,5 @@
-use crate::api::{Event, EventHandler, EventHub, EventSubscription};
+use super::pw_generator::{generate_chars, generate_words};
+use crate::api::{Event, EventHandler, EventHub, EventSubscription, PasswordGeneratorParam};
 use crate::clipboard::Clipboard;
 use crate::secrets_store::{open_secrets_store, SecretsStore};
 use crate::service::config::{read_config, write_config, Config};
@@ -6,7 +7,10 @@ use crate::service::error::{ServiceError, ServiceResult};
 use crate::service::secrets_provider::SecretsProvider;
 use crate::service::{ClipboardControl, StoreConfig, TrustlessService};
 use chrono::Utc;
+use data_encoding::HEXLOWER;
 use log::{error, info};
+use rand::thread_rng;
+use rand::RngCore;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
@@ -277,5 +281,21 @@ impl TrustlessService for LocalTrustlessService {
     let id = self.event_hub.add_event_handler(handler)?;
 
     Ok(Box::new(LocalEventSubscription::new(self.event_hub.clone(), id)))
+  }
+
+  fn generate_id(&self) -> ServiceResult<String> {
+    let mut rng = thread_rng();
+    let mut bytes = [0u8, 32];
+
+    rng.fill_bytes(&mut bytes);
+
+    Ok(HEXLOWER.encode(&bytes))
+  }
+
+  fn generate_password(&self, param: PasswordGeneratorParam) -> ServiceResult<String> {
+    match param {
+      PasswordGeneratorParam::Chars(params) => Ok(generate_chars(params)),
+      PasswordGeneratorParam::Words(params) => Ok(generate_words(params)),
+    }
   }
 }

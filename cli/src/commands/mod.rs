@@ -1,5 +1,6 @@
 mod add_identity;
 mod export;
+mod generate;
 mod import;
 mod init;
 mod list_identities;
@@ -11,6 +12,7 @@ mod unlock;
 
 pub use self::add_identity::*;
 pub use self::export::*;
+pub use self::generate::*;
 pub use self::import::*;
 pub use self::init::*;
 pub use self::list_identities::*;

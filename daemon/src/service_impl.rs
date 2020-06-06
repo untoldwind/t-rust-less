@@ -5,7 +5,10 @@ use capnp::capability::Promise;
 use std::sync::Arc;
 use t_rust_less_lib::api_capnp::service;
 use t_rust_less_lib::service::local::LocalTrustlessService;
-use t_rust_less_lib::service::{StoreConfig, TrustlessService};
+use t_rust_less_lib::{
+  api::PasswordGeneratorParam,
+  service::{StoreConfig, TrustlessService},
+};
 
 pub struct ServiceImpl {
   service: Arc<LocalTrustlessService>,
@@ -153,6 +156,34 @@ impl service::Server for ServiceImpl {
     results
       .get()
       .set_subscription(capnp_rpc::new_client(EventSubscriptionImpl(subscription)));
+
+    Promise::ok(())
+  }
+
+  fn generate_id(
+    &mut self,
+    _params: service::GenerateIdParams,
+    mut results: service::GenerateIdResults,
+  ) -> Promise<(), capnp::Error> {
+    let id = stry!(self.service.generate_id());
+
+    results.get().set_id(&id);
+
+    Promise::ok(())
+  }
+
+  fn generate_password(
+    &mut self,
+    params: service::GeneratePasswordParams,
+    mut results: service::GeneratePasswordResults,
+  ) -> Promise<(), capnp::Error> {
+    let password_generator_param = stry!(params
+      .get()
+      .and_then(service::generate_password_params::Reader::get_param)
+      .and_then(PasswordGeneratorParam::from_reader));
+    let password = stry!(self.service.generate_password(password_generator_param));
+
+    results.get().set_password(&password);
 
     Promise::ok(())
   }

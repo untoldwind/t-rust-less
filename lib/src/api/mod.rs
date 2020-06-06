@@ -1,6 +1,6 @@
 use crate::api_capnp::{
-  self, identity, option, password_strength, secret, secret_entry, secret_entry_match, secret_list, secret_list_filter,
-  secret_version, status,
+  self, identity, option, password_generator_param, password_strength, secret, secret_entry, secret_entry_match,
+  secret_list, secret_list_filter, secret_version, status,
 };
 use crate::memguard::weak::{ZeroingBytes, ZeroingBytesExt, ZeroingString, ZeroingStringExt};
 use capnp::{struct_list, text_list};
@@ -710,6 +710,103 @@ impl Secret {
     }
 
     Ok(())
+  }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PasswordGeneratorCharsParam {
+  pub num_chars: u8,
+  pub include_uppers: bool,
+  pub include_numbers: bool,
+  pub include_symbols: bool,
+  pub require_upper: bool,
+  pub require_number: bool,
+  pub require_symbol: bool,
+  pub exlcude_similar: bool,
+  pub exclude_ambiguous: bool,
+}
+
+impl PasswordGeneratorCharsParam {
+  pub fn from_reader(reader: password_generator_param::password_generator_chars_param::Reader) -> capnp::Result<Self> {
+    Ok(PasswordGeneratorCharsParam {
+      num_chars: reader.get_num_chars(),
+      include_uppers: reader.get_include_uppers(),
+      include_numbers: reader.get_include_numbers(),
+      include_symbols: reader.get_include_symbols(),
+      require_upper: reader.get_require_upper(),
+      require_number: reader.get_require_number(),
+      require_symbol: reader.get_require_symbol(),
+      exlcude_similar: reader.get_exlcude_similar(),
+      exclude_ambiguous: reader.get_exclude_ambiguous(),
+    })
+  }
+
+  pub fn to_builder(
+    &self,
+    mut builder: password_generator_param::password_generator_chars_param::Builder,
+  ) -> capnp::Result<()> {
+    builder.set_num_chars(self.num_chars);
+    builder.set_include_uppers(self.include_uppers);
+    builder.set_include_numbers(self.include_numbers);
+    builder.set_include_symbols(self.include_symbols);
+    builder.set_require_upper(self.require_upper);
+    builder.set_require_number(self.require_number);
+    builder.set_require_symbol(self.require_symbol);
+    builder.set_exlcude_similar(self.exlcude_similar);
+    builder.set_exclude_ambiguous(self.exclude_ambiguous);
+    Ok(())
+  }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PasswordGeneratorWordsParam {
+  pub num_words: u8,
+  pub delim: char,
+}
+
+impl PasswordGeneratorWordsParam {
+  pub fn from_reader(reader: password_generator_param::password_generator_words_param::Reader) -> capnp::Result<Self> {
+    Ok(PasswordGeneratorWordsParam {
+      num_words: reader.get_num_words(),
+      delim: std::char::from_u32(reader.get_delim()).unwrap(),
+    })
+  }
+
+  pub fn to_builder(
+    &self,
+    mut builder: password_generator_param::password_generator_words_param::Builder,
+  ) -> capnp::Result<()> {
+    builder.set_num_words(self.num_words);
+    builder.set_delim(self.delim as u32);
+
+    Ok(())
+  }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PasswordGeneratorParam {
+  Chars(PasswordGeneratorCharsParam),
+  Words(PasswordGeneratorWordsParam),
+}
+
+impl PasswordGeneratorParam {
+  pub fn from_reader(reader: password_generator_param::Reader) -> capnp::Result<Self> {
+    match reader.which()? {
+      password_generator_param::Chars(inner) => Ok(PasswordGeneratorParam::Chars(
+        PasswordGeneratorCharsParam::from_reader(inner?)?,
+      )),
+      password_generator_param::Words(inner) => Ok(PasswordGeneratorParam::Words(
+        PasswordGeneratorWordsParam::from_reader(inner?)?,
+      )),
+    }
+  }
+
+  pub fn to_builder(&self, builder: password_generator_param::Builder) -> capnp::Result<()> {
+    match self {
+      PasswordGeneratorParam::Chars(param) => param.to_builder(builder.init_chars()),
+      PasswordGeneratorParam::Words(param) => param.to_builder(builder.init_words()),
+    }
   }
 }
 

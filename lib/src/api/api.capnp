@@ -45,6 +45,30 @@ interface EventHandler {
     handle @0 (event: Event);
 }
 
+struct PasswordGeneratorParam {
+    union {
+        chars @0: PasswordGeneratorCharsParam;
+        words @1: PasswordGeneratorWordsParam;
+    }
+
+    struct PasswordGeneratorCharsParam {
+        numChars @0: UInt8;
+        includeUppers @1: Bool;
+        includeNumbers @2: Bool;
+        includeSymbols @3: Bool;
+        requireUpper @4: Bool;
+        requireNumber @5: Bool;
+        requireSymbol @6: Bool;
+        exlcudeSimilar @7: Bool;
+        excludeAmbiguous @8: Bool;
+   }
+
+    struct PasswordGeneratorWordsParam {
+        numWords @0: UInt8;
+        delim @1: UInt32;
+    }
+}
+
 interface Service {
     listStores @0 () -> (storeNames : List(Text));
     setStoreConfig @1 (storeConfig : StoreConfig);
@@ -54,6 +78,8 @@ interface Service {
     openStore @5 (storeName : Text) -> (store: SecretsStore);
     secretToClipboard @6 (storeName : Text, secretId : Text, properties : List(Text), displayName: Text) -> (clipboardControl: ClipboardControl);
     addEventHandler @7 (handler: EventHandler) -> (subscription: EventSubscription);
+    generateId @8 () -> (id: Text);
+    generatePassword @9 (param: PasswordGeneratorParam) -> (password: Text);
 }
 
 struct Identity {
