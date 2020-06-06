@@ -29,9 +29,9 @@ dependencies = [
 
 [[package]]
 name = "arc-swap"
-version = "0.4.6"
+version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b585a98a234c46fc563103e9278c9391fde1f4e6850334da895d27edb9580f62"
+checksum = "4d25d88fd6b8041580a654f9d0c581a047baee2b3efee13275f2fc392fc75034"
 
 [[package]]
 name = "array-macro"
@@ -153,15 +153,15 @@ checksum = "130aac562c0dd69c56b3b1cc8ffd2e17be31d0b6c25b61c96b76231aa23e39e1"
 
 [[package]]
 name = "capnp"
-version = "0.12.3"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9fc62803d62905cdc62628699ef104177bab00250e24e37f70051b440f1d46e"
+checksum = "76df98627e790044a4a776876de91747e5a63d0f439c11bbfe0f570c653ad0d4"
 
 [[package]]
 name = "capnp-futures"
-version = "0.12.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8db791f6877886cbc488019fc9fc7380d101b5bf14784dc4b109ac91238ed35"
+checksum = "12ebd21550766ed864bc7e636bb59b153bafbc16721d35c38e78d5484aea80c2"
 dependencies = [
  "capnp",
  "futures",
@@ -169,9 +169,9 @@ dependencies = [
 
 [[package]]
 name = "capnp-rpc"
-version = "0.12.3"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1bdbbe88ffbc7bca55e5357d117e1349ba2daa31d00abefed253063d1f14e1b"
+checksum = "e9d413f8bafdd76c7fd0fc1d23ba3e78823cb5e822a81db40e953b4a2fa1fe4d"
 dependencies = [
  "capnp",
  "capnp-futures",
@@ -180,9 +180,9 @@ dependencies = [
 
 [[package]]
 name = "capnpc"
-version = "0.12.4"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1097e1096b83f7b816f5d3917bcc530cc39b081d65b1dbd2641f39adc208a8c1"
+checksum = "35b37f699c92387b74c3e3a3e0260f69a8f1b7be34e2ae254e2cf77af0bf91c0"
 dependencies = [
  "capnp",
 ]
@@ -513,11 +513,10 @@ dependencies = [
 
 [[package]]
 name = "dirs-sys"
-version = "0.3.4"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afa0b23de8fd801745c471deffa6e12d248f962c9fd4b4c33787b055599bde7b"
+checksum = "8e93d7f5705de3e49895a2b5e0b8855a1c27f080192ae9c32a6432d50741a57a"
 dependencies = [
- "cfg-if",
  "libc",
  "redox_users",
  "winapi 0.3.8",
@@ -1140,9 +1139,9 @@ dependencies = [
 
 [[package]]
 name = "openssl-sys"
-version = "0.9.57"
+version = "0.9.58"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7410fef80af8ac071d4f63755c0ab89ac3df0fd1ea91f1d1f37cf5cec4395990"
+checksum = "a842db4709b604f0fe5d1170ae3565899be2ad3d9cbc72dedc789ac0511f78de"
 dependencies = [
  "autocfg",
  "cc",
