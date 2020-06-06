@@ -153,8 +153,9 @@ struct Secret {
     id @0 : Text;
     type @1 : SecretType;
     current @2 : SecretVersion;
-    versions @3 : List(VersionRef);
-    passwordStrengths @4 : List(Estimate);
+    currentBlockId @3 : Text;
+    versions @4 : List(VersionRef);
+    passwordStrengths @5 : List(Estimate);
 
     struct Estimate {
         key @0 : Text;

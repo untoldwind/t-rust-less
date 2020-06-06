@@ -661,6 +661,7 @@ pub struct Secret {
   #[serde(rename = "type")]
   pub secret_type: SecretType,
   pub current: SecretVersion,
+  pub current_block_id: String,
   pub versions: Vec<SecretVersionRef>,
   pub password_strengths: HashMap<String, PasswordStrength>,
 }
@@ -671,6 +672,7 @@ impl Secret {
       id: reader.get_id()?.to_string(),
       secret_type: SecretType::from_reader(reader.get_type()?),
       current: SecretVersion::from_reader(reader.get_current()?)?,
+      current_block_id: reader.get_current_block_id()?.to_string(),
       versions: reader
         .get_versions()?
         .into_iter()
@@ -693,6 +695,7 @@ impl Secret {
     builder.set_id(&self.id);
     builder.set_type(self.secret_type.to_builder());
     self.current.to_builder(builder.reborrow().init_current())?;
+    builder.set_current_block_id(&self.current_block_id);
     let mut versions = builder.reborrow().init_versions(self.versions.len() as u32);
     for (idx, version) in self.versions.iter().enumerate() {
       version.to_builder(versions.reborrow().get(idx as u32));
