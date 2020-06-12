@@ -51,10 +51,10 @@ impl TestStore {
   fn generate_block_id(secret_id: &str, version_id: i64) -> String {
     let mut hasher = Sha256::new();
 
-    hasher.input(secret_id);
-    hasher.input(version_id.to_string());
+    hasher.update(secret_id);
+    hasher.update(version_id.to_string());
 
-    HEXLOWER.encode(&hasher.result())
+    HEXLOWER.encode(&hasher.finalize())
   }
 }
 

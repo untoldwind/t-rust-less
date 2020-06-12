@@ -34,9 +34,9 @@ impl MemoryBlockStore {
   fn generate_id(data: &[u8]) -> String {
     let mut hasher = Sha256::new();
 
-    hasher.input(data);
+    hasher.update(data);
 
-    HEXLOWER.encode(&hasher.result())
+    HEXLOWER.encode(&hasher.finalize())
   }
 }
 

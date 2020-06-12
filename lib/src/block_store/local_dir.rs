@@ -78,9 +78,9 @@ impl LocalDirBlockStore {
   fn generate_id(data: &[u8]) -> String {
     let mut hasher = Sha256::new();
 
-    hasher.input(data);
+    hasher.update(data);
 
-    HEXLOWER.encode(&hasher.result())
+    HEXLOWER.encode(&hasher.finalize())
   }
 
   fn block_file(base_dir: &PathBuf, block_id: &str) -> StoreResult<PathBuf> {

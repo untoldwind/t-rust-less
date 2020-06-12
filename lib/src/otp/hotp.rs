@@ -2,8 +2,8 @@ use super::OTPAlgorithm;
 use crate::memguard::weak::ZeroingBytes;
 use byteorder::{BigEndian, ByteOrder};
 use hmac::digest::generic_array::ArrayLength;
-use hmac::digest::{BlockInput, FixedOutput, Input, Reset};
-use hmac::{Hmac, Mac};
+use hmac::digest::{BlockInput, FixedOutput, Update, Reset};
+use hmac::{Hmac, Mac, NewMac};
 use sha1::Sha1;
 use sha2::{Sha256, Sha512};
 
@@ -18,17 +18,17 @@ pub struct HOTPGenerator<'a> {
 impl<'a> HOTPGenerator<'a> {
   fn calculate<D>(&mut self) -> String
   where
-    D: Input + BlockInput + FixedOutput + Reset + Default + Clone,
+    D: Update + BlockInput + FixedOutput + Reset + Default + Clone,
     D::BlockSize: ArrayLength<u8> + Clone,
     D::OutputSize: ArrayLength<u8>,
   {
     let mut mac = Hmac::<D>::new_varkey(&self.secret).unwrap();
-    mac.input(&self.counter.to_be_bytes());
+    mac.update(&self.counter.to_be_bytes());
 
     self.counter += 1;
 
-    let result = mac.result();
-    let digest = result.code();
+    let result = mac.finalize();
+    let digest = result.into_bytes();
 
     let offset: usize = (digest[digest.len() - 1] & 0xf) as usize;
 
