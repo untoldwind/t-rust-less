@@ -4,7 +4,7 @@ use std::time::Duration;
 
 mod cipher;
 mod error;
-mod estimate;
+pub mod estimate;
 mod index;
 mod multi_lane;
 mod padding;
