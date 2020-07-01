@@ -7,10 +7,8 @@ use crate::service::error::{ServiceError, ServiceResult};
 use crate::service::secrets_provider::SecretsProvider;
 use crate::service::{ClipboardControl, StoreConfig, TrustlessService};
 use chrono::Utc;
-use data_encoding::HEXLOWER;
 use log::{error, info};
-use rand::thread_rng;
-use rand::RngCore;
+use rand::{distributions, thread_rng, Rng};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
@@ -284,12 +282,14 @@ impl TrustlessService for LocalTrustlessService {
   }
 
   fn generate_id(&self) -> ServiceResult<String> {
-    let mut rng = thread_rng();
-    let mut bytes = [0u8, 32];
+    let rng = thread_rng();
 
-    rng.fill_bytes(&mut bytes);
-
-    Ok(HEXLOWER.encode(&bytes))
+    Ok(
+      rng
+        .sample_iter(&distributions::Alphanumeric)
+        .take(64)
+        .collect::<String>(),
+    )
   }
 
   fn generate_password(&self, param: PasswordGeneratorParam) -> ServiceResult<String> {
