@@ -75,12 +75,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b41b7ea54a0c9d92199de89e20e58d49f02f8e699814ef3fdf266f6f748d15c7"
 
 [[package]]
-name = "base64"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3441f0f7b02788e948e47f457ca01f1d7e6d92c693bc132c22b087d3141c03ff"
-
-[[package]]
 name = "bit-set"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -850,15 +844,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "itertools"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "284f18f85651fe11e8a991b2adb42cb078325c996ed026d994719efcfca1d54b"
-dependencies = [
- "either",
-]
-
-[[package]]
 name = "itoa"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1421,7 +1406,7 @@ checksum = "09b23093265f8d200fa7b4c2c76297f47e681c655f6f1285a8780d6a022f7431"
 dependencies = [
  "getrandom",
  "redox_syscall",
- "rust-argon2 0.7.0",
+ "rust-argon2",
 ]
 
 [[package]]
@@ -1457,19 +1442,7 @@ version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2bc8af4bda8e1ff4932523b94d3dd20ee30a87232323eda55903ffd71d2fb017"
 dependencies = [
- "base64 0.11.0",
- "blake2b_simd",
- "constant_time_eq",
- "crossbeam-utils",
-]
-
-[[package]]
-name = "rust-argon2"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9dab61250775933275e84053ac235621dfb739556d5c54a2f2e9313b7cf43a19"
-dependencies = [
- "base64 0.12.3",
+ "base64",
  "blake2b_simd",
  "constant_time_eq",
  "crossbeam-utils",
@@ -1674,7 +1647,7 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "atty",
  "chrono",
@@ -1697,7 +1670,7 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less-daemon"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "capnp",
  "capnp-rpc",
@@ -1731,7 +1704,7 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less-lib"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "byteorder",
  "capnp",
@@ -1744,7 +1717,7 @@ dependencies = [
  "dirs 2.0.2",
  "futures",
  "hmac",
- "itertools 0.9.0",
+ "itertools",
  "libc",
  "log",
  "mach_o_sys",
@@ -1753,7 +1726,7 @@ dependencies = [
  "openssl",
  "quickcheck",
  "rand 0.7.3",
- "rust-argon2 0.8.2",
+ "rust-argon2",
  "serde",
  "serde_derive",
  "serde_json",
@@ -1775,7 +1748,7 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less-native"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "byteorder",
  "env_logger",
@@ -2097,7 +2070,7 @@ dependencies = [
  "chrono",
  "derive_builder",
  "fancy-regex",
- "itertools 0.8.2",
+ "itertools",
  "lazy_static",
  "quick-error",
  "regex",
