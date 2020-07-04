@@ -23,7 +23,7 @@ unsafe fn alloc_init() {
 
   #[cfg(windows)]
   {
-    let mut si = mem::uninitialized();
+    let mut si = mem::MaybeUninit::uninit().assume_init();
     ::winapi::um::sysinfoapi::GetSystemInfo(&mut si);
     PAGE_SIZE = si.dwPageSize as usize;
   }
@@ -100,7 +100,7 @@ pub unsafe fn _mprotect(ptr: *mut u8, len: usize, prot: Prot::Ty) -> bool {
 #[cfg(windows)]
 #[inline]
 pub unsafe fn _mprotect(ptr: *mut u8, len: usize, prot: Prot::Ty) -> bool {
-  let mut old = mem::uninitialized();
+  let mut old = mem::MaybeUninit::uninit().assume_init();
   winapi::um::memoryapi::VirtualProtect(
     ptr as winapi::shared::minwindef::LPVOID,
     len as winapi::shared::basetsd::SIZE_T,

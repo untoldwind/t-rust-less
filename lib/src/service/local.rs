@@ -4,6 +4,7 @@ use crate::clipboard::Clipboard;
 use crate::secrets_store::{open_secrets_store, SecretsStore};
 use crate::service::config::{read_config, write_config, Config};
 use crate::service::error::{ServiceError, ServiceResult};
+#[cfg(unix)]
 use crate::service::secrets_provider::SecretsProvider;
 use crate::service::{ClipboardControl, StoreConfig, TrustlessService};
 use chrono::Utc;
@@ -271,7 +272,7 @@ impl TrustlessService for LocalTrustlessService {
     }
     #[cfg(not(unix))]
     {
-      Err(ServiceResult::NotAvailable)
+      Err(ServiceError::NotAvailable)
     }
   }
 
