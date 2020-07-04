@@ -733,15 +733,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fuzzy-matcher"
-version = "0.3.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75a03d6d8629fcd151ece9d3a7f59a87fc38a620ab0290bf2888c2ad73821170"
-dependencies = [
- "thread_local",
-]
-
-[[package]]
 name = "generator"
 version = "0.6.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1752,7 +1743,6 @@ dependencies = [
  "data-encoding",
  "dirs 2.0.2",
  "futures",
- "fuzzy-matcher",
  "hmac",
  "itertools 0.9.0",
  "libc",
