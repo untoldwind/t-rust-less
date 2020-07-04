@@ -1,4 +1,4 @@
-pub const WORDLIST: &'static [&'static str] = &[
+pub const WORDLIST: &[&str] = &[
   "aardvark", "aaron", "aba", "ababa", "abaci", "aback", "abacus", "abaft", "abalone", "abandon", "abase", "abash",
   "abate", "abatis", "abbacy", "abbas", "abbe", "abbess", "abbey", "abbot", "abbott", "abbr", "abby", "abc", "abcd",
   "abc's", "abdias", "abdicate", "abduct", "abdul", "abe", "abeam", "abed", "abel", "aberrant", "aberrate", "abet",

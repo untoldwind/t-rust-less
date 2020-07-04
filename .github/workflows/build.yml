@@ -1,0 +1,17 @@
+name: Build
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install requirements
+      run: sudo apt-get install capnproto
+    - uses: actions/checkout@v2
+    - name: Check formatting
+      run: cargo fmt -- --check
+    - name: Check clippy
+      run: cargo clippy -- -Dwarnings
+    - name: Test
+      run: cargo test --release
+    - name: Build
+      run: cargo build --release
