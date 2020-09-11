@@ -194,6 +194,12 @@ impl TrustlessService for RemoteTrustlessService {
   }
 }
 
+impl std::fmt::Debug for RemoteTrustlessService {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+      write!(f, "Remote Trustless service")
+  }
+}
+
 pub struct RemoteSecretsStore {
   client: secrets_store::Client,
   runtime: Rc<RefCell<Runtime>>,
@@ -377,6 +383,12 @@ impl SecretsStore for RemoteSecretsStore {
       }),
     )
   }
+}
+
+impl std::fmt::Debug for RemoteSecretsStore {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+      write!(f, "Remote secrets store")
+    }
 }
 
 struct RemoteClipboardControl {

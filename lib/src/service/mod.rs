@@ -24,7 +24,7 @@ pub trait ClipboardControl {
   fn destroy(&self) -> ServiceResult<()>;
 }
 
-pub trait TrustlessService {
+pub trait TrustlessService : std::fmt::Debug {
   fn list_stores(&self) -> ServiceResult<Vec<String>>;
 
   fn set_store_config(&self, store_config: StoreConfig) -> ServiceResult<()>;
