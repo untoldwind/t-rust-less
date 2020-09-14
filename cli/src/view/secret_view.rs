@@ -81,7 +81,7 @@ impl SecretView {
     }
   }
 
-  fn copy_to_clipboard(&self, secret_id: &str, property: &str) -> impl Fn(&mut Cursive) -> () {
+  fn copy_to_clipboard(&self, secret_id: &str, property: &str) -> impl Fn(&mut Cursive) {
     let service = self.service.clone();
     let store_name = self.store_name.clone();
     let owned_secret_id = secret_id.to_string();

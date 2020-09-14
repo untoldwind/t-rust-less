@@ -17,7 +17,7 @@ pub struct SecretTOTPView {
 impl SecretTOTPView {
   pub fn new<F>(property: &str, otp_url: &str, on_copy: F) -> Self
   where
-    F: Fn(&mut Cursive) -> () + 'static,
+    F: Fn(&mut Cursive) + 'static,
   {
     let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
 

@@ -10,7 +10,7 @@ pub struct SecretCopyView {
 impl SecretCopyView {
   pub fn new<F>(property: &str, value: &str, on_copy: F) -> Self
   where
-    F: Fn(&mut Cursive) -> () + 'static,
+    F: Fn(&mut Cursive) + 'static,
   {
     SecretCopyView {
       base_view: LinearLayout::horizontal()

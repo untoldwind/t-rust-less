@@ -150,7 +150,7 @@ fn entry_list_item(entry_match: SecretEntryMatch) -> (StyledString, SecretEntry)
   (styled_name, entry_match.entry)
 }
 
-fn secret_to_clipboard(properties: &'static [&'static str]) -> impl Fn(&mut Cursive) -> () {
+fn secret_to_clipboard(properties: &'static [&'static str]) -> impl Fn(&mut Cursive) {
   move |s: &mut Cursive| {
     let maybe_entry = {
       let entry_select = s.find_name::<SelectView<SecretEntry>>("entry_list").unwrap();

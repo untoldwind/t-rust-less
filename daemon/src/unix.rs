@@ -15,7 +15,7 @@ use tokio::time::interval;
 pub fn run_server<F, A>(handler_factory: F, check_autolock: A)
 where
   F: Fn() -> capnp::capability::Client,
-  A: Fn() -> (),
+  A: Fn(),
 {
   let socket_path = daemon_socket_path();
   let socket_path_cloned = socket_path.clone();
