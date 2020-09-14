@@ -95,9 +95,9 @@ impl Identity {
 }
 
 impl std::fmt::Display for Identity {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} <{}>", self.name, self.email)
-    }
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{} <{}>", self.name, self.email)
+  }
 }
 
 /// General type of a secret.

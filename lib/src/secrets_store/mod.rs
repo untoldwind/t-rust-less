@@ -18,7 +18,7 @@ pub use self::error::{SecretStoreError, SecretStoreResult};
 use crate::block_store::open_block_store;
 use crate::memguard::SecretBytes;
 
-pub trait SecretsStore : std::fmt::Debug {
+pub trait SecretsStore: std::fmt::Debug {
   fn status(&self) -> SecretStoreResult<Status>;
 
   fn lock(&self) -> SecretStoreResult<()>;

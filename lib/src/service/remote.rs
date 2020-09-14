@@ -196,7 +196,7 @@ impl TrustlessService for RemoteTrustlessService {
 
 impl std::fmt::Debug for RemoteTrustlessService {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-      write!(f, "Remote Trustless service")
+    write!(f, "Remote Trustless service")
   }
 }
 
@@ -386,9 +386,9 @@ impl SecretsStore for RemoteSecretsStore {
 }
 
 impl std::fmt::Debug for RemoteSecretsStore {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-      write!(f, "Remote secrets store")
-    }
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "Remote secrets store")
+  }
 }
 
 struct RemoteClipboardControl {

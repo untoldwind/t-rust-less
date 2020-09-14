@@ -302,7 +302,7 @@ impl TrustlessService for LocalTrustlessService {
 }
 
 impl std::fmt::Debug for LocalTrustlessService {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Local Trustless service")
-    }
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "Local Trustless service")
+  }
 }
