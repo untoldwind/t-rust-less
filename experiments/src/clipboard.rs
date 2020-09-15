@@ -3,16 +3,18 @@ use std::env;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
-use t_rust_less_lib::api::{Event, EventHub};
 use t_rust_less_lib::clipboard::{Clipboard, SelectionProvider};
+use t_rust_less_lib::{
+  api::{Event, EventHub},
+  memguard::weak::ZeroingString,
+  memguard::weak::ZeroingStringExt,
+};
 
 struct DummyProvider {
   counter: u32,
 }
 
 impl SelectionProvider for DummyProvider {
-  type Content = String;
-
   fn current_selection_name(&self) -> Option<String> {
     if self.counter < 10 {
       Some("counter".to_string())
@@ -21,12 +23,12 @@ impl SelectionProvider for DummyProvider {
     }
   }
 
-  fn get_selection(&mut self) -> Option<String> {
+  fn get_selection(&mut self) -> Option<ZeroingString> {
     self.counter += 1;
 
     if self.counter < 10 {
       info!("Providing {}", self.counter);
-      Some(format!("Something {}", self.counter))
+      Some(format!("Something {}", self.counter).to_zeroing())
     } else {
       None
     }

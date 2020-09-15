@@ -1,3 +1,5 @@
+use crate::memguard::weak::ZeroingString;
+
 use super::SelectionProvider;
 use std::time::SystemTime;
 
@@ -14,16 +16,15 @@ struct LastContext<C> {
 /// but to debounce these requests by time. I.e. we consider all requests within 200ms to be part
 /// of the same paste-action.
 ///
-pub struct SelectionDebounce<T, C> {
+pub struct SelectionDebounce<T> {
   underlying: T,
-  last_content: Option<LastContext<C>>,
+  last_content: Option<LastContext<ZeroingString>>,
   startup_timestamp: SystemTime,
 }
 
-impl<T, C> SelectionDebounce<T, C>
+impl<T> SelectionDebounce<T>
 where
-  T: SelectionProvider<Content = C>,
-  C: AsRef<[u8]> + Send + Sync + Clone,
+  T: SelectionProvider,
 {
   pub fn new(underlying: T) -> Self {
     SelectionDebounce {
@@ -34,18 +35,15 @@ where
   }
 }
 
-impl<T, C> SelectionProvider for SelectionDebounce<T, C>
+impl<T> SelectionProvider for SelectionDebounce<T>
 where
-  T: SelectionProvider<Content = C>,
-  C: AsRef<[u8]> + Send + Sync + Clone,
+  T: SelectionProvider,
 {
-  type Content = C;
-
   fn current_selection_name(&self) -> Option<String> {
     self.underlying.current_selection_name()
   }
 
-  fn get_selection(&mut self) -> Option<Self::Content> {
+  fn get_selection(&mut self) -> Option<ZeroingString> {
     let now = SystemTime::now();
     if let Some(last_content) = self.last_content.take() {
       if last_content.initial {

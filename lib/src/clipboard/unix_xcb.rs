@@ -170,6 +170,10 @@ impl Drop for Clipboard {
   }
 }
 
+unsafe impl Send for Context {}
+
+unsafe impl Sync for Context {}
+
 fn run<T>(context: Arc<Context>, selection_provider: T)
 where
   T: SelectionProvider,

@@ -21,8 +21,6 @@ impl SecretsProvider {
 }
 
 impl SelectionProvider for SecretsProvider {
-  type Content = ZeroingString;
-
   fn current_selection_name(&self) -> Option<String> {
     self.properties_stack.first().cloned()
   }
