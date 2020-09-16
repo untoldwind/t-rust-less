@@ -57,7 +57,6 @@ impl SelectionProvider for SelectionDebounce {
         }
       }
     }
-    self.underlying.write().ok()?.get_selection();
 
     match self.underlying.write().ok()?.get_selection() {
       Some(content) => {
