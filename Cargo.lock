@@ -837,15 +837,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "itertools"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "284f18f85651fe11e8a991b2adb42cb078325c996ed026d994719efcfca1d54b"
-dependencies = [
- "either",
-]
-
-[[package]]
 name = "itoa"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1652,7 +1643,7 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "atty",
  "chrono",
@@ -1675,7 +1666,7 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less-daemon"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "capnp",
  "capnp-rpc",
@@ -1709,7 +1700,7 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less-lib"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "byteorder",
  "capnp",
@@ -1722,7 +1713,7 @@ dependencies = [
  "dirs 2.0.2",
  "futures",
  "hmac",
- "itertools 0.9.0",
+ "itertools",
  "libc",
  "log",
  "mach_o_sys",
@@ -1753,7 +1744,7 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less-native"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "byteorder",
  "env_logger",
@@ -2082,7 +2073,7 @@ dependencies = [
  "chrono",
  "derive_builder",
  "fancy-regex",
- "itertools 0.8.2",
+ "itertools",
  "lazy_static",
  "quick-error",
  "regex",
