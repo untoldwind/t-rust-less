@@ -11,9 +11,9 @@ dependencies = [
 
 [[package]]
 name = "ahash"
-version = "0.4.4"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d66721683190aeea775c737eee925aea24719058d86d815e8ee121dd9f37d19"
+checksum = "0adac150c2dd5a9c864d054e07bda5e6bc010cd10036ea5f17e82a2f5867f735"
 dependencies = [
  "const-random",
 ]
@@ -283,9 +283,9 @@ dependencies = [
 
 [[package]]
 name = "crossterm"
-version = "0.17.8"
+version = "0.17.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "858085e389f71d31a6909f2b55a56b87d1cb8b168c0f513dcbed5e66a3e1039c"
+checksum = "6f4919d60f26ae233e14233cc39746c8c8bb8cd7b05840ace83604917b51b6c7"
 dependencies = [
  "bitflags",
  "crossterm_winapi 0.6.1",
@@ -376,7 +376,7 @@ version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85fc5b6a8ba2f1bc743892068bde466438f78d6247197e2dc094bfd53fdea4b7"
 dependencies = [
- "ahash 0.4.4",
+ "ahash 0.4.5",
  "chrono",
  "crossbeam-channel",
  "enum-map",
@@ -1491,15 +1491,15 @@ checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
 
 [[package]]
 name = "serde"
-version = "1.0.115"
+version = "1.0.116"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e54c9a88f2da7238af84b5101443f0c0d0a3bbdc455e34a5c9497b1903ed55d5"
+checksum = "96fe57af81d28386a513cbc6858332abc6117cfdb5999647c6444b8f43a370a5"
 
 [[package]]
 name = "serde_derive"
-version = "1.0.115"
+version = "1.0.116"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "609feed1d0a73cc36a0182a840a9b37b4a82f0b1150369f0536a9e3f2a31dc48"
+checksum = "f630a6370fd8e457873b4bd2ffdae75408bc291ba72be773772a4c2a065d9ae8"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1629,9 +1629,9 @@ checksum = "343f3f510c2915908f155e94f17220b19ccfacf2a64a2a5d8004f2c3e311e7fd"
 
 [[package]]
 name = "syn"
-version = "1.0.40"
+version = "1.0.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "963f7d3cc59b59b9325165add223142bbf1df27655d07789f109896d353d8350"
+checksum = "6690e3e9f692504b941dc6c3b188fd28df054f7fb8469ab40680df52fdcc842b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2054,18 +2054,18 @@ checksum = "e71b85d8b1b8bfaf4b5c834187554d201a8cd621c2bbfa33efd41a3ecabd48b2"
 
 [[package]]
 name = "zeroize"
-version = "1.1.0"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cbac2ed2ba24cc90f5e06485ac8c7c1e5449fe8911aef4d8877218af021a5b8"
+checksum = "05f33972566adbd2d3588b0491eb94b98b43695c4ef897903470ede4f3f5a28a"
 dependencies = [
  "zeroize_derive",
 ]
 
 [[package]]
 name = "zeroize_derive"
-version = "1.0.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de251eec69fc7c1bc3923403d18ececb929380e016afe103da75f396704f8ca2"
+checksum = "c3f369ddb18862aba61aa49bf31e74d29f0f162dec753063200e1dc084345d16"
 dependencies = [
  "proc-macro2",
  "quote",
