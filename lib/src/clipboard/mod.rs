@@ -15,7 +15,7 @@ pub use self::error::*;
 pub use self::unix_none::Clipboard;
 #[cfg(all(unix, feature = "with_x11"))]
 pub use self::unix_x11::Clipboard;
-#[cfg(all(unix, feature = "with_xcb"))]
+#[cfg(all(unix, feature = "with_xcb", not(feature = "with_x11")))]
 pub use self::unix_xcb::Clipboard;
 #[cfg(windows)]
 pub use self::windows::Clipboard;

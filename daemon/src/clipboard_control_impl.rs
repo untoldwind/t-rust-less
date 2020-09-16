@@ -43,6 +43,16 @@ impl clipboard_control::Server for ClipboardControlImpl {
     Promise::ok(())
   }
 
+  fn provide_next(
+    &mut self,
+    _: clipboard_control::ProvideNextParams,
+    _: clipboard_control::ProvideNextResults,
+  ) -> Promise<(), ::capnp::Error> {
+    stry!(self.clipboard_control.provide_next());
+
+    Promise::ok(())
+  }
+
   fn destroy(
     &mut self,
     _: clipboard_control::DestroyParams,

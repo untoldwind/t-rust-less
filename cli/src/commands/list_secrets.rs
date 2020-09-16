@@ -42,7 +42,7 @@ pub fn list_secrets(service: Arc<dyn TrustlessService>, store_name: String, filt
     };
     list_secrets_ui(&mut siv, initial_state, status);
   } else {
-    let list = secrets_store.list(filter).ok_or_exit("List entries");
+    let list = secrets_store.list(&filter).ok_or_exit("List entries");
 
     for entry in list.entries {
       println!("{:?}", entry);
@@ -107,10 +107,7 @@ fn update_name_filter(s: &mut Cursive, name_filter: &str, _: usize) {
       Some(name_filter.to_string())
     };
 
-    let mut list = state
-      .secrets_store
-      .list(state.filter.clone())
-      .ok_or_exit("List entries");
+    let mut list = state.secrets_store.list(&state.filter).ok_or_exit("List entries");
     list.entries.sort();
     list.entries
   };
@@ -211,10 +208,7 @@ fn status_text(status: &Status) -> String {
 
 fn create_list_view(screen_size: Vec2, state: &ListUIState) -> ResizedView<LinearLayout> {
   let mut entry_select = SelectView::new();
-  let list = state
-    .secrets_store
-    .list(state.filter.clone())
-    .ok_or_exit("List entries");
+  let list = state.secrets_store.list(&state.filter).ok_or_exit("List entries");
   let initial_selected = list.entries.first().map(|e| e.entry.id.clone());
   entry_select.add_all(list.entries.into_iter().map(entry_list_item));
   entry_select.set_on_select(update_selection);

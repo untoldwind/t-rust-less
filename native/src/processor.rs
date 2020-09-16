@@ -134,7 +134,7 @@ where
       }
       Command::ListSecrets { store_name, filter } => self
         .open_store(&store_name)
-        .and_then(move |store| Ok(store.list(filter)?))
+        .and_then(move |store| Ok(store.list(&filter)?))
         .into(),
       Command::GetSecret { store_name, secret_id } => self
         .open_store(&store_name)

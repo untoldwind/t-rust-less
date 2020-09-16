@@ -26,6 +26,10 @@ impl Clipboard {
     unimplemented!()
   }
 
+  pub fn provide_next(&self) {
+    unimplemented!()
+  }
+
   pub fn destroy(&self) {
     unimplemented!()
   }

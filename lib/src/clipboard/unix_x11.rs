@@ -25,7 +25,7 @@ struct Context {
   window: xlib::Window,
   atoms: Atoms,
   open: AtomicBool,
-  providing: RwLock<Option<String>>,
+  provider: Arc<RwLock<dyn SelectionProvider>>,
   store_name: String,
   secret_id: String,
   event_hub: Arc<dyn EventHub>,
@@ -37,6 +37,7 @@ impl Context {
     store_name: String,
     secret_id: String,
     event_hub: Arc<dyn EventHub>,
+    provider: Arc<RwLock<dyn SelectionProvider>>,
   ) -> ClipboardResult<Self> {
     unsafe {
       let c_display_name = CString::new(display_name)?;
@@ -80,7 +81,7 @@ impl Context {
         window,
         atoms,
         open: AtomicBool::new(true),
-        providing: RwLock::new(None),
+        provider,
         store_name,
         secret_id,
         event_hub,
@@ -132,7 +133,13 @@ impl Context {
   }
 
   fn currently_providing(&self) -> Option<String> {
-    self.providing.read().unwrap().clone()
+    self.provider.read().ok()?.current_selection_name()
+  }
+
+  fn provide_next(&self) {
+    if let Ok(mut provider) = self.provider.write() {
+      provider.get_selection();
+    }
   }
 }
 
@@ -164,11 +171,17 @@ impl Clipboard {
   where
     T: SelectionProvider + 'static,
   {
-    let context = Arc::new(Context::new(display_name, store_name, secret_id, event_hub)?);
+    let context = Arc::new(Context::new(
+      display_name,
+      store_name,
+      secret_id,
+      event_hub,
+      Arc::new(RwLock::new(selection_provider)),
+    )?);
 
     let handle = thread::spawn({
       let cloned = context.clone();
-      move || run(cloned, selection_provider)
+      move || run(cloned)
     });
 
     Ok(Clipboard {
@@ -189,6 +202,10 @@ impl Clipboard {
     self.context.currently_providing()
   }
 
+  pub fn provide_next(&self) {
+    self.context.provide_next()
+  }
+
   pub fn wait(&self) -> ClipboardResult<()> {
     let mut maybe_handle = self.handle.write().unwrap();
     if let Some(handle) = maybe_handle.take() {
@@ -204,11 +221,8 @@ impl Drop for Clipboard {
   }
 }
 
-fn run<T>(context: Arc<Context>, selection_provider: T)
-where
-  T: SelectionProvider,
-{
-  let mut debounce = SelectionDebounce::new(selection_provider);
+fn run(context: Arc<Context>) {
+  let mut debounce = SelectionDebounce::new(context.provider.clone());
 
   unsafe {
     if !context.own_selection() {
@@ -218,8 +232,6 @@ where
     let mut event: xlib::XEvent = MaybeUninit::zeroed().assume_init();
 
     loop {
-      *context.providing.write().unwrap() = debounce.current_selection_name();
-
       xlib::XFlush(context.display);
       debug!("Wating for event");
       xlib::XNextEvent(context.display, &mut event);

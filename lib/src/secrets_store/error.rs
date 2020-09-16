@@ -48,6 +48,8 @@ impl fmt::Display for SecretStoreError {
   }
 }
 
+impl std::error::Error for SecretStoreError {}
+
 pub type SecretStoreResult<T> = Result<T, SecretStoreError>;
 
 error_convert_from!(argon2::Error, SecretStoreError, Cipher(display));

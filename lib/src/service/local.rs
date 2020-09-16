@@ -34,6 +34,13 @@ impl ClipboardControl for ClipboardHolder {
     }
   }
 
+  fn provide_next(&self) -> ServiceResult<()> {
+    if let ClipboardHolder::Providing(clipboard) = &self {
+      clipboard.provide_next();
+    }
+    Ok(())
+  }
+
   fn destroy(&self) -> ServiceResult<()> {
     if let ClipboardHolder::Providing(clipboard) = &self {
       clipboard.destroy();

@@ -54,7 +54,7 @@ impl Index {
     Err(SecretStoreError::NotFound)
   }
 
-  pub fn filter_entries(&self, filter: SecretListFilter) -> SecretStoreResult<SecretList> {
+  pub fn filter_entries(&self, filter: &SecretListFilter) -> SecretStoreResult<SecretList> {
     let mut data_borrow: &[u8] = &self.data.borrow();
     let reader = serialize::read_message_from_flat_slice(&mut data_borrow, message::ReaderOptions::new())?;
     let index = reader.get_root::<index::Reader>()?;

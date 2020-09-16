@@ -246,6 +246,26 @@ impl From<Vec<u8>> for SecretBytes {
   }
 }
 
+impl From<String> for SecretBytes {
+  fn from(mut str: String) -> Self {
+    unsafe {
+      let bytes = str.as_bytes_mut();
+      let ptr = alloc::malloc(bytes.len());
+
+      copy_nonoverlapping(bytes.as_ptr(), ptr.as_ptr(), bytes.len());
+      memory::memzero(bytes.as_mut_ptr(), bytes.len());
+      alloc::mprotect(ptr, alloc::Prot::NoAccess);
+
+      SecretBytes {
+        ptr,
+        size: bytes.len(),
+        capacity: bytes.len(),
+        locks: AtomicIsize::new(0),
+      }
+    }
+  }
+}
+
 pub struct Ref<'a> {
   bytes: &'a SecretBytes,
 }
@@ -375,6 +395,12 @@ impl<'a> io::Write for RefMut<'a> {
 
   fn flush(&mut self) -> io::Result<()> {
     Ok(())
+  }
+}
+
+impl std::fmt::Debug for SecretBytes {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    write!(f, "<Secret>")
   }
 }
 

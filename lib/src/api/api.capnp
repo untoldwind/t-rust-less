@@ -17,7 +17,8 @@ struct Option(T) {
 interface ClipboardControl {
     isDone @0 () -> (isDone: Bool);
     currentlyProviding @1 () -> (providing: Option(Text));
-    destroy @2 ();
+    provideNext @2 ();
+    destroy @3 ();
 }
 
 enum EventType {

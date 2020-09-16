@@ -1,6 +1,7 @@
 use crate::memguard::weak::ZeroingString;
 
 use super::SelectionProvider;
+use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 
 struct LastContext<C> {
@@ -16,17 +17,14 @@ struct LastContext<C> {
 /// but to debounce these requests by time. I.e. we consider all requests within 200ms to be part
 /// of the same paste-action.
 ///
-pub struct SelectionDebounce<T> {
-  underlying: T,
+pub struct SelectionDebounce {
+  underlying: Arc<RwLock<dyn SelectionProvider>>,
   last_content: Option<LastContext<ZeroingString>>,
   startup_timestamp: SystemTime,
 }
 
-impl<T> SelectionDebounce<T>
-where
-  T: SelectionProvider,
-{
-  pub fn new(underlying: T) -> Self {
+impl SelectionDebounce {
+  pub fn new(underlying: Arc<RwLock<dyn SelectionProvider>>) -> Self {
     SelectionDebounce {
       underlying,
       last_content: None,
@@ -35,12 +33,9 @@ where
   }
 }
 
-impl<T> SelectionProvider for SelectionDebounce<T>
-where
-  T: SelectionProvider,
-{
+impl SelectionProvider for SelectionDebounce {
   fn current_selection_name(&self) -> Option<String> {
-    self.underlying.current_selection_name()
+    self.underlying.read().ok()?.current_selection_name()
   }
 
   fn get_selection(&mut self) -> Option<ZeroingString> {
@@ -62,7 +57,9 @@ where
         }
       }
     }
-    match self.underlying.get_selection() {
+    self.underlying.write().ok()?.get_selection();
+
+    match self.underlying.write().ok()?.get_selection() {
       Some(content) => {
         let initial = match now.duration_since(self.startup_timestamp) {
           Ok(elapsed) if elapsed.as_millis() < 200 => true,

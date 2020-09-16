@@ -76,7 +76,8 @@ fn test_process_change_logs() {
   )
   .is_ok();
 
-  let mut all_matches = index.filter_entries(Default::default()).unwrap();
+  let filter = Default::default();
+  let mut all_matches = index.filter_entries(&filter).unwrap();
 
   assert_that(&all_matches.entries).has_length(10);
 
@@ -95,7 +96,7 @@ fn test_process_change_logs() {
   )
   .is_ok();
 
-  all_matches = index.filter_entries(Default::default()).unwrap();
+  all_matches = index.filter_entries(&filter).unwrap();
 
   assert_that(&all_matches.entries).has_length(15);
 }

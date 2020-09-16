@@ -383,7 +383,7 @@ impl PartialEq for SecretEntryMatch {
 /// Convenient wrapper of a list of SecretEntryMatch'es.
 ///
 /// Also contains a unique list of tags of all secrets (e.g. to support autocompletion)
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct SecretList {
   pub all_tags: Vec<ZeroingString>,
   pub entries: Vec<SecretEntryMatch>,
@@ -658,9 +658,15 @@ impl SecretVersionRef {
   }
 }
 
-/// Convenient wrapper for the current version of a Secret.
+impl std::fmt::Display for SecretVersionRef {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "{}", self.timestamp.format("%Y-%m-%d %H:%M:%S"))
+  }
+}
+
+/// Reperentation of a secret with all its versions.
 ///
-/// The is the default view when retrieving a specific Secret.
+/// The is the default view when retrieving a specific secret.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Secret {
   pub id: String,

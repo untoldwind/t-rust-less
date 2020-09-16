@@ -21,6 +21,8 @@ pub trait ClipboardControl {
 
   fn currently_providing(&self) -> ServiceResult<Option<String>>;
 
+  fn provide_next(&self) -> ServiceResult<()>;
+
   fn destroy(&self) -> ServiceResult<()>;
 }
 

@@ -267,7 +267,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     Ok(())
   }
 
-  fn list(&self, filter: SecretListFilter) -> SecretStoreResult<SecretList> {
+  fn list(&self, filter: &SecretListFilter) -> SecretStoreResult<SecretList> {
     let maybe_unlocked_user = self.unlocked_user.read()?;
     let unlocked_user = maybe_unlocked_user.as_ref().ok_or(SecretStoreError::Locked)?;
 

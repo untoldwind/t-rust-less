@@ -107,7 +107,7 @@ impl secrets_store::Server for SecretsStoreImpl {
       .get()
       .and_then(secrets_store::list_params::Reader::get_filter)
       .and_then(SecretListFilter::from_reader));
-    let secrets_list = stry!(self.secrets_store.list(filter));
+    let secrets_list = stry!(self.secrets_store.list(&filter));
 
     stry!(results.get().get_list().and_then(|l| secrets_list.to_builder(l)));
 

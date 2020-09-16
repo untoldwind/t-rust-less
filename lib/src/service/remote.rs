@@ -311,7 +311,7 @@ impl SecretsStore for RemoteSecretsStore {
     )
   }
 
-  fn list(&self, filter: SecretListFilter) -> SecretStoreResult<SecretList> {
+  fn list(&self, filter: &SecretListFilter) -> SecretStoreResult<SecretList> {
     let mut rt = self.runtime.borrow_mut();
     let mut request = self.client.list_request();
     filter.to_builder(request.get().init_filter())?;
@@ -438,6 +438,20 @@ impl ClipboardControl for RemoteClipboardControl {
           None => Ok(None),
           Some(name) => Ok(Some(name.to_string())),
         }),
+    )
+  }
+
+  fn provide_next(&self) -> ServiceResult<()> {
+    let mut rt = self.runtime.borrow_mut();
+    let request = self.client.provide_next_request();
+
+    self.local_set.block_on(
+      &mut rt,
+      request.send().promise.map(|response| {
+        response?.get()?;
+
+        Ok(())
+      }),
     )
   }
 

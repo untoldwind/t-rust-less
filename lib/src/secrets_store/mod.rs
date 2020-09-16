@@ -28,7 +28,7 @@ pub trait SecretsStore: std::fmt::Debug {
   fn add_identity(&self, identity: Identity, passphrase: SecretBytes) -> SecretStoreResult<()>;
   fn change_passphrase(&self, passphrase: SecretBytes) -> SecretStoreResult<()>;
 
-  fn list(&self, filter: SecretListFilter) -> SecretStoreResult<SecretList>;
+  fn list(&self, filter: &SecretListFilter) -> SecretStoreResult<SecretList>;
   fn update_index(&self) -> SecretStoreResult<()>;
 
   fn add(&self, secret_version: SecretVersion) -> SecretStoreResult<String>;

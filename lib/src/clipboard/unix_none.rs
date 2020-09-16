@@ -15,18 +15,18 @@ impl Clipboard {
   where
     T: SelectionProvider + 'static,
   {
-    unimplemented!()
+    Ok(Clipboard {})
   }
 
   pub fn is_open(&self) -> bool {
-    unimplemented!()
+    false
   }
 
   pub fn currently_providing(&self) -> Option<String> {
-    unimplemented!()
+    None
   }
 
-  pub fn destroy(&self) {
-    unimplemented!()
-  }
+  pub fn provide_next(&self) {}
+
+  pub fn destroy(&self) {}
 }

@@ -26,7 +26,7 @@ struct Context {
   pub window: Window,
   pub atoms: Atoms,
   open: AtomicBool,
-  providing: RwLock<Option<String>>,
+  provider: Arc<RwLock<dyn SelectionProvider>>,
   store_name: String,
   secret_id: String,
   event_hub: Arc<dyn EventHub>,
@@ -38,6 +38,7 @@ impl Context {
     store_name: String,
     secret_id: String,
     event_hub: Arc<dyn EventHub>,
+    provider: Arc<RwLock<dyn SelectionProvider>>,
   ) -> ClipboardResult<Self> {
     let (connection, screen) = Connection::connect(Some(display_name))?;
     let window = connection.generate_id();
@@ -84,10 +85,10 @@ impl Context {
       window,
       atoms,
       open: AtomicBool::new(true),
-      providing: RwLock::new(None),
       store_name,
       secret_id,
       event_hub,
+      provider,
     })
   }
 
@@ -110,7 +111,13 @@ impl Context {
   }
 
   fn currently_providing(&self) -> Option<String> {
-    self.providing.read().unwrap().clone()
+    self.provider.read().ok()?.current_selection_name()
+  }
+
+  fn provide_next(&self) {
+    if let Ok(mut provider) = self.provider.write() {
+      provider.get_selection();
+    }
   }
 }
 
@@ -130,11 +137,17 @@ impl Clipboard {
   where
     T: SelectionProvider + 'static,
   {
-    let context = Arc::new(Context::new(display_name, store_name, secret_id, event_hub)?);
+    let context = Arc::new(Context::new(
+      display_name,
+      store_name,
+      secret_id,
+      event_hub,
+      Arc::new(RwLock::new(selection_provider)),
+    )?);
 
     let handle = thread::spawn({
       let cloned = context.clone();
-      move || run(cloned, selection_provider)
+      move || run(cloned)
     });
 
     Ok(Clipboard {
@@ -153,6 +166,10 @@ impl Clipboard {
 
   pub fn currently_providing(&self) -> Option<String> {
     self.context.currently_providing()
+  }
+
+  pub fn provide_next(&self) {
+    self.context.provide_next()
   }
 
   pub fn wait(&self) -> ClipboardResult<()> {
@@ -174,11 +191,8 @@ unsafe impl Send for Context {}
 
 unsafe impl Sync for Context {}
 
-fn run<T>(context: Arc<Context>, selection_provider: T)
-where
-  T: SelectionProvider,
-{
-  let mut debounce = SelectionDebounce::new(selection_provider);
+fn run(context: Arc<Context>) {
+  let mut debounce = SelectionDebounce::new(context.provider.clone());
 
   if xcb::set_selection_owner_checked(
     &context.connection,
@@ -195,7 +209,6 @@ where
   context.connection.flush();
 
   while let Some(event) = context.connection.wait_for_event() {
-    *context.providing.write().unwrap() = debounce.current_selection_name();
     match event.response_type() & !0x80 {
       xcb::SELECTION_REQUEST => {
         let event = unsafe { xcb::cast_event::<xcb::SelectionRequestEvent>(&event) };
