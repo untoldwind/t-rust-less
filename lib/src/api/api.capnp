@@ -37,6 +37,7 @@ struct Event {
     identity @2: Identity;
     secretId @3: Text;
     property @4: Text;
+    blockId @5: Text;
 }
 
 interface EventSubscription {
@@ -77,7 +78,7 @@ interface Service {
     getDefaultStore @3 () -> (storeName : Option(Text));
     setDefaultStore @4 (storeName : Text);
     openStore @5 (storeName : Text) -> (store: SecretsStore);
-    secretToClipboard @6 (storeName : Text, secretId : Text, properties : List(Text), displayName: Text) -> (clipboardControl: ClipboardControl);
+    secretToClipboard @6 (storeName : Text, blockId : Text, properties : List(Text), displayName: Text) -> (clipboardControl: ClipboardControl);
     addEventHandler @7 (handler: EventHandler) -> (subscription: EventSubscription);
     generateId @8 () -> (id: Text);
     generatePassword @9 (param: PasswordGeneratorParam) -> (password: Text);

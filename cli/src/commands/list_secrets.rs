@@ -149,18 +149,18 @@ fn entry_list_item(entry_match: SecretEntryMatch) -> (StyledString, SecretEntry)
 
 fn secret_to_clipboard(properties: &'static [&'static str]) -> impl Fn(&mut Cursive) {
   move |s: &mut Cursive| {
-    let maybe_entry = {
-      let entry_select = s.find_name::<SelectView<SecretEntry>>("entry_list").unwrap();
-      entry_select.selection()
+    let maybe_secret = {
+      let secret_view = s.find_name::<SecretView>("secret_view").unwrap();
+      secret_view.current_secret()
     };
     let state = s.user_data::<ListUIState>().unwrap();
 
-    if let Some(entry) = maybe_entry {
+    if let Some(secret) = maybe_secret {
       state
         .service
         .secret_to_clipboard(
           &state.store_name,
-          &entry.id,
+          &secret.current_block_id,
           properties,
           &env::var("DISPLAY").unwrap_or_else(|_| ":0".to_string()),
         )

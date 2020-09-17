@@ -123,9 +123,9 @@ impl service::Server for ServiceImpl {
     let store_name = stry!(params
       .get()
       .and_then(service::secret_to_clipboard_params::Reader::get_store_name));
-    let secret_id = stry!(params
+    let block_id = stry!(params
       .get()
-      .and_then(service::secret_to_clipboard_params::Reader::get_secret_id));
+      .and_then(service::secret_to_clipboard_params::Reader::get_block_id));
     let properties = stry!(params
       .get()
       .and_then(service::secret_to_clipboard_params::Reader::get_properties)
@@ -136,7 +136,7 @@ impl service::Server for ServiceImpl {
 
     let clipboard_control = stry!(self
       .service
-      .secret_to_clipboard(store_name, secret_id, &properties, &display_name));
+      .secret_to_clipboard(store_name, block_id, &properties, &display_name));
 
     results
       .get()

@@ -253,24 +253,24 @@ impl TrustlessService for LocalTrustlessService {
   fn secret_to_clipboard(
     &self,
     store_name: &str,
-    secret_id: &str,
+    block_id: &str,
     properties: &[&str],
     display_name: &str,
   ) -> ServiceResult<Arc<dyn ClipboardControl>> {
     #[cfg(unix)]
     {
       let store = self.open_store(store_name)?;
-      let secret = store.get(secret_id)?;
-      let secret_provider = SecretsProvider::new(secret.current, properties);
+      let secret_version = store.get_version(block_id)?;
+      let secret_provider = SecretsProvider::new(secret_version, properties);
       let mut clipboard = self.clipboard.write()?;
 
-      info!("Providing {} for {} in {}", properties.join(","), secret_id, store_name);
+      info!("Providing {} for {} in {}", properties.join(","), block_id, store_name);
 
       let next_clipboard = Arc::new(ClipboardHolder::Providing(Clipboard::new(
         display_name,
         secret_provider,
         store_name.to_string(),
-        secret_id.to_string(),
+        block_id.to_string(),
         self.event_hub.clone(),
       )?));
       *clipboard = next_clipboard.clone();

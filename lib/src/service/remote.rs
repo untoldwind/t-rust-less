@@ -121,7 +121,7 @@ impl TrustlessService for RemoteTrustlessService {
   fn secret_to_clipboard(
     &self,
     store_name: &str,
-    secret_id: &str,
+    block_id: &str,
     properties: &[&str],
     display_name: &str,
   ) -> ServiceResult<Arc<dyn ClipboardControl>> {
@@ -129,7 +129,7 @@ impl TrustlessService for RemoteTrustlessService {
     let mut request = self.client.secret_to_clipboard_request();
 
     request.get().set_store_name(store_name);
-    request.get().set_secret_id(secret_id);
+    request.get().set_block_id(block_id);
     set_text_list(request.get().init_properties(properties.len() as u32), properties)?;
     request.get().set_display_name(display_name);
 

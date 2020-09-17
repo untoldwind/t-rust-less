@@ -27,7 +27,7 @@ struct Context {
   open: AtomicBool,
   provider: Arc<RwLock<dyn SelectionProvider>>,
   store_name: String,
-  secret_id: String,
+  block_id: String,
   event_hub: Arc<dyn EventHub>,
 }
 
@@ -35,7 +35,7 @@ impl Context {
   fn new(
     display_name: &str,
     store_name: String,
-    secret_id: String,
+    block_id: String,
     event_hub: Arc<dyn EventHub>,
     provider: Arc<RwLock<dyn SelectionProvider>>,
   ) -> ClipboardResult<Self> {
@@ -83,7 +83,7 @@ impl Context {
         open: AtomicBool::new(true),
         provider,
         store_name,
-        secret_id,
+        block_id,
         event_hub,
       })
     }
@@ -165,7 +165,7 @@ impl Clipboard {
     display_name: &str,
     selection_provider: T,
     store_name: String,
-    secret_id: String,
+    block_id: String,
     event_hub: Arc<dyn EventHub>,
   ) -> ClipboardResult<Clipboard>
   where
@@ -174,7 +174,7 @@ impl Clipboard {
     let context = Arc::new(Context::new(
       display_name,
       store_name,
-      secret_id,
+      block_id,
       event_hub,
       Arc::new(RwLock::new(selection_provider)),
     )?);
@@ -269,7 +269,7 @@ fn run(context: Arc<Context>) {
                 if let Some(property) = debounce.current_selection_name() {
                   context.event_hub.send(Event::ClipboardProviding {
                     store_name: context.store_name.clone(),
-                    secret_id: context.secret_id.clone(),
+                    block_id: context.block_id.clone(),
                     property,
                   });
                 }

@@ -27,7 +27,7 @@ pub enum Event {
   },
   ClipboardProviding {
     store_name: String,
-    secret_id: String,
+    block_id: String,
     property: String,
   },
   ClipboardDone,
@@ -59,7 +59,7 @@ impl Event {
       }),
       EventType::ClipboardProviding => Ok(Event::ClipboardProviding {
         store_name: reader.get_store_name()?.to_string(),
-        secret_id: reader.get_secret_id()?.to_string(),
+        block_id: reader.get_block_id()?.to_string(),
         property: reader.get_property()?.to_string(),
       }),
       EventType::ClipboardDone => Ok(Event::ClipboardDone),
@@ -104,12 +104,12 @@ impl Event {
       }
       Event::ClipboardProviding {
         store_name,
-        secret_id,
+        block_id,
         property,
       } => {
         builder.set_type(EventType::ClipboardProviding);
         builder.set_store_name(store_name);
-        builder.set_secret_id(secret_id);
+        builder.set_block_id(block_id);
         builder.set_property(property);
       }
       Event::ClipboardDone => {

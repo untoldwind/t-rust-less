@@ -70,12 +70,12 @@ where
       Command::SetDefaultStore(store_name) => self.service.set_default_store(&store_name).into(),
       Command::SecretToClipboard {
         store_name,
-        secret_id,
+        block_id,
         properties,
         display_name,
       } => match self.service.secret_to_clipboard(
         &store_name,
-        &secret_id,
+        &block_id,
         &properties.iter().map(String::as_str).collect::<Vec<&str>>(),
         &display_name,
       ) {

@@ -5,7 +5,7 @@ use cursive::views::{DummyView, LinearLayout};
 use cursive::Cursive;
 use std::env;
 use std::sync::Arc;
-use t_rust_less_lib::api::{PROPERTY_NOTES, PROPERTY_PASSWORD, PROPERTY_TOTP_URL};
+use t_rust_less_lib::api::{PROPERTY_NOTES, PROPERTY_PASSWORD, PROPERTY_TOTP_URL, Secret};
 use t_rust_less_lib::secrets_store::SecretsStore;
 use t_rust_less_lib::service::TrustlessService;
 
@@ -14,6 +14,7 @@ pub struct SecretView {
   store_name: String,
   secrets_store: Arc<dyn SecretsStore>,
   base_view: Option<LinearLayout>,
+  current_secret: Option<Secret>,
 }
 
 impl SecretView {
@@ -28,6 +29,7 @@ impl SecretView {
       store_name,
       secrets_store,
       base_view: None,
+      current_secret: None,
     };
 
     if let Some(secret_id) = maybe_secret_id {
@@ -40,6 +42,10 @@ impl SecretView {
     self.base_view = None;
   }
 
+  pub fn current_secret(&self) -> Option<Secret> {
+    self.current_secret.clone()
+  }
+  
   pub fn show_secret(&mut self, secret_id: &str) {
     match self.secrets_store.get(secret_id) {
       Ok(secret) => {
@@ -76,8 +82,12 @@ impl SecretView {
         }
 
         self.base_view = Some(layout);
+        self.current_secret = Some(secret);
       }
-      _ => self.base_view = None,
+      _ => {
+        self.base_view = None;
+        self.current_secret = None;
+      }
     }
   }
 

@@ -42,7 +42,7 @@ pub trait TrustlessService: std::fmt::Debug {
   fn secret_to_clipboard(
     &self,
     store_name: &str,
-    secret_id: &str,
+    block_id: &str,
     properties: &[&str],
     display_name: &str,
   ) -> ServiceResult<Arc<dyn ClipboardControl>>;

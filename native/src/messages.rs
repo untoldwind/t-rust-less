@@ -15,7 +15,7 @@ pub enum Command {
   DirectClipboardAvailable,
   SecretToClipboard {
     store_name: String,
-    secret_id: String,
+    block_id: String,
     properties: Vec<String>,
     display_name: String,
   },
