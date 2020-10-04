@@ -5,7 +5,7 @@ use cursive::views::{DummyView, LinearLayout};
 use cursive::Cursive;
 use std::env;
 use std::sync::Arc;
-use t_rust_less_lib::api::{PROPERTY_NOTES, PROPERTY_PASSWORD, PROPERTY_TOTP_URL, Secret};
+use t_rust_less_lib::api::{Secret, PROPERTY_NOTES, PROPERTY_PASSWORD, PROPERTY_TOTP_URL};
 use t_rust_less_lib::secrets_store::SecretsStore;
 use t_rust_less_lib::service::TrustlessService;
 
@@ -45,7 +45,7 @@ impl SecretView {
   pub fn current_secret(&self) -> Option<Secret> {
     self.current_secret.clone()
   }
-  
+
   pub fn show_secret(&mut self, secret_id: &str) {
     match self.secrets_store.get(secret_id) {
       Ok(secret) => {
