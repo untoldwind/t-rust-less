@@ -60,10 +60,7 @@ impl SelectionProvider for SelectionDebounce {
 
     match self.underlying.write().ok()?.get_selection() {
       Some(content) => {
-        let initial = match now.duration_since(self.startup_timestamp) {
-          Ok(elapsed) if elapsed.as_millis() < 200 => true,
-          _ => false,
-        };
+        let initial = matches!(now.duration_since(self.startup_timestamp), Ok(elapsed) if elapsed.as_millis() < 200);
         self.last_content = Some(LastContext {
           content: content.clone(),
           timestamp: now,
