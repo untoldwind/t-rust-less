@@ -192,6 +192,10 @@ impl TrustlessService for RemoteTrustlessService {
         .map(|response| Ok(response?.get()?.get_password()?.to_string())),
     )
   }
+
+  fn check_autolock(&self) {
+      // This is done by the daemon itself
+  }
 }
 
 impl std::fmt::Debug for RemoteTrustlessService {

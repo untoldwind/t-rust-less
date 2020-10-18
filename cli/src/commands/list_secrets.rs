@@ -27,10 +27,12 @@ pub fn list_secrets(service: Arc<dyn TrustlessService>, store_name: String, filt
   let mut status = secrets_store.status().ok_or_exit("Get status");
 
   if atty::is(Stream::Stdout) {
-    let mut siv = create_tui();
     if status.locked {
+      let mut siv = create_tui();
       status = unlock_store(&mut siv, &secrets_store, &store_name);
+      siv.quit();
     }
+    let mut siv = create_tui();
 
     let initial_state = ListUIState {
       service,
@@ -95,7 +97,7 @@ fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState, status: Status
   );
   siv.set_user_data(initial_state);
 
-  siv.run()
+  siv.run();
 }
 
 fn update_name_filter(s: &mut Cursive, name_filter: &str, _: usize) {
@@ -174,6 +176,7 @@ fn update_status(s: &mut Cursive) {
     let state = s.user_data::<ListUIState>().unwrap();
     let now = Utc::now();
     if state.last_update.is_none() || (now - state.last_update.unwrap()).num_milliseconds() > 400 {
+      state.service.check_autolock();
       state.last_update.replace(now);
       match state.secrets_store.status() {
         Ok(status) => {

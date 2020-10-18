@@ -52,6 +52,8 @@ pub trait TrustlessService: std::fmt::Debug {
   fn generate_id(&self) -> ServiceResult<String>;
 
   fn generate_password(&self, param: PasswordGeneratorParam) -> ServiceResult<String>;
+
+  fn check_autolock(&self);
 }
 
 pub fn create_service() -> ServiceResult<Arc<dyn TrustlessService>> {

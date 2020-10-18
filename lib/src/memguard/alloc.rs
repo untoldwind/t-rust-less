@@ -76,6 +76,7 @@ pub mod Prot {
   pub const NoAccess: Ty = winapi::um::winnt::PAGE_NOACCESS;
   pub const ReadOnly: Ty = winapi::um::winnt::PAGE_READONLY;
   pub const ReadWrite: Ty = winapi::um::winnt::PAGE_READWRITE;
+  pub const WriteOnly: Ty = winapi::um::winnt::PAGE_WRITECOPY;
   pub const WriteCopy: Ty = winapi::um::winnt::PAGE_WRITECOPY;
   pub const Execute: Ty = winapi::um::winnt::PAGE_EXECUTE;
   pub const ReadExec: Ty = winapi::um::winnt::PAGE_EXECUTE_READ;

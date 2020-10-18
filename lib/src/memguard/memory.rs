@@ -194,6 +194,7 @@ mod tests {
   }
 
   #[test]
+  #[cfg(unix)]
   fn memeq_test() {
     #[allow(clippy::needless_pass_by_value)]
     fn check_memeq(x: Vec<u8>, y: Vec<u8>) -> bool {
@@ -211,6 +212,7 @@ mod tests {
   }
 
   #[test]
+  #[cfg(unix)]
   fn memcmp_test() {
     #[allow(clippy::needless_pass_by_value)]
     fn check_memcmp(x: Vec<u8>, y: Vec<u8>) -> bool {

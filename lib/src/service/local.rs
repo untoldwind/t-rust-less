@@ -142,35 +142,6 @@ impl LocalTrustlessService {
       event_hub: Arc::new(LocalEventHub::new()),
     })
   }
-
-  pub fn check_autolock(&self) {
-    let opened_stores = match self.opened_stores.read() {
-      Ok(opened_stores) => opened_stores,
-      Err(err) => {
-        error!("Failed locking opened stores: {}", err);
-        return;
-      }
-    };
-
-    for (name, secrets_store) in opened_stores.iter() {
-      let status = match secrets_store.status() {
-        Ok(status) => status,
-        Err(error) => {
-          error!("Autolocker was unable to query status: {}", error);
-          continue;
-        }
-      };
-
-      if let Some(autolock_at) = status.autolock_at {
-        if autolock_at < Utc::now() {
-          info!("Autolocking {}", name);
-          if let Err(error) = secrets_store.lock() {
-            error!("Autolocker was unable to lock store: {}", error);
-          }
-        }
-      }
-    }
-  }
 }
 
 impl TrustlessService for LocalTrustlessService {
@@ -304,6 +275,35 @@ impl TrustlessService for LocalTrustlessService {
     match param {
       PasswordGeneratorParam::Chars(params) => Ok(generate_chars(params)),
       PasswordGeneratorParam::Words(params) => Ok(generate_words(params)),
+    }
+  }
+
+  fn check_autolock(&self) {
+    let opened_stores = match self.opened_stores.read() {
+      Ok(opened_stores) => opened_stores,
+      Err(err) => {
+        error!("Failed locking opened stores: {}", err);
+        return;
+      }
+    };
+
+    for (name, secrets_store) in opened_stores.iter() {
+      let status = match secrets_store.status() {
+        Ok(status) => status,
+        Err(error) => {
+          error!("Autolocker was unable to query status: {}", error);
+          continue;
+        }
+      };
+
+      if let Some(autolock_at) = status.autolock_at {
+        if autolock_at < Utc::now() {
+          info!("Autolocking {}", name);
+          if let Err(error) = secrets_store.lock() {
+            error!("Autolocker was unable to lock store: {}", error);
+          }
+        }
+      }
     }
   }
 }
