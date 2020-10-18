@@ -17,7 +17,7 @@ use crate::error::ExtResult;
 use log::info;
 use std::sync::Arc;
 use t_rust_less_lib::api_capnp::service;
-use t_rust_less_lib::service::local::LocalTrustlessService;
+use t_rust_less_lib::service::local::{LocalTrustlessService, TrustlessService};
 
 fn main() {
   let matches = cli::app().get_matches();
