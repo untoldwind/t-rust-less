@@ -194,7 +194,7 @@ impl TrustlessService for RemoteTrustlessService {
   }
 
   fn check_autolock(&self) {
-      // This is done by the daemon itself
+    // This is done by the daemon itself
   }
 }
 
