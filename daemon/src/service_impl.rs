@@ -27,41 +27,40 @@ impl service::Server for ServiceImpl {
     mut results: service::ListStoresResults,
   ) -> Promise<(), capnp::Error> {
     let store_names = stry!(self.service.list_stores());
-    let mut result = results.get().init_store_names(store_names.len() as u32);
+    let mut result = results.get().init_store_configs(store_names.len() as u32);
 
-    for (idx, store_name) in store_names.into_iter().enumerate() {
-      result.set(idx as u32, &store_name);
+    for (idx, store_config) in store_names.into_iter().enumerate() {
+      store_config.to_builder(result.reborrow().get(idx as u32));
     }
 
     Promise::ok(())
   }
 
-  fn set_store_config(
+  fn upsert_store_config(
     &mut self,
-    params: service::SetStoreConfigParams,
-    _: service::SetStoreConfigResults,
+    params: service::UpsertStoreConfigParams,
+    _: service::UpsertStoreConfigResults,
   ) -> Promise<(), capnp::Error> {
     let store_config = stry!(params
       .get()
-      .and_then(service::set_store_config_params::Reader::get_store_config)
+      .and_then(service::upsert_store_config_params::Reader::get_store_config)
       .and_then(StoreConfig::from_reader));
 
-    stry!(self.service.set_store_config(store_config));
+    stry!(self.service.upsert_store_config(store_config));
 
     Promise::ok(())
   }
 
-  fn get_store_config(
+  fn delete_store_config(
     &mut self,
-    params: service::GetStoreConfigParams,
-    mut results: service::GetStoreConfigResults,
+    params: service::DeleteStoreConfigParams,
+    _: service::DeleteStoreConfigResults,
   ) -> Promise<(), capnp::Error> {
     let store_name = stry!(params
       .get()
-      .and_then(service::get_store_config_params::Reader::get_store_name));
-    let store_config = stry!(self.service.get_store_config(store_name));
+      .and_then(service::delete_store_config_params::Reader::get_store_name));
 
-    store_config.to_builder(stry!(results.get().get_store_config()));
+    stry!(self.service.delete_store_config(store_name));
 
     Promise::ok(())
   }

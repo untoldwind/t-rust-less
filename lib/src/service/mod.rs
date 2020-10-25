@@ -26,12 +26,17 @@ pub trait ClipboardControl {
   fn destroy(&self) -> ServiceResult<()>;
 }
 
+/// Main entrypoint for all interactions with the t-rust-less system
 pub trait TrustlessService: std::fmt::Debug {
-  fn list_stores(&self) -> ServiceResult<Vec<String>>;
+  /// List all store configurations
+  fn list_stores(&self) -> ServiceResult<Vec<StoreConfig>>;
 
-  fn set_store_config(&self, store_config: StoreConfig) -> ServiceResult<()>;
+  /// Create or update a store configuration
+  fn upsert_store_config(&self, store_config: StoreConfig) -> ServiceResult<()>;
 
-  fn get_store_config(&self, name: &str) -> ServiceResult<StoreConfig>;
+  /// Delete a store configuration
+  /// (This will only delete the configuration, the store itself will be left untouched)
+  fn delete_store_config(&self, name: &str) -> ServiceResult<()>;
 
   fn open_store(&self, name: &str) -> ServiceResult<Arc<dyn SecretsStore>>;
 

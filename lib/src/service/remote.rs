@@ -29,26 +29,26 @@ impl RemoteTrustlessService {
 }
 
 impl TrustlessService for RemoteTrustlessService {
-  fn list_stores(&self) -> ServiceResult<Vec<String>> {
+  fn list_stores(&self) -> ServiceResult<Vec<StoreConfig>> {
     let mut rt = self.runtime.borrow_mut();
     let request = self.client.list_stores_request();
     self.local_set.block_on(
       &mut rt,
       request.send().promise.map(|response| {
-        let names = response?
+        let store_configs = response?
           .get()?
-          .get_store_names()?
+          .get_store_configs()?
           .into_iter()
-          .map(|name| name.map(ToString::to_string))
-          .collect::<capnp::Result<Vec<String>>>()?;
-        Ok(names)
+          .map(StoreConfig::from_reader)
+          .collect::<capnp::Result<Vec<StoreConfig>>>()?;
+        Ok(store_configs)
       }),
     )
   }
 
-  fn set_store_config(&self, store_config: StoreConfig) -> ServiceResult<()> {
+  fn upsert_store_config(&self, store_config: StoreConfig) -> ServiceResult<()> {
     let mut rt = self.runtime.borrow_mut();
-    let mut request = self.client.set_store_config_request();
+    let mut request = self.client.upsert_store_config_request();
     store_config.to_builder(request.get().init_store_config());
 
     self.local_set.block_on(
@@ -61,16 +61,17 @@ impl TrustlessService for RemoteTrustlessService {
     )
   }
 
-  fn get_store_config(&self, name: &str) -> ServiceResult<StoreConfig> {
+  fn delete_store_config(&self, name: &str) -> ServiceResult<()> {
     let mut rt = self.runtime.borrow_mut();
-    let mut request = self.client.get_store_config_request();
+    let mut request = self.client.delete_store_config_request();
     request.get().set_store_name(&name);
+
     self.local_set.block_on(
       &mut rt,
       request.send().promise.map(|response| {
-        let store_config = StoreConfig::from_reader(response?.get()?.get_store_config()?)?;
+        response?.get()?;
 
-        Ok(store_config)
+        Ok(())
       }),
     )
   }

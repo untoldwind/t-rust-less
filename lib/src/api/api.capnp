@@ -72,9 +72,9 @@ struct PasswordGeneratorParam {
 }
 
 interface Service {
-    listStores @0 () -> (storeNames : List(Text));
-    setStoreConfig @1 (storeConfig : StoreConfig);
-    getStoreConfig @2 (storeName : Text) -> (storeConfig : StoreConfig);
+    listStores @0 () -> (storeConfigs : List(StoreConfig));
+    upsertStoreConfig @1 (storeConfig : StoreConfig);
+    deleteStoreConfig @2 (storeName : Text);
     getDefaultStore @3 () -> (storeName : Option(Text));
     setDefaultStore @4 (storeName : Text);
     openStore @5 (storeName : Text) -> (store: SecretsStore);

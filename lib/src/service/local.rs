@@ -145,13 +145,13 @@ impl LocalTrustlessService {
 }
 
 impl TrustlessService for LocalTrustlessService {
-  fn list_stores(&self) -> ServiceResult<Vec<String>> {
+  fn list_stores(&self) -> ServiceResult<Vec<StoreConfig>> {
     let config = self.config.read()?;
 
-    Ok(config.stores.keys().cloned().collect())
+    Ok(config.stores.values().cloned().collect())
   }
 
-  fn set_store_config(&self, store_config: StoreConfig) -> ServiceResult<()> {
+  fn upsert_store_config(&self, store_config: StoreConfig) -> ServiceResult<()> {
     let mut config = self.config.write()?;
 
     if config.default_store.is_none() {
@@ -163,16 +163,14 @@ impl TrustlessService for LocalTrustlessService {
     Ok(())
   }
 
-  fn get_store_config(&self, name: &str) -> ServiceResult<StoreConfig> {
-    let config = self.config.read()?;
+  fn delete_store_config(&self, name: &str) -> ServiceResult<()> {
+    let mut config = self.config.write()?;
 
-    Ok(
-      config
-        .stores
-        .get(name)
-        .cloned()
-        .ok_or_else(|| ServiceError::StoreNotFound(name.to_string()))?,
-    )
+    if config.stores.remove(name).is_some() {
+      write_config(&config)?;
+    }
+
+    Ok(())
   }
 
   fn open_store(&self, name: &str) -> ServiceResult<Arc<dyn SecretsStore>> {

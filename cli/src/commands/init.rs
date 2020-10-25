@@ -13,7 +13,7 @@ use crate::error::exit_with_error;
 use cursive::event::Key;
 use std::fs;
 use std::sync::Arc;
-use t_rust_less_lib::service::{ServiceError, StoreConfig, TrustlessService};
+use t_rust_less_lib::service::{StoreConfig, TrustlessService};
 use url::Url;
 
 pub fn init(service: Arc<dyn TrustlessService>, maybe_store_name: Option<String>) {
@@ -23,9 +23,8 @@ pub fn init(service: Arc<dyn TrustlessService>, maybe_store_name: Option<String>
   }
 
   let store_name = maybe_store_name.unwrap_or_else(|| "t-rust-less-store".to_string());
-  let maybe_config = match service.get_store_config(&store_name) {
-    Ok(config) => Some(config),
-    Err(ServiceError::StoreNotFound(_)) => None,
+  let store_configs = match service.list_stores() {
+    Ok(configs) => configs,
     Err(err) => {
       exit_with_error(
         format!("Checking exsting configuration for store {}: ", store_name),
@@ -34,6 +33,9 @@ pub fn init(service: Arc<dyn TrustlessService>, maybe_store_name: Option<String>
       unreachable!()
     }
   };
+  let maybe_config = store_configs
+    .iter()
+    .find(|config| config.name.as_str() == store_name.as_str());
   let store_path = match maybe_config {
     Some(ref config) => match Url::parse(&config.store_url) {
       Ok(url) => url.path().to_string(),
@@ -106,13 +108,13 @@ fn store_config(s: &mut Cursive) {
     s,
     "Autolock timeout has to be a positive integer:\n{}"
   );
-  let client_id = match service.get_store_config(&store_name) {
-    Ok(previous) => previous.client_id,
-    Err(ServiceError::StoreNotFound(_)) => generate_id(64),
-    Err(err) => {
-      s.add_layer(Dialog::info(format!("Failed checking previous config.\n{}", err)));
-      return;
-    }
+  let store_configs = try_with_dialog!(service.list_stores(), s, "Failed reading existing configuration:\n{}");
+  let client_id = match store_configs
+    .iter()
+    .find(|config| config.name.as_str() == store_name.as_str())
+  {
+    Some(previous) => previous.client_id.clone(),
+    None => generate_id(64),
   };
 
   if store_path.is_empty() {
@@ -130,7 +132,7 @@ fn store_config(s: &mut Cursive) {
     autolock_timeout_secs,
   };
 
-  try_with_dialog!(service.set_store_config(config), s, "Failed to store config:\n{}");
+  try_with_dialog!(service.upsert_store_config(config), s, "Failed to store config:\n{}");
 
   let secrets_store = try_with_dialog!(
     service.open_store(&store_name),

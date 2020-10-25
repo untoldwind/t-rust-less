@@ -8,8 +8,8 @@ use t_rust_less_lib::service::{ServiceError, ServiceResult, StoreConfig};
 #[serde(rename_all = "snake_case")]
 pub enum Command {
   ListStores,
-  GetStoreConfig(String),
-  SetStoreConfig(StoreConfig),
+  UpsertStoreConfig(StoreConfig),
+  DeleteStoreConfig(String),
   GetDefaultStore,
   SetDefaultStore(String),
   DirectClipboardAvailable,
@@ -76,6 +76,7 @@ pub enum CommandResult {
   Error { error: ServiceError, display: String },
   Empty,
   Bool(bool),
+  StoreConfigList(Vec<StoreConfig>),
   StoreConfig(StoreConfig),
   String(String),
   StringList(Vec<String>),
@@ -142,6 +143,12 @@ impl From<Vec<String>> for CommandResult {
 impl From<StoreConfig> for CommandResult {
   fn from(config: StoreConfig) -> Self {
     CommandResult::StoreConfig(config)
+  }
+}
+
+impl From<Vec<StoreConfig>> for CommandResult {
+  fn from(configs: Vec<StoreConfig>) -> Self {
+    CommandResult::StoreConfigList(configs)
   }
 }
 

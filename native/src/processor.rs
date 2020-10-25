@@ -64,8 +64,8 @@ where
   fn process_request(&mut self, request: Request) -> Response {
     let result = match request.command {
       Command::ListStores => self.service.list_stores().into(),
-      Command::GetStoreConfig(store_name) => self.service.get_store_config(&store_name).into(),
-      Command::SetStoreConfig(config) => self.service.set_store_config(config).into(),
+      Command::DeleteStoreConfig(store_name) => self.service.delete_store_config(&store_name).into(),
+      Command::UpsertStoreConfig(config) => self.service.upsert_store_config(config).into(),
       Command::GetDefaultStore => self.service.get_default_store().into(),
       Command::SetDefaultStore(store_name) => self.service.set_default_store(&store_name).into(),
       Command::SecretToClipboard {
