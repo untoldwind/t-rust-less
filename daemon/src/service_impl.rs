@@ -30,7 +30,7 @@ impl service::Server for ServiceImpl {
     let mut result = results.get().init_store_configs(store_names.len() as u32);
 
     for (idx, store_config) in store_names.into_iter().enumerate() {
-      store_config.to_builder(result.reborrow().get(idx as u32));
+      stry!(store_config.to_builder(result.reborrow().get(idx as u32)));
     }
 
     Promise::ok(())

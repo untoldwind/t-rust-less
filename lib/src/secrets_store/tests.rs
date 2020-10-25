@@ -111,6 +111,7 @@ fn add_identity(
     id: id.to_string(),
     name: name.to_string(),
     email: email.to_string(),
+    hidden: false,
   };
 
   secrets_store.add_identity(id.clone(), secret_from_str(passphrase))?;

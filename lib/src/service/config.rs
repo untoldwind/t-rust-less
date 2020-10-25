@@ -1,5 +1,5 @@
-use crate::api_capnp::store_config;
 use crate::service::ServiceResult;
+use crate::{api::read_option, api_capnp::store_config};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{self, File};
@@ -12,6 +12,7 @@ pub struct StoreConfig {
   pub store_url: String,
   pub client_id: String,
   pub autolock_timeout_secs: u64,
+  pub default_identity_id: Option<String>,
 }
 
 impl StoreConfig {
@@ -21,14 +22,24 @@ impl StoreConfig {
       store_url: reader.get_store_url()?.to_string(),
       client_id: reader.get_client_id()?.to_string(),
       autolock_timeout_secs: reader.get_autolock_timeout_secs(),
+      default_identity_id: read_option(reader.get_default_identity_id()?)?.map(ToString::to_string),
     })
   }
 
-  pub fn to_builder(&self, mut builder: store_config::Builder) {
+  pub fn to_builder(&self, mut builder: store_config::Builder) -> capnp::Result<()> {
     builder.set_name(&self.name);
     builder.set_store_url(&self.store_url);
     builder.set_client_id(&self.client_id);
     builder.set_autolock_timeout_secs(self.autolock_timeout_secs);
+    match &self.default_identity_id {
+      Some(default_identity_id) => builder
+        .reborrow()
+        .init_default_identity_id()
+        .set_some(capnp::text::new_reader(default_identity_id.as_bytes())?)?,
+      None => builder.reborrow().init_default_identity_id().set_none(()),
+    }
+
+    Ok(())
   }
 }
 

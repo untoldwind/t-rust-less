@@ -63,6 +63,7 @@ fn create_identity(s: &mut Cursive) {
     id: s.find_name::<EditView>("id").unwrap().get_content().to_string(),
     name: s.find_name::<EditView>("name").unwrap().get_content().to_string(),
     email: s.find_name::<EditView>("email").unwrap().get_content().to_string(),
+    hidden: false,
   };
   let passphrase = s.find_name::<PasswordView>("passphrase").unwrap().get_content();
 

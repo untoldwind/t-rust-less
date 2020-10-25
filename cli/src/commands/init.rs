@@ -130,6 +130,7 @@ fn store_config(s: &mut Cursive) {
     client_id,
     store_url: secrets_store_url,
     autolock_timeout_secs,
+    default_identity_id: None,
   };
 
   try_with_dialog!(service.upsert_store_config(config), s, "Failed to store config:\n{}");

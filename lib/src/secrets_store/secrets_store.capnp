@@ -20,6 +20,7 @@ struct Ring {
     email @2 : Text;
     publicKeys @3 : List(PublicKey);
     privateKeys @4 : List(PrivateKey);
+    hidden @5: Bool = false;
 
     struct PublicKey {
         type @0 : KeyType;

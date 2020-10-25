@@ -49,7 +49,7 @@ impl TrustlessService for RemoteTrustlessService {
   fn upsert_store_config(&self, store_config: StoreConfig) -> ServiceResult<()> {
     let mut rt = self.runtime.borrow_mut();
     let mut request = self.client.upsert_store_config_request();
-    store_config.to_builder(request.get().init_store_config());
+    store_config.to_builder(request.get().init_store_config())?;
 
     self.local_set.block_on(
       &mut rt,

@@ -1,17 +1,18 @@
 @0x981c355b6da046c4; 
 
-struct StoreConfig {
-    name @0 : Text;
-    storeUrl @1 : Text;
-    clientId @2 : Text;
-    autolockTimeoutSecs @3 : UInt64;
-}
-
 struct Option(T) {
     union {
         some @0 : T;
         none @1 : Void;
     }
+}
+
+struct StoreConfig {
+    name @0 : Text;
+    storeUrl @1 : Text;
+    clientId @2 : Text;
+    autolockTimeoutSecs @3 : UInt64;
+    defaultIdentityId @4 : Option(Text) = (none = void);
 }
 
 interface ClipboardControl {
@@ -88,6 +89,7 @@ struct Identity {
     id @0 : Text;
     name @1 : Text;
     email @2: Text;
+    hidden @3: Bool = false;
 }
 
 struct Status {
@@ -124,6 +126,7 @@ struct SecretListFilter {
     name @3 : Option(Text);
     deleted @4 : Bool;
 
+    # Workaround since enum can not be used as generic parameters
     struct OptionType {
         union {
             some @0 : SecretType;

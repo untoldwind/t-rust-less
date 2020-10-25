@@ -38,10 +38,13 @@ pub trait TrustlessService: std::fmt::Debug {
   /// (This will only delete the configuration, the store itself will be left untouched)
   fn delete_store_config(&self, name: &str) -> ServiceResult<()>;
 
+  /// Open a store
   fn open_store(&self, name: &str) -> ServiceResult<Arc<dyn SecretsStore>>;
 
+  /// Get the name of the store that should be opened by default
   fn get_default_store(&self) -> ServiceResult<Option<String>>;
 
+  /// Set the name of the store that should be opened by default
   fn set_default_store(&self, name: &str) -> ServiceResult<()>;
 
   fn secret_to_clipboard(

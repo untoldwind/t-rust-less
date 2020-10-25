@@ -76,6 +76,7 @@ pub struct Identity {
   pub id: String,
   pub name: String,
   pub email: String,
+  pub hidden: bool,
 }
 
 impl Identity {
@@ -84,6 +85,7 @@ impl Identity {
       id: reader.get_id()?.to_string(),
       name: reader.get_name()?.to_string(),
       email: reader.get_email()?.to_string(),
+      hidden: reader.get_hidden(),
     })
   }
 
@@ -91,6 +93,7 @@ impl Identity {
     builder.set_id(&self.id);
     builder.set_name(&self.name);
     builder.set_email(&self.email);
+    builder.set_hidden(self.hidden);
   }
 }
 

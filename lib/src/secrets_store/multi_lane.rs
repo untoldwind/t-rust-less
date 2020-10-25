@@ -404,6 +404,7 @@ impl MultiLaneSecretsStore {
       id: ring.get_id()?.to_string(),
       name: ring.get_name()?.to_string(),
       email: ring.get_email()?.to_string(),
+      hidden: ring.get_hidden(),
     })
   }
 
