@@ -1,6 +1,6 @@
 [package]
 name = "t-rust-less"
-version = "0.1.8"
+version = "0.1.9"
 authors = ["Untoldwind <landru@untoldwind.net>"]
 build = "build.rs"
 edition = "2018"

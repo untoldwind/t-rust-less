@@ -1,6 +1,6 @@
 @0x89ae7248ac2e8067;
 
-using Api = import "../api/api.capnp";
+using Api = import "api.capnp";
 
 enum KeyDerivationType {
     argon2 @0;

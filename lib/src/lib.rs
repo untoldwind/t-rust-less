@@ -16,9 +16,7 @@ pub mod service;
   clippy::redundant_field_names,
   clippy::match_single_binding
 )]
-mod secrets_store_capnp {
-  include!(concat!(env!("OUT_DIR"), "/src/secrets_store/secrets_store_capnp.rs"));
-}
+mod secrets_store_capnp;
 
 #[allow(dead_code)]
 #[allow(
@@ -27,6 +25,4 @@ mod secrets_store_capnp {
   clippy::redundant_field_names,
   clippy::match_single_binding
 )]
-pub mod api_capnp {
-  include!(concat!(env!("OUT_DIR"), "/src/api/api_capnp.rs"));
-}
+pub mod api_capnp;
