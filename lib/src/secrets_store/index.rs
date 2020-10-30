@@ -7,7 +7,7 @@ use crate::secrets_store::{SecretStoreError, SecretStoreResult};
 use crate::secrets_store_capnp::index;
 use capnp::{message, serialize};
 use itertools::Itertools;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 struct EffectiveChanges {
   new_heads: HashMap<String, Change>,
@@ -59,7 +59,7 @@ impl Index {
     let reader = serialize::read_message_from_flat_slice(&mut data_borrow, message::ReaderOptions::new())?;
     let index = reader.get_root::<index::Reader>()?;
     let mut entries = Vec::new();
-    let mut all_tags = HashSet::new();
+    let mut all_tags = BTreeSet::new();
 
     for index_entry in index.get_entries()? {
       let entry = index_entry.get_entry()?;

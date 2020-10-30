@@ -1671,7 +1671,7 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less"
-version = "0.1.10"
+version = "0.1.11"
 dependencies = [
  "atty",
  "chrono",
@@ -1696,7 +1696,7 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less-daemon"
-version = "0.1.10"
+version = "0.1.11"
 dependencies = [
  "capnp",
  "capnp-rpc",
@@ -1730,7 +1730,7 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less-lib"
-version = "0.1.10"
+version = "0.1.11"
 dependencies = [
  "byteorder",
  "capnp",
@@ -1776,7 +1776,7 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less-native"
-version = "0.1.10"
+version = "0.1.11"
 dependencies = [
  "byteorder",
  "env_logger 0.8.1",
