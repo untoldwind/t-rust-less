@@ -97,9 +97,9 @@ where
       Command::Unlock {
         store_name,
         identity_id,
-        mut passphrase,
+        passphrase,
       } => {
-        let passphrase_in = SecretBytes::from(passphrase.as_mut());
+        let passphrase_in = SecretBytes::from(passphrase);
         self
           .open_store(&store_name)
           .and_then(move |store| Ok(store.unlock(&identity_id, passphrase_in)?))
@@ -112,20 +112,17 @@ where
       Command::AddIdentity {
         store_name,
         identity,
-        mut passphrase,
+        passphrase,
       } => {
-        let passphrase_in = SecretBytes::from(passphrase.as_mut());
+        let passphrase_in = SecretBytes::from(passphrase);
         self
           .service
           .open_store(&store_name)
           .and_then(move |store| Ok(store.add_identity(identity, passphrase_in)?))
           .into()
       }
-      Command::ChangePassphrase {
-        store_name,
-        mut passphrase,
-      } => {
-        let passphrase_in = SecretBytes::from(passphrase.as_mut());
+      Command::ChangePassphrase { store_name, passphrase } => {
+        let passphrase_in = SecretBytes::from(passphrase);
         self
           .service
           .open_store(&store_name)

@@ -295,7 +295,7 @@ impl TrustlessService for LocalTrustlessService {
       };
 
       if let Some(autolock_at) = status.autolock_at {
-        if autolock_at < Utc::now() {
+        if autolock_at < Utc::now().into() {
           info!("Autolocking {}", name);
           if let Err(error) = secrets_store.lock() {
             error!("Autolocker was unable to lock store: {}", error);

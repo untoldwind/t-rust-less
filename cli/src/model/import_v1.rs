@@ -1,9 +1,9 @@
-use chrono::{DateTime, Utc};
 use serde_derive::{Deserialize, Serialize};
-use t_rust_less_lib::api::{SecretAttachment, SecretProperties, SecretType};
-use t_rust_less_lib::memguard::weak::ZeroingString;
+use t_rust_less_lib::api::{SecretAttachment, SecretProperties, SecretType, ZeroizeDateTime};
+use zeroize::Zeroize;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Zeroize)]
+#[zeroize(drop)]
 pub struct SecretV1 {
   pub id: String,
   #[serde(rename = "type")]
@@ -11,12 +11,13 @@ pub struct SecretV1 {
   pub versions: Vec<SecretVersionV1>,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Zeroize)]
+#[zeroize(drop)]
 pub struct SecretVersionV1 {
-  pub timestamp: DateTime<Utc>,
-  pub name: ZeroingString,
-  pub tags: Option<Vec<ZeroingString>>,
-  pub urls: Option<Vec<ZeroingString>>,
+  pub timestamp: ZeroizeDateTime,
+  pub name: String,
+  pub tags: Option<Vec<String>>,
+  pub urls: Option<Vec<String>>,
   pub properties: SecretProperties,
   pub attachments: Option<Vec<SecretAttachment>>,
   pub deleted: bool,

@@ -1,6 +1,5 @@
 use crate::api::{SecretVersion, PROPERTY_TOTP_URL};
 use crate::clipboard::SelectionProvider;
-use crate::memguard::weak::{ZeroingString, ZeroingStringExt};
 use crate::otp::OTPAuthUrl;
 use log::{error, info};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -25,7 +24,7 @@ impl SelectionProvider for SecretsProvider {
     self.properties_stack.first().cloned()
   }
 
-  fn get_selection(&mut self) -> Option<ZeroingString> {
+  fn get_selection(&mut self) -> Option<String> {
     let property = self.properties_stack.pop()?;
     let value = self.secret_version.properties.get(&property)?;
 
@@ -34,7 +33,7 @@ impl SelectionProvider for SecretsProvider {
       match OTPAuthUrl::parse(value) {
         Ok(otpauth) => {
           let (token, _) = otpauth.generate(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs());
-          Some(token.to_zeroing())
+          Some(token)
         }
         Err(error) => {
           error!("Invalid OTPAuth url: {}", error);

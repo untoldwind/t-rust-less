@@ -1,6 +1,5 @@
 use super::{open_secrets_store, SecretStoreError, SecretStoreResult, SecretsStore};
 use crate::api::{Event, EventHub, Identity, SecretType, SecretVersion};
-use crate::memguard::weak::ZeroingStringExt;
 use crate::memguard::SecretBytes;
 use chrono::Utc;
 use spectral::prelude::*;
@@ -82,22 +81,26 @@ fn add_secrets_versions(secrets_store: &dyn SecretsStore, ids_with_passphrase: &
   let version1 = SecretVersion {
     secret_id: "secret1".to_string(),
     secret_type: SecretType::Login,
-    timestamp: Utc::now(),
-    name: "First secret".to_string().to_zeroing(),
+    timestamp: Utc::now().into(),
+    name: "First secret".to_string(),
     tags: vec![],
     urls: vec![],
     properties: Default::default(),
     attachments: vec![],
     deleted: false,
-    recipients: ids_with_passphrase
-      .iter()
-      .map(|(id, _)| id.id.clone().to_zeroing())
-      .collect(),
+    recipients: ids_with_passphrase.iter().map(|(id, _)| id.id.clone()).collect(),
   };
 
   assert_that(&secrets_store.unlock(&ids_with_passphrase[0].0.id, ids_with_passphrase[0].1.clone())).is_ok();
 
   assert_that(&secrets_store.add(version1)).is_ok();
+
+  assert_that(&secrets_store.update_index()).is_ok();
+
+  let secret = secrets_store.get("secret1").unwrap();
+
+  assert_that(&secret.id).is_equal_to("secret1".to_string());
+  assert_that(&secret.current.name).is_equal_to("First secret".to_string());
 }
 
 fn add_identity(

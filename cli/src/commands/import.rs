@@ -37,20 +37,20 @@ pub fn import_v1(service: Arc<dyn TrustlessService>, store_name: String, maybe_f
 
   for maybe_line in import_stream.lines() {
     let line = maybe_line.ok_or_exit("IO Error");
-    let secret = serde_json::from_str::<SecretV1>(&line).ok_or_exit("Invalid format");
+    let mut secret = serde_json::from_str::<SecretV1>(&line).ok_or_exit("Invalid format");
 
     eprintln!("Importing secret {}", secret.id);
 
-    for v1_version in secret.versions {
+    for v1_version in secret.versions.iter_mut() {
       let version = SecretVersion {
         secret_id: secret.id.to_string(),
         secret_type: secret.secret_type,
         timestamp: v1_version.timestamp,
-        name: v1_version.name,
-        tags: v1_version.tags.unwrap_or_default(),
-        urls: v1_version.urls.unwrap_or_default(),
-        attachments: v1_version.attachments.unwrap_or_default(),
-        properties: v1_version.properties,
+        name: v1_version.name.clone(),
+        tags: v1_version.tags.take().unwrap_or_default(),
+        urls: v1_version.urls.take().unwrap_or_default(),
+        attachments: v1_version.attachments.take().unwrap_or_default(),
+        properties: v1_version.properties.clone(),
         deleted: v1_version.deleted,
         recipients: vec![],
       };

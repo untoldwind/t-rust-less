@@ -1,6 +1,6 @@
 [package]
 name = "t-rust-less-native"
-version = "0.1.9"
+version = "0.1.10"
 authors = ["Untoldwind <landru@untoldwind.net>"]
 edition = "2018"
 
@@ -12,6 +12,8 @@ serde = "1"
 serde_derive = "1"
 byteorder = "1"
 serde_json = "1"
+zeroize = "1"
+zeroize_derive  = "1"
 
 [dev-dependencies]
 spectral = "0"

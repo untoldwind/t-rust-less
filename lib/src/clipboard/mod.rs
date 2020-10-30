@@ -8,8 +8,6 @@ mod unix_xcb;
 #[cfg(windows)]
 mod windows;
 
-use crate::memguard::weak::ZeroingString;
-
 pub use self::error::*;
 #[cfg(all(unix, not(any(feature = "with_x11", feature = "with_xcb"))))]
 pub use self::unix_none::Clipboard;
@@ -23,5 +21,5 @@ pub use self::windows::Clipboard;
 pub trait SelectionProvider: Send + Sync {
   fn current_selection_name(&self) -> Option<String>;
 
-  fn get_selection(&mut self) -> Option<ZeroingString>;
+  fn get_selection(&mut self) -> Option<String>;
 }

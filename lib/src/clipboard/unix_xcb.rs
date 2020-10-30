@@ -10,6 +10,7 @@ use super::{ClipboardError, ClipboardResult, SelectionProvider};
 use crate::api::{Event, EventHub};
 use crate::clipboard::debounce::SelectionDebounce;
 use std::sync::atomic::{AtomicBool, Ordering};
+use zeroize::Zeroize;
 
 #[derive(Clone, Debug)]
 struct Atoms {
@@ -238,7 +239,7 @@ fn run(context: Arc<Context>) {
           );
         } else if target == context.atoms.string || target == context.atoms.utf8_string {
           match debounce.get_selection() {
-            Some(value) => {
+            Some(mut value) => {
               if let Some(property) = debounce.current_selection_name() {
                 context.event_hub.send(Event::ClipboardProviding {
                   store_name: context.store_name.clone(),
@@ -255,6 +256,7 @@ fn run(context: Arc<Context>) {
                 8,
                 value.as_ref(),
               );
+              value.zeroize();
             }
             None => {
               xcb::set_selection_owner(

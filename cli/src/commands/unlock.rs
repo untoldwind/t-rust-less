@@ -63,7 +63,7 @@ fn unlock_dialog(siv: &mut Cursive, secrets_store: &Arc<dyn SecretsStore>, name:
             .with_all(
               identities
                 .into_iter()
-                .map(|i| (format!("{} <{}>", i.name, i.email), i.id)),
+                .map(|i| (format!("{} <{}>", i.name, i.email), i.id.clone())),
             )
             .with_name("identity")
             .fixed_width(50),

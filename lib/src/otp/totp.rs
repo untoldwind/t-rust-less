@@ -1,13 +1,12 @@
 use super::hotp::HOTPGenerator;
 use super::OTPAlgorithm;
-use crate::memguard::weak::ZeroingBytes;
 
 #[derive(Debug)]
 pub struct TOTPGenerator<'a> {
   pub algorithm: OTPAlgorithm,
   pub digits: u8,
   pub period: u32,
-  pub secret: &'a ZeroingBytes,
+  pub secret: &'a [u8],
 }
 
 impl<'a> TOTPGenerator<'a> {

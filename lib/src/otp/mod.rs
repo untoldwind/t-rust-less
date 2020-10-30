@@ -9,10 +9,10 @@ mod totp;
 mod tests;
 
 pub use self::error::*;
-use crate::memguard::weak::ZeroingBytes;
 use crate::otp::hotp::HOTPGenerator;
 use crate::otp::totp::TOTPGenerator;
 use std::str::FromStr;
+use zeroize::Zeroize;
 
 const OTP_URL_SCHEME: &str = "otpauth";
 
@@ -49,7 +49,9 @@ impl fmt::Display for OTPAlgorithm {
   }
 }
 
-pub struct OTPSecret(ZeroingBytes);
+#[derive(Zeroize)]
+#[zeroize(drop)]
+pub struct OTPSecret(Vec<u8>);
 
 impl ToString for OTPSecret {
   fn to_string(&self) -> String {
@@ -62,7 +64,7 @@ impl FromStr for OTPSecret {
 
   fn from_str(s: &str) -> OTPResult<Self> {
     match data_encoding::BASE32_NOPAD.decode(s.as_bytes()) {
-      Ok(bytes) => Ok(OTPSecret(ZeroingBytes::wrap(bytes))),
+      Ok(bytes) => Ok(OTPSecret(bytes)),
       Err(_) => Err(OTPError::InvalidSecret),
     }
   }

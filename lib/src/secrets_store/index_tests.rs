@@ -1,6 +1,5 @@
 use crate::api::{SecretType, SecretVersion};
 use crate::block_store::{Change, ChangeLog, Operation};
-use crate::memguard::weak::ZeroingStringExt;
 use crate::secrets_store::index::Index;
 use chrono::prelude::*;
 use data_encoding::HEXLOWER;
@@ -37,8 +36,8 @@ impl TestStore {
     SecretVersion {
       secret_id: secret_id.to_string(),
       secret_type: SecretType::Login,
-      timestamp: Utc.timestamp(1000 + 1000 * version_id, 0),
-      name: format!("{}_{}", secret_id, version_id).to_zeroing(),
+      timestamp: Utc.timestamp(1000 + 1000 * version_id, 0).into(),
+      name: format!("{}_{}", secret_id, version_id),
       properties: Default::default(),
       tags: vec![],
       urls: vec![],

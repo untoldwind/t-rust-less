@@ -1,8 +1,10 @@
 use crate::api::Identity;
 use crate::api_capnp::{event, EventType};
 use serde_derive::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Zeroize)]
+#[zeroize(drop)]
 pub enum Event {
   StoreUnlocked {
     store_name: String,

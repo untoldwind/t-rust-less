@@ -3,9 +3,7 @@ use std::time::{Duration, SystemTime};
 
 use capnp::{message, serialize};
 
-use crate::api::{Event, EventHub, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
-use crate::block_store::{BlockStore, Change, Operation, StoreError};
-use crate::memguard::weak::{ZeroingBytesExt, ZeroingHeapAllocator, ZeroingStringExt};
+use crate::memguard::weak::ZeroingHeapAllocator;
 use crate::memguard::SecretBytes;
 use crate::secrets_store::cipher::{
   Cipher, KeyDerivation, PrivateKey, PublicKey, OPEN_SSL_RSA_AES_GCM, RUST_ARGON2_ID, RUST_X25519CHA_CHA20POLY1305,
@@ -15,7 +13,14 @@ use crate::secrets_store::index::Index;
 use crate::secrets_store::padding::{NonZeroPadding, Padding, RandomFrontBack};
 use crate::secrets_store::{SecretStoreError, SecretStoreResult, SecretsStore};
 use crate::secrets_store_capnp::{block, ring, KeyType};
-use chrono::DateTime;
+use crate::{
+  api::ZeroizeDateTime,
+  block_store::{BlockStore, Change, Operation, StoreError},
+};
+use crate::{
+  api::{Event, EventHub, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status},
+  memguard::ZeroizeBytesBuffer,
+};
 use log::{info, warn};
 use rand::{thread_rng, RngCore};
 use std::collections::HashMap;
@@ -69,7 +74,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     Ok(Status {
       locked: unlocked_user.is_none(),
       unlocked_by: unlocked_user.as_ref().map(|u| u.identity.clone()),
-      autolock_at: unlocked_user.as_ref().map(|u| DateTime::from(u.autolock_at)),
+      autolock_at: unlocked_user.as_ref().map(|u| ZeroizeDateTime::from(u.autolock_at)),
       version: env!("CARGO_PKG_VERSION").to_string(),
       autolock_timeout: self.autolock_timeout.as_secs(),
     })
@@ -302,17 +307,16 @@ impl SecretsStore for MultiLaneSecretsStore {
       .any(|recipient| unlocked_user.identity.id == recipient.as_str())
     {
       // User adding a secret version to the store is always a recipient
-      secret_version
-        .recipients
-        .push(unlocked_user.identity.id.clone().to_zeroing());
+      secret_version.recipients.push(unlocked_user.identity.id.clone());
     }
 
     let block_content = {
-      let json_raw = serde_json::to_vec(&secret_version)?.to_zeroing();
+      let mut buffer = ZeroizeBytesBuffer::with_capacity(1024);
+      serde_json::to_writer(&mut buffer, &secret_version)?;
 
       self.ecnrypt_block(
         &secret_version.recipients,
-        NonZeroPadding::pad_secret_data(&json_raw, 512)?,
+        NonZeroPadding::pad_secret_data(&buffer, 512)?,
       )?
     };
 
@@ -323,7 +327,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     }])?;
     self.event_hub.send(Event::SecretVersionAdded {
       store_name: self.name.clone(),
-      secret_id: secret_version.secret_id,
+      secret_id: secret_version.secret_id.clone(),
       identity: unlocked_user.identity.clone(),
     });
 

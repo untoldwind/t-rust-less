@@ -10,6 +10,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread;
 use x11::xlib;
+use zeroize::Zeroize;
 
 #[derive(Debug)]
 struct Atoms {
@@ -265,7 +266,7 @@ fn run(context: Arc<Context>) {
             );
           } else if selection.target == context.atoms.string || selection.target == context.atoms.utf8_string {
             match debounce.get_selection() {
-              Some(value) => {
+              Some(mut value) => {
                 if let Some(property) = debounce.current_selection_name() {
                   context.event_hub.send(Event::ClipboardProviding {
                     store_name: context.store_name.clone(),
@@ -285,6 +286,7 @@ fn run(context: Arc<Context>) {
                   content.as_ptr(),
                   content.len() as i32,
                 );
+                value.zeroize();
               }
               None => {
                 context.clear_selection();

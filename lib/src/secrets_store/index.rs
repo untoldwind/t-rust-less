@@ -1,7 +1,7 @@
 use crate::api::{SecretEntry, SecretEntryMatch, SecretList, SecretListFilter, SecretVersion, SecretVersionRef};
 use crate::api_capnp::secret_entry;
 use crate::block_store::{Change, ChangeLog, Operation};
-use crate::memguard::weak::{ZeroingHeapAllocator, ZeroingStringExt};
+use crate::memguard::weak::ZeroingHeapAllocator;
 use crate::memguard::SecretWords;
 use crate::secrets_store::{SecretStoreError, SecretStoreResult};
 use crate::secrets_store_capnp::index;
@@ -66,7 +66,7 @@ impl Index {
       for maybe_tag in entry.get_tags()? {
         let tag = maybe_tag?;
         if !all_tags.contains(tag) {
-          all_tags.insert(tag.to_zeroing());
+          all_tags.insert(tag.to_string());
         }
       }
       if let Some(entry_match) = Self::match_entry(entry, &filter)? {

@@ -1,5 +1,4 @@
 use super::OTPAlgorithm;
-use crate::memguard::weak::ZeroingBytes;
 use byteorder::{BigEndian, ByteOrder};
 use hmac::digest::generic_array::ArrayLength;
 use hmac::digest::{BlockInput, FixedOutput, Reset, Update};
@@ -12,7 +11,7 @@ pub struct HOTPGenerator<'a> {
   pub algorithm: OTPAlgorithm,
   pub counter: u64,
   pub digits: u8,
-  pub secret: &'a ZeroingBytes,
+  pub secret: &'a [u8],
 }
 
 impl<'a> HOTPGenerator<'a> {

@@ -2,18 +2,20 @@ use crate::api_capnp::{
   self, identity, option, password_generator_param, password_strength, secret, secret_entry, secret_entry_match,
   secret_list, secret_list_filter, secret_version, status,
 };
-use crate::memguard::weak::{ZeroingBytes, ZeroingBytesExt, ZeroingString, ZeroingStringExt};
 use capnp::{struct_list, text_list};
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{TimeZone, Utc};
 use serde_derive::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::fmt;
+use zeroize::Zeroize;
 
 mod event;
+mod zeroize_datetime;
 
 pub use event::*;
+pub use zeroize_datetime::*;
 
 pub const PROPERTY_USERNAME: &str = "username";
 pub const PROPERTY_PASSWORD: &str = "password";
@@ -22,11 +24,12 @@ pub const PROPERTY_NOTES: &str = "notes";
 
 /// Status information of a secrets store
 ///
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Zeroize)]
+#[zeroize(drop)]
 pub struct Status {
   pub locked: bool,
   pub unlocked_by: Option<Identity>,
-  pub autolock_at: Option<DateTime<Utc>>,
+  pub autolock_at: Option<ZeroizeDateTime>,
   pub version: String,
   pub autolock_timeout: u64,
 }
@@ -43,7 +46,7 @@ impl Status {
         if autolock_at == std::i64::MIN {
           None
         } else {
-          Some(Utc.timestamp_millis(autolock_at))
+          Some(Utc.timestamp_millis(autolock_at).into())
         }
       },
       version: reader.get_version()?.to_string(),
@@ -71,7 +74,8 @@ impl Status {
 /// An Identity that might be able to unlock a
 /// secrets store and be a recipient of secrets.
 ///
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Zeroize)]
+#[zeroize(drop)]
 pub struct Identity {
   pub id: String,
   pub name: String,
@@ -117,6 +121,12 @@ pub enum SecretType {
   Password,
   #[serde(other)]
   Other,
+}
+
+impl Zeroize for SecretType {
+  fn zeroize(&mut self) {
+    *self = SecretType::Other
+  }
 }
 
 impl SecretType {
@@ -176,7 +186,8 @@ impl fmt::Display for SecretType {
 /// to match).
 /// Match on `name` is supposed to be "fuzzy" by some fancy scheme.
 ///
-#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default, Zeroize)]
+#[zeroize(drop)]
 pub struct SecretListFilter {
   pub url: Option<String>,
   pub tag: Option<String>,
@@ -241,15 +252,16 @@ impl SecretListFilter {
 ///
 /// See SecretVersion for further detail.
 ///
-#[derive(Clone, Debug, Serialize, Deserialize, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, Zeroize)]
+#[zeroize(drop)]
 pub struct SecretEntry {
   pub id: String,
-  pub name: ZeroingString,
+  pub name: String,
   #[serde(rename = "type")]
   pub secret_type: SecretType,
-  pub tags: Vec<ZeroingString>,
-  pub urls: Vec<ZeroingString>,
-  pub timestamp: DateTime<Utc>,
+  pub tags: Vec<String>,
+  pub urls: Vec<String>,
+  pub timestamp: ZeroizeDateTime,
   pub deleted: bool,
 }
 
@@ -257,19 +269,19 @@ impl SecretEntry {
   pub fn from_reader(reader: secret_entry::Reader) -> capnp::Result<Self> {
     Ok(SecretEntry {
       id: reader.get_id()?.to_string(),
-      timestamp: Utc.timestamp_millis(reader.get_timestamp()),
-      name: reader.get_name()?.to_zeroing(),
+      timestamp: Utc.timestamp_millis(reader.get_timestamp()).into(),
+      name: reader.get_name()?.to_string(),
       secret_type: SecretType::from_reader(reader.get_type()?),
       tags: reader
         .get_tags()?
         .into_iter()
-        .map(|t| t.map(|t| t.to_zeroing()))
-        .collect::<capnp::Result<Vec<ZeroingString>>>()?,
+        .map(|t| t.map(|t| t.to_string()))
+        .collect::<capnp::Result<Vec<String>>>()?,
       urls: reader
         .get_urls()?
         .into_iter()
-        .map(|u| u.map(|u| u.to_zeroing()))
-        .collect::<capnp::Result<Vec<ZeroingString>>>()?,
+        .map(|u| u.map(|u| u.to_string()))
+        .collect::<capnp::Result<Vec<String>>>()?,
       deleted: reader.get_deleted(),
     })
   }
@@ -317,7 +329,8 @@ impl PartialEq for SecretEntry {
 /// For the most part this is just the entry itself with some additional information
 /// which parts should be highlighted in the UI
 ///
-#[derive(Clone, Debug, Serialize, Deserialize, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, Zeroize)]
+#[zeroize(drop)]
 pub struct SecretEntryMatch {
   pub entry: SecretEntry,
   /// Matching score of the name
@@ -386,9 +399,10 @@ impl PartialEq for SecretEntryMatch {
 /// Convenient wrapper of a list of SecretEntryMatch'es.
 ///
 /// Also contains a unique list of tags of all secrets (e.g. to support autocompletion)
-#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default, Zeroize)]
+#[zeroize(drop)]
 pub struct SecretList {
-  pub all_tags: Vec<ZeroingString>,
+  pub all_tags: Vec<String>,
   pub entries: Vec<SecretEntryMatch>,
 }
 
@@ -398,8 +412,8 @@ impl SecretList {
       all_tags: reader
         .get_all_tags()?
         .into_iter()
-        .map(|t| t.map(|t| t.to_zeroing()))
-        .collect::<capnp::Result<Vec<ZeroingString>>>()?,
+        .map(|t| t.map(|t| t.to_string()))
+        .collect::<capnp::Result<Vec<String>>>()?,
       entries: reader
         .get_entries()?
         .into_iter()
@@ -425,10 +439,10 @@ impl SecretList {
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct SecretProperties(BTreeMap<String, ZeroingString>);
+pub struct SecretProperties(BTreeMap<String, String>);
 
 impl SecretProperties {
-  pub fn get(&self, name: &str) -> Option<&ZeroingString> {
+  pub fn get(&self, name: &str) -> Option<&String> {
     self.0.get(name)
   }
 
@@ -447,7 +461,7 @@ impl SecretProperties {
   pub fn from_reader(reader: struct_list::Reader<secret_version::property::Owned>) -> capnp::Result<Self> {
     let mut properties = BTreeMap::new();
     for property in reader {
-      properties.insert(property.get_key()?.to_string(), property.get_value()?.to_zeroing());
+      properties.insert(property.get_key()?.to_string(), property.get_value()?.to_string());
     }
 
     Ok(SecretProperties(properties))
@@ -463,17 +477,30 @@ impl SecretProperties {
   }
 }
 
+impl Drop for SecretProperties {
+  fn drop(&mut self) {
+    self.zeroize()
+  }
+}
+
+impl Zeroize for SecretProperties {
+  fn zeroize(&mut self) {
+    self.0.values_mut().for_each(Zeroize::zeroize);
+  }
+}
+
 /// Some short of attachment to a secret.
 ///
 /// Be aware that t-rust-less is supposed to be a password store, do not misuse it as a
 /// secure document store. Nevertheless, sometimes it might be convenient added some
 /// sort of (small) document to a password.
 ///
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Zeroize)]
+#[zeroize(drop)]
 pub struct SecretAttachment {
   name: String,
   mime_type: String,
-  content: ZeroingBytes,
+  content: Vec<u8>,
 }
 
 impl SecretAttachment {
@@ -481,7 +508,7 @@ impl SecretAttachment {
     Ok(SecretAttachment {
       name: reader.get_name()?.to_string(),
       mime_type: reader.get_mime_type()?.to_string(),
-      content: reader.get_content()?.to_zeroing(),
+      content: reader.get_content()?.to_vec(),
     })
   }
 
@@ -498,7 +525,8 @@ impl SecretAttachment {
 /// than a group-by view over all SecretVersion's. As a rule a SecretVersion shall never be
 /// overwritten or modified once stored. To change a Secret just add a new SecretVersion for it.
 ///
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Zeroize)]
+#[zeroize(drop)]
 pub struct SecretVersion {
   /// Identifier of the secret this version belongs to.
   /// This should be opaque (i.e. not reveal anything about the content whatsoever), e.g. a
@@ -513,16 +541,16 @@ pub struct SecretVersion {
   pub secret_type: SecretType,
   /// Timestamp of this version. All SecretVersion's of a Secret a sorted by their timestamps,
   /// the last one will be considered the current version.
-  pub timestamp: DateTime<Utc>,
+  pub timestamp: ZeroizeDateTime,
   /// Name/title of the Secret (in this version)
-  pub name: ZeroingString,
+  pub name: String,
   /// List or arbitrary tags for filtering (or just displaying)
   #[serde(default)]
-  pub tags: Vec<ZeroingString>,
+  pub tags: Vec<String>,
   /// List of URLs the Secret might be associated with (most commonly the login page where
   /// the Secret is needed)
   #[serde(default)]
-  pub urls: Vec<ZeroingString>,
+  pub urls: Vec<String>,
   /// Generic list of secret properties. The `secret_type` defines a list of commonly used
   /// property-names for that type.
   pub properties: SecretProperties,
@@ -540,7 +568,7 @@ pub struct SecretVersion {
   /// Again: Once published, it cannot be made unseen. The only safe way to remove a recipient is
   /// to change the Secret and create a new version without the recipient.
   #[serde(default)]
-  pub recipients: Vec<ZeroingString>,
+  pub recipients: Vec<String>,
 }
 
 impl SecretVersion {
@@ -548,18 +576,18 @@ impl SecretVersion {
     Ok(SecretVersion {
       secret_id: reader.get_secret_id()?.to_string(),
       secret_type: SecretType::from_reader(reader.get_type()?),
-      timestamp: Utc.timestamp_millis(reader.get_timestamp()),
-      name: reader.get_name()?.to_zeroing(),
+      timestamp: Utc.timestamp_millis(reader.get_timestamp()).into(),
+      name: reader.get_name()?.to_string(),
       tags: reader
         .get_tags()?
         .into_iter()
-        .map(|t| t.map(|t| t.to_zeroing()))
-        .collect::<capnp::Result<Vec<ZeroingString>>>()?,
+        .map(|t| t.map(|t| t.to_string()))
+        .collect::<capnp::Result<Vec<String>>>()?,
       urls: reader
         .get_urls()?
         .into_iter()
-        .map(|u| u.map(|u| u.to_zeroing()))
-        .collect::<capnp::Result<Vec<ZeroingString>>>()?,
+        .map(|u| u.map(|u| u.to_string()))
+        .collect::<capnp::Result<Vec<String>>>()?,
       properties: SecretProperties::from_reader(reader.get_properties()?)?,
       attachments: reader
         .get_attachments()?
@@ -570,8 +598,8 @@ impl SecretVersion {
       recipients: reader
         .get_recipients()?
         .into_iter()
-        .map(|u| u.map(|u| u.to_zeroing()))
-        .collect::<capnp::Result<Vec<ZeroingString>>>()?,
+        .map(|u| u.map(|u| u.to_string()))
+        .collect::<capnp::Result<Vec<String>>>()?,
     })
   }
 
@@ -610,13 +638,15 @@ impl SecretVersion {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Zeroize)]
+#[zeroize(drop)]
 pub struct PasswordEstimate {
-  pub password: ZeroingString,
+  pub password: String,
   pub inputs: Vec<String>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Zeroize)]
+#[zeroize(drop)]
 pub struct PasswordStrength {
   pub entropy: f64,
   pub crack_time: f64,
@@ -641,17 +671,18 @@ impl PasswordStrength {
   }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Zeroize)]
+#[zeroize(drop)]
 pub struct SecretVersionRef {
   pub block_id: String,
-  pub timestamp: DateTime<Utc>,
+  pub timestamp: ZeroizeDateTime,
 }
 
 impl SecretVersionRef {
   pub fn from_reader(reader: secret::version_ref::Reader) -> capnp::Result<Self> {
     Ok(SecretVersionRef {
       block_id: reader.get_block_id()?.to_string(),
-      timestamp: Utc.timestamp_millis(reader.get_timestamp()),
+      timestamp: Utc.timestamp_millis(reader.get_timestamp()).into(),
     })
   }
 
@@ -728,7 +759,25 @@ impl Secret {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+impl Zeroize for Secret {
+  fn zeroize(&mut self) {
+    self.id.zeroize();
+    self.secret_type.zeroize();
+    self.current.zeroize();
+    self.current_block_id.zeroize();
+    self.versions.zeroize();
+    self.password_strengths.values_mut().for_each(Zeroize::zeroize);
+  }
+}
+
+impl Drop for Secret {
+  fn drop(&mut self) {
+    self.zeroize();
+  }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Zeroize)]
+#[zeroize(drop)]
 pub struct PasswordGeneratorCharsParam {
   pub num_chars: u8,
   pub include_uppers: bool,
@@ -773,7 +822,8 @@ impl PasswordGeneratorCharsParam {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Zeroize)]
+#[zeroize(drop)]
 pub struct PasswordGeneratorWordsParam {
   pub num_words: u8,
   pub delim: char,
@@ -798,8 +848,9 @@ impl PasswordGeneratorWordsParam {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Zeroize)]
 #[serde(rename_all = "lowercase")]
+#[zeroize(drop)]
 pub enum PasswordGeneratorParam {
   Chars(PasswordGeneratorCharsParam),
   Words(PasswordGeneratorWordsParam),

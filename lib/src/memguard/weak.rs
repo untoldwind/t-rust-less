@@ -12,60 +12,7 @@ use super::memory;
 use capnp::message::{AllocationStrategy, Allocator, SUGGESTED_ALLOCATION_STRATEGY, SUGGESTED_FIRST_SEGMENT_WORDS};
 use capnp::Word;
 use log::warn;
-use serde_derive::{Deserialize, Serialize};
-use std::borrow::Borrow;
 use std::ops::{Deref, DerefMut};
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct ZeroingBytes(Vec<u8>);
-
-impl ZeroingBytes {
-  pub fn wrap(v: Vec<u8>) -> ZeroingBytes {
-    ZeroingBytes(v)
-  }
-  pub fn with_capacity(capacity: usize) -> ZeroingBytes {
-    ZeroingBytes(Vec::with_capacity(capacity))
-  }
-}
-
-impl Drop for ZeroingBytes {
-  fn drop(&mut self) {
-    unsafe {
-      memory::memzero(self.0.as_mut_ptr(), self.0.capacity());
-    }
-  }
-}
-
-impl Deref for ZeroingBytes {
-  type Target = Vec<u8>;
-
-  fn deref(&self) -> &Self::Target {
-    &self.0
-  }
-}
-
-impl DerefMut for ZeroingBytes {
-  fn deref_mut(&mut self) -> &mut Self::Target {
-    &mut self.0
-  }
-}
-
-pub trait ZeroingBytesExt {
-  fn to_zeroing(self) -> ZeroingBytes;
-}
-
-impl ZeroingBytesExt for Vec<u8> {
-  fn to_zeroing(self) -> ZeroingBytes {
-    ZeroingBytes(self)
-  }
-}
-
-impl ZeroingBytesExt for &[u8] {
-  fn to_zeroing(self) -> ZeroingBytes {
-    ZeroingBytes(self.to_vec())
-  }
-}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ZeroingWords(Vec<Word>);
@@ -118,80 +65,6 @@ impl From<&[u8]> for ZeroingWords {
     }
 
     target
-  }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[serde(transparent)]
-pub struct ZeroingString(String);
-
-impl ZeroingString {
-  pub fn wrap(s: String) -> ZeroingString {
-    ZeroingString(s)
-  }
-}
-
-impl Drop for ZeroingString {
-  fn drop(&mut self) {
-    unsafe {
-      let bytes = self.0.as_bytes_mut();
-
-      memory::memzero(bytes.as_mut_ptr(), bytes.len());
-    }
-  }
-}
-
-impl Deref for ZeroingString {
-  type Target = String;
-
-  fn deref(&self) -> &Self::Target {
-    &self.0
-  }
-}
-
-impl DerefMut for ZeroingString {
-  fn deref_mut(&mut self) -> &mut Self::Target {
-    &mut self.0
-  }
-}
-
-impl AsRef<str> for ZeroingString {
-  fn as_ref(&self) -> &str {
-    self.0.as_ref()
-  }
-}
-
-impl AsRef<[u8]> for ZeroingString {
-  fn as_ref(&self) -> &[u8] {
-    self.0.as_bytes()
-  }
-}
-
-impl AsMut<[u8]> for ZeroingString {
-  fn as_mut(&mut self) -> &mut [u8] {
-    unsafe { self.0.as_bytes_mut() }
-  }
-}
-
-impl Borrow<str> for ZeroingString {
-  fn borrow(&self) -> &str {
-    self.0.as_ref()
-  }
-}
-
-pub trait ZeroingStringExt {
-  fn to_zeroing(self) -> ZeroingString;
-}
-
-impl ZeroingStringExt for &str {
-  fn to_zeroing(self) -> ZeroingString {
-    ZeroingString(self.to_string())
-  }
-}
-
-impl ZeroingStringExt for String {
-  fn to_zeroing(self) -> ZeroingString {
-    ZeroingString(self)
   }
 }
 
@@ -248,17 +121,6 @@ mod tests {
 
   #[test]
   pub fn test_zeroing_drop() {
-    {
-      let mut zeroing = ZeroingBytes::with_capacity(20);
-
-      zeroing.extend_from_slice(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
-      assert!(zeroing.as_slice() == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
-    }
-    {
-      let zeroing = ZeroingString::wrap("0123456789".to_string());
-
-      assert!(zeroing.as_str() == "0123456789")
-    }
     {
       let zeroing = ZeroingWords::allocate_zeroed_vec(200);
 

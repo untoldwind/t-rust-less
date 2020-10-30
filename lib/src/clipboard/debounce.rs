@@ -1,13 +1,18 @@
-use crate::memguard::weak::ZeroingString;
-
 use super::SelectionProvider;
 use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
+use zeroize::Zeroize;
 
-struct LastContext<C> {
-  content: C,
+struct LastContext {
+  content: String,
   timestamp: SystemTime,
   initial: bool,
+}
+
+impl Drop for LastContext {
+  fn drop(&mut self) {
+    self.content.zeroize();
+  }
 }
 
 /// Debounce selections.
@@ -19,7 +24,7 @@ struct LastContext<C> {
 ///
 pub struct SelectionDebounce {
   underlying: Arc<RwLock<dyn SelectionProvider>>,
-  last_content: Option<LastContext<ZeroingString>>,
+  last_content: Option<LastContext>,
   startup_timestamp: SystemTime,
 }
 
@@ -38,7 +43,7 @@ impl SelectionProvider for SelectionDebounce {
     self.underlying.read().ok()?.current_selection_name()
   }
 
-  fn get_selection(&mut self) -> Option<ZeroingString> {
+  fn get_selection(&mut self) -> Option<String> {
     let now = SystemTime::now();
     if let Some(last_content) = self.last_content.take() {
       if last_content.initial {
@@ -47,7 +52,7 @@ impl SelectionProvider for SelectionDebounce {
           timestamp: now,
           initial: false,
         });
-        return Some(last_content.content);
+        return Some(last_content.content.clone());
       }
       if let Ok(elapsed) = now.duration_since(last_content.timestamp) {
         if elapsed.as_millis() < 200 {

@@ -5,8 +5,10 @@ use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::path::PathBuf;
+use zeroize::Zeroize;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Zeroize)]
+#[zeroize(drop)]
 pub struct StoreConfig {
   pub name: String,
   pub store_url: String,

@@ -46,7 +46,7 @@ pub fn list_secrets(service: Arc<dyn TrustlessService>, store_name: String, filt
   } else {
     let list = secrets_store.list(&filter).ok_or_exit("List entries");
 
-    for entry in list.entries {
+    for entry in list.entries.iter() {
       println!("{:?}", entry);
     }
   }
@@ -101,7 +101,7 @@ fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState, status: Status
 }
 
 fn update_name_filter(s: &mut Cursive, name_filter: &str, _: usize) {
-  let next_entries = {
+  let next_entries: Vec<SecretEntryMatch> = {
     let state = s.user_data::<ListUIState>().unwrap();
     state.filter.name = if name_filter.is_empty() {
       None
@@ -111,7 +111,7 @@ fn update_name_filter(s: &mut Cursive, name_filter: &str, _: usize) {
 
     let mut list = state.secrets_store.list(&state.filter).ok_or_exit("List entries");
     list.entries.sort();
-    list.entries
+    list.entries.drain(..).collect()
   };
 
   let mut entry_select = s.find_name::<SelectView<SecretEntry>>("entry_list").unwrap();
@@ -134,19 +134,19 @@ fn entry_list_item(entry_match: SecretEntryMatch) -> (StyledString, SecretEntry)
   let mut styled_name = StyledString::new();
   let mut last = 0usize;
 
-  for highlight in entry_match.name_highlights {
-    if highlight > last {
+  for highlight in entry_match.name_highlights.iter() {
+    if *highlight > last {
       styled_name.append_plain(name.chars().skip(last).take(highlight - last).collect::<String>());
     }
     styled_name.append_styled(
-      name.chars().skip(highlight).take(1).collect::<String>(),
+      name.chars().skip(*highlight).take(1).collect::<String>(),
       Effect::Reverse,
     );
     last = highlight + 1;
   }
   styled_name.append_plain(name.chars().skip(last).collect::<String>());
 
-  (styled_name, entry_match.entry)
+  (styled_name, entry_match.entry.clone())
 }
 
 fn secret_to_clipboard(properties: &'static [&'static str]) -> impl Fn(&mut Cursive) {
@@ -211,9 +211,9 @@ fn status_text(status: &Status) -> String {
 
 fn create_list_view(screen_size: Vec2, state: &ListUIState) -> ResizedView<LinearLayout> {
   let mut entry_select = SelectView::new();
-  let list = state.secrets_store.list(&state.filter).ok_or_exit("List entries");
+  let mut list = state.secrets_store.list(&state.filter).ok_or_exit("List entries");
   let initial_selected = list.entries.first().map(|e| e.entry.id.clone());
-  entry_select.add_all(list.entries.into_iter().map(entry_list_item));
+  entry_select.add_all(list.entries.drain(..).into_iter().map(entry_list_item));
   entry_select.set_on_select(update_selection);
   let select_width = entry_select.required_size(Vec2::zero());
 

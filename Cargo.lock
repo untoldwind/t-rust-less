@@ -579,8 +579,11 @@ version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "44533bbbb3bb3c1fa17d9f2e4e38bbbaf8396ba82193c4cb1b6445d711445d36"
 dependencies = [
+ "atty",
+ "humantime 1.3.0",
  "log",
  "regex",
+ "termcolor",
 ]
 
 [[package]]
@@ -590,7 +593,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54532e3223c5af90a6a757c90b5c5521564b07e5e7a958681bcd2afad421cdcd"
 dependencies = [
  "atty",
- "humantime",
+ "humantime 2.0.1",
  "log",
  "regex",
  "termcolor",
@@ -806,6 +809,15 @@ dependencies = [
 
 [[package]]
 name = "humantime"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df004cfca50ef23c36850aaaa59ad52cc70d0e90243c3c7737a4dd32dc7a3c4f"
+dependencies = [
+ "quick-error",
+]
+
+[[package]]
+name = "humantime"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c1ad908cc71012b7bea4d0c53ba96a8cba9962f048fa68d143376143d863b7a"
@@ -852,15 +864,6 @@ name = "itertools"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f56a2d0bc861f9165be4eb3442afd3c236d8a98afd426f65d92324ae1091a484"
-dependencies = [
- "either",
-]
-
-[[package]]
-name = "itertools"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "284f18f85651fe11e8a991b2adb42cb078325c996ed026d994719efcfca1d54b"
 dependencies = [
  "either",
 ]
@@ -1671,7 +1674,7 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "atty",
  "chrono",
@@ -1679,7 +1682,7 @@ dependencies = [
  "crossterm_style",
  "cursive",
  "dirs 2.0.2",
- "env_logger 0.8.1",
+ "env_logger 0.7.1",
  "log",
  "rand 0.7.3",
  "serde",
@@ -1690,16 +1693,18 @@ dependencies = [
  "tempdir",
  "termion",
  "url 2.1.1",
+ "zeroize",
+ "zeroize_derive",
 ]
 
 [[package]]
 name = "t-rust-less-daemon"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "capnp",
  "capnp-rpc",
  "clap",
- "env_logger 0.8.1",
+ "env_logger 0.7.1",
  "futures",
  "libc",
  "log",
@@ -1728,7 +1733,7 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less-lib"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "byteorder",
  "capnp",
@@ -1741,7 +1746,7 @@ dependencies = [
  "dirs 2.0.2",
  "futures",
  "hmac",
- "itertools 0.9.0",
+ "itertools",
  "libc",
  "log",
  "mach_o_sys",
@@ -1767,21 +1772,25 @@ dependencies = [
  "x11",
  "x25519-dalek",
  "xcb",
+ "zeroize",
+ "zeroize_derive",
  "zxcvbn",
 ]
 
 [[package]]
 name = "t-rust-less-native"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "byteorder",
- "env_logger 0.8.1",
+ "env_logger 0.7.1",
  "log",
  "serde",
  "serde_derive",
  "serde_json",
  "spectral",
  "t-rust-less-lib",
+ "zeroize",
+ "zeroize_derive",
 ]
 
 [[package]]
@@ -2101,7 +2110,7 @@ dependencies = [
  "chrono",
  "derive_builder",
  "fancy-regex",
- "itertools 0.8.2",
+ "itertools",
  "lazy_static",
  "quick-error",
  "regex",

@@ -13,7 +13,7 @@ pub fn status(service: Arc<dyn TrustlessService>, store_name: String) {
   if atty::is(Stream::Stdout) {
     println!();
     println!("Client version: {}", style(env!("CARGO_PKG_VERSION")).with(Color::Cyan));
-    println!("Store version : {}", style(status.version).with(Color::Cyan));
+    println!("Store version : {}", style(status.version.clone()).with(Color::Cyan));
     println!(
       "Status        : {}",
       if status.locked {

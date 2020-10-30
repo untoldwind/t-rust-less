@@ -3,12 +3,12 @@ use cursive::view::{Finder, ViewWrapper};
 use cursive::views::{Button, LinearLayout, ProgressBar, TextView};
 use cursive::Cursive;
 use std::time::{SystemTime, UNIX_EPOCH};
-use t_rust_less_lib::memguard::weak::{ZeroingString, ZeroingStringExt};
 use t_rust_less_lib::otp::{OTPAuthUrl, OTPType};
+use zeroize::Zeroize;
 
 pub struct SecretTOTPView {
   base_view: LinearLayout,
-  otp_url: ZeroingString,
+  otp_url: String,
   token_display_id: String,
   token_valid_id: String,
   maybe_valid_until: Option<u64>,
@@ -51,11 +51,17 @@ impl SecretTOTPView {
         .child(TextView::new(format!("{:10}: ", property)))
         .child(token_display.full_width())
         .child(Button::new("Copy", on_copy)),
-      otp_url: otp_url.to_zeroing(),
+      otp_url: otp_url.to_string(),
       token_display_id,
       token_valid_id,
       maybe_valid_until,
     }
+  }
+}
+
+impl Drop for SecretTOTPView {
+  fn drop(&mut self) {
+    self.otp_url.zeroize();
   }
 }
 

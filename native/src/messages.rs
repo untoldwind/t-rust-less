@@ -1,9 +1,9 @@
 use serde_derive::{Deserialize, Serialize};
 use t_rust_less_lib::api::{Event, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
-use t_rust_less_lib::memguard::weak::ZeroingString;
 use t_rust_less_lib::service::{ServiceError, ServiceResult, StoreConfig};
+use zeroize::Zeroize;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Zeroize)]
 #[allow(clippy::large_enum_variant)]
 #[serde(rename_all = "snake_case")]
 pub enum Command {
@@ -29,7 +29,7 @@ pub enum Command {
   Unlock {
     store_name: String,
     identity_id: String,
-    passphrase: ZeroingString,
+    passphrase: String,
   },
 
   ListIdentities {
@@ -38,11 +38,11 @@ pub enum Command {
   AddIdentity {
     store_name: String,
     identity: Identity,
-    passphrase: ZeroingString,
+    passphrase: String,
   },
   ChangePassphrase {
     store_name: String,
-    passphrase: ZeroingString,
+    passphrase: String,
   },
 
   ListSecrets {
