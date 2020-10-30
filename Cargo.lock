@@ -579,11 +579,8 @@ version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "44533bbbb3bb3c1fa17d9f2e4e38bbbaf8396ba82193c4cb1b6445d711445d36"
 dependencies = [
- "atty",
- "humantime 1.3.0",
  "log",
  "regex",
- "termcolor",
 ]
 
 [[package]]
@@ -593,7 +590,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54532e3223c5af90a6a757c90b5c5521564b07e5e7a958681bcd2afad421cdcd"
 dependencies = [
  "atty",
- "humantime 2.0.1",
+ "humantime",
  "log",
  "regex",
  "termcolor",
@@ -809,15 +806,6 @@ dependencies = [
 
 [[package]]
 name = "humantime"
-version = "1.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df004cfca50ef23c36850aaaa59ad52cc70d0e90243c3c7737a4dd32dc7a3c4f"
-dependencies = [
- "quick-error",
-]
-
-[[package]]
-name = "humantime"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c1ad908cc71012b7bea4d0c53ba96a8cba9962f048fa68d143376143d863b7a"
@@ -864,6 +852,15 @@ name = "itertools"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f56a2d0bc861f9165be4eb3442afd3c236d8a98afd426f65d92324ae1091a484"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "284f18f85651fe11e8a991b2adb42cb078325c996ed026d994719efcfca1d54b"
 dependencies = [
  "either",
 ]
@@ -1043,10 +1040,10 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab3e176191bc4faad357e3122c4747aa098ac880e88b168f106386128736cf4a"
 dependencies = [
- "num-complex 0.3.0",
+ "num-complex 0.3.1",
  "num-integer",
  "num-iter",
- "num-rational 0.3.0",
+ "num-rational 0.3.1",
  "num-traits",
 ]
 
@@ -1074,18 +1071,18 @@ dependencies = [
 
 [[package]]
 name = "num-complex"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b05ad05bd8977050b171b3f6b48175fea6e0565b7981059b486075e1026a9fb5"
+checksum = "747d632c0c558b87dbabbe6a82f3b4ae03720d0646ac5b7b4dae89394be5f2c5"
 dependencies = [
  "num-traits",
 ]
 
 [[package]]
 name = "num-derive"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f09b9841adb6b5e1f89ef7087ea636e0fd94b2851f887c1e3eb5d5f8228fab3"
+checksum = "876a53fff98e03a936a674b29568b0e605f06b29372c2489ff4de23f1949743d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1094,9 +1091,9 @@ dependencies = [
 
 [[package]]
 name = "num-integer"
-version = "0.1.43"
+version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d59457e662d541ba17869cf51cf177c0b5f0cbf476c66bdc90bf1edac4f875b"
+checksum = "d2cc698a63b549a70bc047073d2949cce27cd1c7b0a4a862d08a8031bc2801db"
 dependencies = [
  "autocfg",
  "num-traits",
@@ -1104,9 +1101,9 @@ dependencies = [
 
 [[package]]
 name = "num-iter"
-version = "0.1.41"
+version = "0.1.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a6e6b7c748f995c4c29c5f5ae0248536e04a5739927c74ec0fa564805094b9f"
+checksum = "b2021c8337a54d21aca0d59a92577a029af9431cb59b909b03252b9c164fad59"
 dependencies = [
  "autocfg",
  "num-integer",
@@ -1127,9 +1124,9 @@ dependencies = [
 
 [[package]]
 name = "num-rational"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5b4d7360f362cfb50dde8143501e6940b22f644be75a4cc90b2d81968908138"
+checksum = "e5fa6d5f418879385b213d905f7cf5bf4aa553d4c380f0152d1d4f2749186fa9"
 dependencies = [
  "autocfg",
  "num-integer",
@@ -1138,9 +1135,9 @@ dependencies = [
 
 [[package]]
 name = "num-traits"
-version = "0.2.12"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac267bcc07f48ee5f8935ab0d24f316fb722d7a1292e2913f0cc196b29ffd611"
+checksum = "9a64b1ec5cda2586e284722486d802acf1f7dbdc623e2bfc57e65ca1cd099290"
 dependencies = [
  "autocfg",
 ]
@@ -1682,7 +1679,7 @@ dependencies = [
  "crossterm_style",
  "cursive",
  "dirs 2.0.2",
- "env_logger 0.7.1",
+ "env_logger 0.8.1",
  "log",
  "rand 0.7.3",
  "serde",
@@ -1704,7 +1701,7 @@ dependencies = [
  "capnp",
  "capnp-rpc",
  "clap",
- "env_logger 0.7.1",
+ "env_logger 0.8.1",
  "futures",
  "libc",
  "log",
@@ -1746,7 +1743,7 @@ dependencies = [
  "dirs 2.0.2",
  "futures",
  "hmac",
- "itertools",
+ "itertools 0.9.0",
  "libc",
  "log",
  "mach_o_sys",
@@ -1782,7 +1779,7 @@ name = "t-rust-less-native"
 version = "0.1.10"
 dependencies = [
  "byteorder",
- "env_logger 0.7.1",
+ "env_logger 0.8.1",
  "log",
  "serde",
  "serde_derive",
@@ -2110,7 +2107,7 @@ dependencies = [
  "chrono",
  "derive_builder",
  "fancy-regex",
- "itertools",
+ "itertools 0.8.2",
  "lazy_static",
  "quick-error",
  "regex",
