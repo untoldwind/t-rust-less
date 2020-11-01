@@ -59,6 +59,10 @@ error_convert_from!(chacha20_poly1305_aead::DecryptError, SecretStoreError, Ciph
 error_convert_from!(capnp::NotInSchema, SecretStoreError, IO(display));
 error_convert_from!(serde_json::Error, SecretStoreError, Json(display));
 error_convert_from!(StoreError, SecretStoreError, BlockStore(direct));
+#[cfg(feature = "rust_crypto")]
+error_convert_from!(rsa::errors::Error, SecretStoreError, Cipher(display));
+#[cfg(feature = "rust_crypto")]
+error_convert_from!(aes_gcm::Error, SecretStoreError, Cipher(display));
 
 impl<T> From<std::sync::PoisonError<T>> for SecretStoreError {
   fn from(error: std::sync::PoisonError<T>) -> Self {
