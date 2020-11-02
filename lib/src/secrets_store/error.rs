@@ -53,6 +53,7 @@ impl std::error::Error for SecretStoreError {}
 pub type SecretStoreResult<T> = Result<T, SecretStoreError>;
 
 error_convert_from!(argon2::Error, SecretStoreError, Cipher(display));
+#[cfg(feature = "openssl")]
 error_convert_from!(openssl::error::ErrorStack, SecretStoreError, Cipher(display));
 error_convert_from!(std::io::Error, SecretStoreError, IO(display));
 error_convert_from!(chacha20_poly1305_aead::DecryptError, SecretStoreError, Cipher(display));

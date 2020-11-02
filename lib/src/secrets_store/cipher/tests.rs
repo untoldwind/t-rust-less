@@ -2,7 +2,7 @@ use rand::{distributions, thread_rng, Rng};
 use spectral::prelude::*;
 
 use crate::memguard::SecretBytes;
-use crate::secrets_store::cipher::{OPEN_SSL_RSA_AES_GCM, RUST_RSA_AES_GCM, RUST_X25519CHA_CHA20POLY1305};
+use crate::secrets_store::cipher::RUST_X25519CHA_CHA20POLY1305;
 use crate::secrets_store_capnp::block;
 
 use super::Cipher;
@@ -93,8 +93,9 @@ where
 }
 
 #[test]
+#[cfg(feature = "openssl")]
 fn test_openssl_rsa_aes_gcm() {
-  common_chiper_tests(&OPEN_SSL_RSA_AES_GCM);
+  common_chiper_tests(&crate::secrets_store::cipher::OPEN_SSL_RSA_AES_GCM);
 }
 
 #[test]
@@ -103,7 +104,7 @@ fn test_rust_x25519_chacha20_poly1305() {
 }
 
 #[test]
-//#[cfg(feature = "rust_crypto")]
+#[cfg(feature = "rust_crypto")]
 fn test_rust_rsa_aes_gcm() {
-  common_chiper_tests(&RUST_RSA_AES_GCM);
+  common_chiper_tests(&crate::secrets_store::cipher::RUST_RSA_AES_GCM);
 }

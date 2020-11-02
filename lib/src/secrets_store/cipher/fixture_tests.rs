@@ -40,8 +40,7 @@ where
 }
 
 mod rsa1 {
-  use crate::secrets_store::cipher::OPEN_SSL_RSA_AES_GCM;
-  use crate::secrets_store::cipher::RUST_RSA_AES_GCM;
+  // This was generated with openssl
 
   const SEAL_NONCE: &[u8] = &hex!("da7351cbe5a9ee4f5a34abaf");
   const SEAL_KEY: &[u8] = &hex!("715391cd86a36ffb465abfa21c9cafa5864ffdcb02e720d90aeeeafa639666a8");
@@ -323,19 +322,32 @@ mod rsa1 {
   ];
 
   #[test]
+  #[cfg(feature = "openssl")]
   fn test_openssl_rsa_aes_gcm_fixture() {
-    super::fixture_test(&OPEN_SSL_RSA_AES_GCM, SEAL_KEY, SEAL_NONCE, CRYPTED_KEY, MESSAGES);
+    super::fixture_test(
+      &crate::secrets_store::cipher::OPEN_SSL_RSA_AES_GCM,
+      SEAL_KEY,
+      SEAL_NONCE,
+      CRYPTED_KEY,
+      MESSAGES,
+    );
   }
 
   #[test]
+  #[cfg(feature = "rust_crypto")]
   fn test_rust_rsa_aes_gcm_fixture() {
-    super::fixture_test(&RUST_RSA_AES_GCM, SEAL_KEY, SEAL_NONCE, CRYPTED_KEY, MESSAGES);
+    super::fixture_test(
+      &crate::secrets_store::cipher::RUST_RSA_AES_GCM,
+      SEAL_KEY,
+      SEAL_NONCE,
+      CRYPTED_KEY,
+      MESSAGES,
+    );
   }
 }
 
 mod rsa2 {
-  use crate::secrets_store::cipher::OPEN_SSL_RSA_AES_GCM;
-  use crate::secrets_store::cipher::RUST_RSA_AES_GCM;
+  // This was generated with rust-crypto rsa
 
   const SEAL_NONCE: &[u8] = &hex!("ec52605bb40e51c144782320");
   const SEAL_KEY: &[u8] = &hex!("3ae9d60336c318d2da12c088cd89831b30115bf2e3a18b878633471b094677c5");
@@ -617,12 +629,26 @@ mod rsa2 {
   ];
 
   #[test]
+  #[cfg(feature = "openssl")]
   fn test_openssl_rsa_aes_gcm_fixture() {
-    super::fixture_test(&OPEN_SSL_RSA_AES_GCM, SEAL_KEY, SEAL_NONCE, CRYPTED_KEY, MESSAGES);
+    super::fixture_test(
+      &crate::secrets_store::cipher::OPEN_SSL_RSA_AES_GCM,
+      SEAL_KEY,
+      SEAL_NONCE,
+      CRYPTED_KEY,
+      MESSAGES,
+    );
   }
 
   #[test]
+  #[cfg(feature = "rust_crypto")]
   fn test_rust_rsa_aes_gcm_fixture() {
-    super::fixture_test(&RUST_RSA_AES_GCM, SEAL_KEY, SEAL_NONCE, CRYPTED_KEY, MESSAGES);
+    super::fixture_test(
+      &crate::secrets_store::cipher::RUST_RSA_AES_GCM,
+      SEAL_KEY,
+      SEAL_NONCE,
+      CRYPTED_KEY,
+      MESSAGES,
+    );
   }
 }

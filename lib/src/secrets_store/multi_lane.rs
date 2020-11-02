@@ -6,7 +6,7 @@ use capnp::{message, serialize};
 use crate::memguard::weak::ZeroingHeapAllocator;
 use crate::memguard::SecretBytes;
 use crate::secrets_store::cipher::{
-  Cipher, KeyDerivation, PrivateKey, PublicKey, OPEN_SSL_RSA_AES_GCM, RUST_ARGON2_ID, RUST_X25519CHA_CHA20POLY1305,
+  Cipher, KeyDerivation, PrivateKey, PublicKey, RUST_ARGON2_ID, RUST_X25519CHA_CHA20POLY1305,
 };
 use crate::secrets_store::estimate::{PasswordEstimator, ZxcvbnEstimator};
 use crate::secrets_store::index::Index;
@@ -55,9 +55,14 @@ impl MultiLaneSecretsStore {
     autolock_timeout: Duration,
     event_hub: Arc<dyn EventHub>,
   ) -> MultiLaneSecretsStore {
+    #[cfg(all(feature = "openssl", not(feature = "rust_crypto")))]
+    let ciphers: Vec<&'static dyn Cipher> = vec![&super::cipher::OPEN_SSL_RSA_AES_GCM, &RUST_X25519CHA_CHA20POLY1305];
+    #[cfg(feature = "rust_crypto")]
+    let ciphers: Vec<&'static dyn Cipher> = vec![&super::cipher::RUST_RSA_AES_GCM, &RUST_X25519CHA_CHA20POLY1305];
+
     MultiLaneSecretsStore {
       name: name.to_string(),
-      ciphers: vec![&OPEN_SSL_RSA_AES_GCM, &RUST_X25519CHA_CHA20POLY1305],
+      ciphers,
       key_derivation: &RUST_ARGON2_ID,
       unlocked_user: RwLock::new(None),
       block_store,

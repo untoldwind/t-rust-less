@@ -14,7 +14,7 @@ serde = "1"
 serde_derive = "1"
 serde_json = "1"
 data-encoding = "2"
-openssl = { version = "0", features = ["vendored"] }
+openssl = { version = "0", features = ["vendored"], optional = true }
 byteorder = "1"
 chrono = { version = "0", features = ["serde"] }
 url = "2"
@@ -55,7 +55,7 @@ hex-literal = "0"
 with_x11 = ["x11"]
 with_xcb = ["xcb"]
 rust_crypto = ["rsa", "rsa-export", "aes-gcm"]
-default = ["with_x11", "rust_crypto"]
+default = ["with_x11", "openssl"]
 
 [target.'cfg(unix)'.dependencies]
 xcb = { version = "0.8", features = [ "thread", "xfixes" ], optional = true }
