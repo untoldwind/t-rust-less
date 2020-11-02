@@ -1,6 +1,10 @@
 #[macro_use]
 pub mod macros;
 
+#[macro_use]
+#[cfg(test)]
+extern crate hex_literal;
+
 pub mod api;
 pub mod block_store;
 pub mod clipboard;
@@ -16,7 +20,7 @@ pub mod service;
   clippy::redundant_field_names,
   clippy::match_single_binding
 )]
-mod secrets_store_capnp;
+pub mod secrets_store_capnp;
 
 #[allow(dead_code)]
 #[allow(

@@ -40,7 +40,8 @@ tokio = { version = "0.2", features = ["net", "rt-util" ] }
 tokio-util = { version = "0.3", features = ["compat"] }
 zeroize = "1"
 zeroize_derive  = "1"
-rsa = { git = "https://github.com/RustCrypto/RSA.git", optional = true }
+rsa = { version = "0", optional = true }
+rsa-export = { version = "0", optional = true }
 aes-gcm = { version = "0", optional = true }
 
 [dev-dependencies]
@@ -48,11 +49,12 @@ tempdir = "0"
 spectral = "0"
 quickcheck = "0"
 byteorder = "1"
+hex-literal = "0"
 
 [features]
 with_x11 = ["x11"]
 with_xcb = ["xcb"]
-rust_crypto = ["rsa", "aes-gcm"]
+rust_crypto = ["rsa", "rsa-export", "aes-gcm"]
 default = ["with_x11", "rust_crypto"]
 
 [target.'cfg(unix)'.dependencies]

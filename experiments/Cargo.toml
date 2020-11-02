@@ -10,11 +10,13 @@ env_logger = "0"
 t-rust-less-lib = { path = "../lib" }
 serde = "1"
 serde_derive = "1"
-rand = "0.5"
+rand = "0.7"
 dirs = "1"
 url = "1"
 serde_json = "1"
 chrono = { version = "0", features = ["serde"] }
+hex = "0"
+capnp = "0.13"
 
 [dev-dependencies]
 tempdir = "0"

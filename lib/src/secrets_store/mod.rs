@@ -2,7 +2,7 @@ use crate::api::{EventHub, Identity, Secret, SecretList, SecretListFilter, Secre
 use std::sync::Arc;
 use std::time::Duration;
 
-mod cipher;
+pub mod cipher;
 mod error;
 pub mod estimate;
 mod index;

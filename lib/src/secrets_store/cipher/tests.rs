@@ -2,7 +2,7 @@ use rand::{distributions, thread_rng, Rng};
 use spectral::prelude::*;
 
 use crate::memguard::SecretBytes;
-use crate::secrets_store::cipher::{OPEN_SSL_RSA_AES_GCM, RUST_X25519CHA_CHA20POLY1305, RUST_RSA_AES_GCM};
+use crate::secrets_store::cipher::{OPEN_SSL_RSA_AES_GCM, RUST_RSA_AES_GCM, RUST_X25519CHA_CHA20POLY1305};
 use crate::secrets_store_capnp::block;
 
 use super::Cipher;
@@ -27,16 +27,12 @@ where
 
   assert_that(&public_key.len()).is_greater_than_or_equal_to(30);
 
-  let rng = thread_rng();
-  let seal_key_raw = rng
-    .sample_iter(&distributions::Standard)
-    .take(cipher.seal_key_length())
-    .collect::<Vec<u8>>();
+  let mut rng = thread_rng();
   let nonce = rng
     .sample_iter(&distributions::Standard)
     .take(cipher.seal_min_nonce_length())
     .collect::<Vec<u8>>();
-  let seal_key = SecretBytes::from(seal_key_raw);
+  let seal_key = SecretBytes::random(&mut rng, cipher.seal_key_length());
 
   let crypted_private = cipher.seal_private_key(&seal_key, &nonce, &private_key).unwrap();
   let decrypted_private = cipher.open_private_key(&seal_key, &nonce, &crypted_private).unwrap();
@@ -97,7 +93,7 @@ where
 }
 
 #[test]
-fn test_openssl_rsa_aes_gcm_test() {
+fn test_openssl_rsa_aes_gcm() {
   common_chiper_tests(&OPEN_SSL_RSA_AES_GCM);
 }
 
@@ -107,7 +103,7 @@ fn test_rust_x25519_chacha20_poly1305() {
 }
 
 #[test]
-#[cfg(feature = "rust_crypto")]
-fn test_rust_rsa_aes_gcm_test() {
+//#[cfg(feature = "rust_crypto")]
+fn test_rust_rsa_aes_gcm() {
   common_chiper_tests(&RUST_RSA_AES_GCM);
 }

@@ -8,9 +8,7 @@ use aes_gcm::aead::generic_array::GenericArray;
 use aes_gcm::aead::{Aead, NewAead};
 use aes_gcm::Aes256Gcm;
 use rand::{thread_rng, RngCore};
-use rsa::{
-  PaddingScheme, PrivateKeyEncoding, PublicKey as PublicKeyForRSA, PublicKeyEncoding, RSAPrivateKey, RSAPublicKey,
-};
+use rsa::{PaddingScheme, PublicKey as PublicKeyForRSA, RSAPrivateKey, RSAPublicKey};
 
 const RSA_KEY_BITS: usize = 4096;
 
@@ -31,8 +29,11 @@ impl Cipher for RustRsaAesGcmCipher {
   fn generate_key_pair(&self) -> SecretStoreResult<(PublicKey, PrivateKey)> {
     let mut rng = thread_rng();
     let private = RSAPrivateKey::new(&mut rng, RSA_KEY_BITS)?;
-    let private_der = SecretBytes::from(private.to_pkcs1()?);
-    let public_der = private.to_public_key().to_pkcs1()?;
+    let private_der = SecretBytes::from(
+      rsa_export::pkcs1::private_key(&private).map_err(|e| SecretStoreError::Cipher(format!("Pkcs1 export: {}", e)))?,
+    );
+    let public_der = rsa_export::pkcs1::public_key(&private.to_public_key())
+      .map_err(|e| SecretStoreError::Cipher(format!("Pkcs1 export: {}", e)))?;
 
     Ok((public_der, private_der))
   }
@@ -91,7 +92,7 @@ impl Cipher for RustRsaAesGcmCipher {
 
       let crypled_key_buffer = public_key.encrypt(
         &mut rng,
-        PaddingScheme::new_oaep::<sha2::Sha256>(),
+        PaddingScheme::new_oaep::<sha1::Sha1>(),
         seal_key.borrow().as_bytes(),
       )?;
 
@@ -127,7 +128,7 @@ impl Cipher for RustRsaAesGcmCipher {
       }
       let crypted_key = recipient.get_crypted_key()?;
       let private_key = RSAPrivateKey::from_pkcs1(&user.1.borrow())?;
-      let seal_key = SecretBytes::from(private_key.decrypt(PaddingScheme::new_oaep::<sha2::Sha256>(), crypted_key)?);
+      let seal_key = SecretBytes::from(private_key.decrypt(PaddingScheme::new_oaep::<sha1::Sha1>(), crypted_key)?);
 
       let cipher = Aes256Gcm::new(GenericArray::from_slice(&seal_key.borrow()));
       let decrypted = cipher.decrypt(GenericArray::from_slice(&nonce[0..12]), crypted)?;

@@ -11,10 +11,12 @@ mod rust_x25519_chacha20_poly1305;
 
 pub use self::openssl_rsa_aes_gcm::OPEN_SSL_RSA_AES_GCM;
 pub use self::rust_argon2id::RUST_ARGON2_ID;
-pub use self::rust_x25519_chacha20_poly1305::RUST_X25519CHA_CHA20POLY1305;
 #[cfg(feature = "rust_crypto")]
 pub use self::rust_rsa_aes_gcm::RUST_RSA_AES_GCM;
+pub use self::rust_x25519_chacha20_poly1305::RUST_X25519CHA_CHA20POLY1305;
 
+#[cfg(test)]
+mod fixture_tests;
 #[cfg(test)]
 mod tests;
 

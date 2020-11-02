@@ -1,4 +1,7 @@
+#[allow(dead_code)]
 mod clipboard;
+#[allow(dead_code)]
+mod fixtures;
 
 fn main() {
   env_logger::Builder::from_default_env()
@@ -6,5 +9,6 @@ fn main() {
     .target(env_logger::Target::Stderr)
     .init();
 
-  clipboard::experimental_clipboard();
+  fixtures::generate_fixtures();
+  //  clipboard::experimental_clipboard();
 }
