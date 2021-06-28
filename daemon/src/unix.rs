@@ -22,9 +22,9 @@ where
 
   info!("Listening on socket {}", socket_path.to_string_lossy());
 
-  let mut rt = Builder::new_current_thread().enable_all().build().unwrap();
+  let rt = Builder::new_current_thread().enable_all().build().unwrap();
   let local_set = LocalSet::new();
-  let result: Result<(), Box<dyn std::error::Error>> = local_set.block_on(&mut rt, async move {
+  let result: Result<(), Box<dyn std::error::Error>> = local_set.block_on(&rt, async move {
     let prev_mask = unsafe {
       // Dirty little trick to set permissions on the socket
       libc::umask(0o177)

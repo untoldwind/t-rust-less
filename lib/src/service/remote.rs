@@ -30,10 +30,10 @@ impl RemoteTrustlessService {
 
 impl TrustlessService for RemoteTrustlessService {
   fn list_stores(&self) -> ServiceResult<Vec<StoreConfig>> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let request = self.client.list_stores_request();
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request.send().promise.map(|response| {
         let store_configs = response?
           .get()?
@@ -47,12 +47,12 @@ impl TrustlessService for RemoteTrustlessService {
   }
 
   fn upsert_store_config(&self, store_config: StoreConfig) -> ServiceResult<()> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let mut request = self.client.upsert_store_config_request();
     store_config.to_builder(request.get().init_store_config())?;
 
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request.send().promise.map(|response| {
         response?.get()?;
 
@@ -62,12 +62,12 @@ impl TrustlessService for RemoteTrustlessService {
   }
 
   fn delete_store_config(&self, name: &str) -> ServiceResult<()> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let mut request = self.client.delete_store_config_request();
     request.get().set_store_name(&name);
 
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request.send().promise.map(|response| {
         response?.get()?;
 
@@ -77,11 +77,11 @@ impl TrustlessService for RemoteTrustlessService {
   }
 
   fn open_store(&self, name: &str) -> ServiceResult<Arc<dyn SecretsStore>> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let mut request = self.client.open_store_request();
     request.get().set_store_name(name);
     let store_client: ServiceResult<secrets_store::Client> = self.local_set.block_on(
-      &mut rt,
+      &rt,
       request.send().promise.map(|response| Ok(response?.get()?.get_store()?)),
     );
 
@@ -93,10 +93,10 @@ impl TrustlessService for RemoteTrustlessService {
   }
 
   fn get_default_store(&self) -> ServiceResult<Option<String>> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let request = self.client.get_default_store_request();
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request
         .send()
         .promise
@@ -105,12 +105,12 @@ impl TrustlessService for RemoteTrustlessService {
   }
 
   fn set_default_store(&self, name: &str) -> ServiceResult<()> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let mut request = self.client.set_default_store_request();
     request.get().set_store_name(&name);
 
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request.send().promise.map(|response| {
         response?.get()?;
 
@@ -126,7 +126,7 @@ impl TrustlessService for RemoteTrustlessService {
     properties: &[&str],
     display_name: &str,
   ) -> ServiceResult<Arc<dyn ClipboardControl>> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let mut request = self.client.secret_to_clipboard_request();
 
     request.get().set_store_name(store_name);
@@ -135,7 +135,7 @@ impl TrustlessService for RemoteTrustlessService {
     request.get().set_display_name(display_name);
 
     let clipboard_control_client: ServiceResult<clipboard_control::Client> = self.local_set.block_on(
-      &mut rt,
+      &rt,
       request
         .send()
         .promise
@@ -150,14 +150,14 @@ impl TrustlessService for RemoteTrustlessService {
   }
 
   fn add_event_handler(&self, handler: Box<dyn EventHandler>) -> ServiceResult<Box<dyn EventSubscription>> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let mut request = self.client.add_event_handler_request();
 
     request
       .get()
       .set_handler(capnp_rpc::new_client(RemoteEventHandlerImpl::new(handler)));
     let subscription_client: ServiceResult<event_subscription::Client> = self.local_set.block_on(
-      &mut rt,
+      &rt,
       request
         .send()
         .promise
@@ -168,11 +168,11 @@ impl TrustlessService for RemoteTrustlessService {
   }
 
   fn generate_id(&self) -> ServiceResult<String> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let request = self.client.generate_id_request();
 
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request
         .send()
         .promise
@@ -181,12 +181,12 @@ impl TrustlessService for RemoteTrustlessService {
   }
 
   fn generate_password(&self, param: PasswordGeneratorParam) -> ServiceResult<String> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let mut request = self.client.generate_password_request();
     param.to_builder(request.get().init_param())?;
 
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request
         .send()
         .promise
@@ -227,10 +227,10 @@ impl RemoteSecretsStore {
 
 impl SecretsStore for RemoteSecretsStore {
   fn status(&self) -> SecretStoreResult<Status> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let request = self.client.status_request();
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request
         .send()
         .promise
@@ -239,11 +239,11 @@ impl SecretsStore for RemoteSecretsStore {
   }
 
   fn lock(&self) -> SecretStoreResult<()> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let request = self.client.lock_request();
 
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request.send().promise.map(|response| {
         response?.get()?;
 
@@ -253,13 +253,13 @@ impl SecretsStore for RemoteSecretsStore {
   }
 
   fn unlock(&self, identity_id: &str, passphrase: SecretBytes) -> SecretStoreResult<()> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let mut request = self.client.unlock_request();
     request.get().set_identity_id(&identity_id);
     request.get().set_passphrase(&passphrase.borrow());
 
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request.send().promise.map(|response| {
         response?.get()?;
 
@@ -269,10 +269,10 @@ impl SecretsStore for RemoteSecretsStore {
   }
 
   fn identities(&self) -> SecretStoreResult<Vec<Identity>> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let request = self.client.identities_request();
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request.send().promise.map(|response| {
         let names = response?
           .get()?
@@ -286,13 +286,13 @@ impl SecretsStore for RemoteSecretsStore {
   }
 
   fn add_identity(&self, identity: Identity, passphrase: SecretBytes) -> SecretStoreResult<()> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let mut request = self.client.add_identity_request();
 
     identity.to_builder(request.get().init_identity());
     request.get().set_passphrase(&passphrase.borrow());
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request.send().promise.map(|response| {
         response?.get()?;
 
@@ -302,12 +302,12 @@ impl SecretsStore for RemoteSecretsStore {
   }
 
   fn change_passphrase(&self, passphrase: SecretBytes) -> SecretStoreResult<()> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let mut request = self.client.change_passphrase_request();
     request.get().set_passphrase(&passphrase.borrow());
 
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request.send().promise.map(|response| {
         response?.get()?;
 
@@ -317,12 +317,12 @@ impl SecretsStore for RemoteSecretsStore {
   }
 
   fn list(&self, filter: &SecretListFilter) -> SecretStoreResult<SecretList> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let mut request = self.client.list_request();
     filter.to_builder(request.get().init_filter())?;
 
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request.send().promise.map(|response| {
         let list = SecretList::from_reader(response?.get()?.get_list()?)?;
 
@@ -332,11 +332,11 @@ impl SecretsStore for RemoteSecretsStore {
   }
 
   fn update_index(&self) -> SecretStoreResult<()> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let request = self.client.update_index_request();
 
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request.send().promise.map(|response| {
         response?.get()?;
 
@@ -346,12 +346,12 @@ impl SecretsStore for RemoteSecretsStore {
   }
 
   fn add(&self, secret_version: SecretVersion) -> SecretStoreResult<String> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let mut request = self.client.add_request();
 
     secret_version.to_builder(request.get().init_version())?;
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request
         .send()
         .promise
@@ -360,12 +360,12 @@ impl SecretsStore for RemoteSecretsStore {
   }
 
   fn get(&self, secret_id: &str) -> SecretStoreResult<Secret> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let mut request = self.client.get_request();
     request.get().set_id(&secret_id);
 
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request.send().promise.map(|response| {
         let secret = Secret::from_reader(response?.get()?.get_secret()?)?;
 
@@ -375,12 +375,12 @@ impl SecretsStore for RemoteSecretsStore {
   }
 
   fn get_version(&self, block_id: &str) -> SecretStoreResult<SecretVersion> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let mut request = self.client.get_version_request();
     request.get().set_block_id(&block_id);
 
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request.send().promise.map(|response| {
         let secret_version = SecretVersion::from_reader(response?.get()?.get_version()?)?;
 
@@ -418,11 +418,11 @@ impl RemoteClipboardControl {
 
 impl ClipboardControl for RemoteClipboardControl {
   fn is_done(&self) -> ServiceResult<bool> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let request = self.client.is_done_request();
 
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request
         .send()
         .promise
@@ -431,11 +431,11 @@ impl ClipboardControl for RemoteClipboardControl {
   }
 
   fn currently_providing(&self) -> ServiceResult<Option<String>> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let request = self.client.currently_providing_request();
 
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request
         .send()
         .promise
@@ -447,11 +447,11 @@ impl ClipboardControl for RemoteClipboardControl {
   }
 
   fn provide_next(&self) -> ServiceResult<()> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let request = self.client.provide_next_request();
 
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request.send().promise.map(|response| {
         response?.get()?;
 
@@ -461,11 +461,11 @@ impl ClipboardControl for RemoteClipboardControl {
   }
 
   fn destroy(&self) -> ServiceResult<()> {
-    let mut rt = self.runtime.borrow_mut();
+    let rt = self.runtime.borrow();
     let request = self.client.destroy_request();
 
     self.local_set.block_on(
-      &mut rt,
+      &rt,
       request.send().promise.map(|response| {
         response?.get()?;
 

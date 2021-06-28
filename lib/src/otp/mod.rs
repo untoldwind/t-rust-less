@@ -17,15 +17,15 @@ use zeroize::Zeroize;
 const OTP_URL_SCHEME: &str = "otpauth";
 
 pub enum OTPType {
-  TOTP { period: u32 },
-  HOTP { counter: u64 },
+  Totp { period: u32 },
+  Hotp { counter: u64 },
 }
 
 impl fmt::Display for OTPType {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
-      OTPType::TOTP { .. } => write!(f, "totp")?,
-      OTPType::HOTP { .. } => write!(f, "hotp")?,
+      OTPType::Totp { .. } => write!(f, "totp")?,
+      OTPType::Hotp { .. } => write!(f, "hotp")?,
     }
     Ok(())
   }
@@ -88,11 +88,11 @@ impl OTPAuthUrl {
     let otp_type = match url.host_str() {
       Some("totp") => {
         let period = Self::find_parameter(&url, "period")?.unwrap_or(30);
-        OTPType::TOTP { period }
+        OTPType::Totp { period }
       }
       Some("hotp") => {
         let counter = Self::find_required_parameter(&url, "counter")?;
-        OTPType::HOTP { counter }
+        OTPType::Hotp { counter }
       }
       _ => return Err(OTPError::InvalidType),
     };
@@ -140,9 +140,9 @@ impl OTPAuthUrl {
     result += "?secret=";
     result += &self.secret.to_string();
     match self.otp_type {
-      OTPType::TOTP { period } if period != 30 => result += &format!("&period={}", period),
-      OTPType::TOTP { .. } => (),
-      OTPType::HOTP { counter } => result += &format!("&counter={}", counter),
+      OTPType::Totp { period } if period != 30 => result += &format!("&period={}", period),
+      OTPType::Totp { .. } => (),
+      OTPType::Hotp { counter } => result += &format!("&counter={}", counter),
     }
     if self.digits != 6 {
       result += &format!("&digits={}", self.digits);
@@ -160,14 +160,14 @@ impl OTPAuthUrl {
 
   pub fn generate(&self, timestamp_or_counter: u64) -> (String, u64) {
     match self.otp_type {
-      OTPType::TOTP { period } => TOTPGenerator {
+      OTPType::Totp { period } => TOTPGenerator {
         algorithm: self.algorithm,
         digits: self.digits,
         period,
         secret: &self.secret.0,
       }
       .generate(timestamp_or_counter),
-      OTPType::HOTP { .. } => HOTPGenerator {
+      OTPType::Hotp { .. } => HOTPGenerator {
         algorithm: self.algorithm,
         digits: self.digits,
         counter: timestamp_or_counter,

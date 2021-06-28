@@ -25,7 +25,7 @@ impl SecretTOTPView {
       Ok(otpauth) => {
         let (token, valid_until) = otpauth.generate(now);
         let period = match otpauth.otp_type {
-          OTPType::TOTP { period } => Some(period),
+          OTPType::Totp { period } => Some(period),
           _ => None,
         };
         (token, Some(valid_until), period)
