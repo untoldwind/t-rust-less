@@ -36,8 +36,8 @@ itertools = "0"
 toml = "0"
 dirs = "2"
 futures = "0.3"
-tokio = { version = "0.2", features = ["net", "rt-util" ] }
-tokio-util = { version = "0.3", features = ["compat"] }
+tokio = { version = "1", features = ["net", "rt" ] }
+tokio-util = { version = "0.6", features = ["compat"] }
 zeroize = "1"
 zeroize_derive  = "1"
 rsa = { version = "0.3", optional = true }

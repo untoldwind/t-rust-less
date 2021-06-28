@@ -1,6 +1,6 @@
 use crate::error::ExtResult;
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
-use futures::{future, AsyncReadExt, FutureExt, StreamExt};
+use futures::{future, AsyncReadExt, FutureExt};
 use log::{error, info};
 use std::fs;
 use std::time::Duration;
@@ -22,21 +22,21 @@ where
 
   info!("Listening on socket {}", socket_path.to_string_lossy());
 
-  let mut rt = Builder::new().basic_scheduler().enable_all().build().unwrap();
+  let mut rt = Builder::new_current_thread().enable_all().build().unwrap();
   let local_set = LocalSet::new();
   let result: Result<(), Box<dyn std::error::Error>> = local_set.block_on(&mut rt, async move {
     let prev_mask = unsafe {
       // Dirty little trick to set permissions on the socket
       libc::umask(0o177)
     };
-    let mut socket = UnixListener::bind(&socket_path_cloned)?;
+    let socket = UnixListener::bind(&socket_path_cloned)?;
     unsafe {
       libc::umask(prev_mask);
     }
 
     let handle_incoming = async move {
       while let Ok((stream, _)) = socket.accept().await {
-        let (reader, writer) = tokio_util::compat::Tokio02AsyncReadCompatExt::compat(stream).split();
+        let (reader, writer) = tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
 
         let network = twoparty::VatNetwork::new(reader, writer, rpc_twoparty_capnp::Side::Server, Default::default());
         let rpc_system = RpcSystem::new(Box::new(network), Some(handler_factory()));
@@ -47,12 +47,16 @@ where
       Ok::<(), Box<dyn std::error::Error>>(())
     };
 
-    let autolocker = interval(Duration::from_secs(1))
-      .for_each(|_| {
+    let mut interval = interval(Duration::from_secs(1));
+    let autolocker = async move {
+      loop {
+        interval.tick().await;
         check_autolock();
-        future::ready(())
-      })
-      .map(|_| Ok::<(), Box<dyn std::error::Error>>(()));
+      }
+
+      #[allow(unreachable_code)]
+      Ok::<(), Box<dyn std::error::Error>>(())
+    };
 
     future::select(
       future::select(

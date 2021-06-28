@@ -25,11 +25,11 @@ pub fn try_remote_service() -> ServiceResult<Option<RemoteTrustlessService>> {
     return Ok(None);
   }
 
-  let mut rt = Builder::new().basic_scheduler().enable_all().build().unwrap();
+  let mut rt = Builder::new_current_thread().enable_all().build().unwrap();
   let local_set = LocalSet::new();
   let client: ServiceResult<service::Client> = local_set.block_on(&mut rt, async move {
     let stream = UnixStream::connect(socket_path).await?;
-    let (reader, writer) = tokio_util::compat::Tokio02AsyncReadCompatExt::compat(stream).split();
+    let (reader, writer) = tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
     let network = Box::new(twoparty::VatNetwork::new(
       reader,
       writer,
