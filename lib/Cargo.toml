@@ -40,7 +40,7 @@ tokio = { version = "0.2", features = ["net", "rt-util" ] }
 tokio-util = { version = "0.3", features = ["compat"] }
 zeroize = "1"
 zeroize_derive  = "1"
-rsa = { version = "0", optional = true }
+rsa = { version = "0.3", optional = true }
 rsa-export = { version = "0", optional = true }
 aes-gcm = { version = "0", optional = true }
 

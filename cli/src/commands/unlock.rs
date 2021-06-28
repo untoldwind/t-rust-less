@@ -5,7 +5,7 @@ use atty::Stream;
 use cursive::event::Key;
 use cursive::traits::{Boxable, Identifiable};
 use cursive::views::{Dialog, DummyView, LinearLayout, SelectView, TextView};
-use cursive::Cursive;
+use cursive::{Cursive, CursiveRunnable};
 use std::process;
 use std::sync::Arc;
 use t_rust_less_lib::api::{Identity, Status};
@@ -26,7 +26,7 @@ pub fn unlock(service: Arc<dyn TrustlessService>, store_name: String) {
   }
 }
 
-pub fn unlock_store(siv: &mut Cursive, secrets_store: &Arc<dyn SecretsStore>, name: &str) -> Status {
+pub fn unlock_store(siv: &mut CursiveRunnable, secrets_store: &Arc<dyn SecretsStore>, name: &str) -> Status {
   if !atty::is(Stream::Stdout) {
     println!("Please use a terminal");
     process::exit(1);
@@ -51,7 +51,12 @@ pub fn unlock_store(siv: &mut Cursive, secrets_store: &Arc<dyn SecretsStore>, na
   status
 }
 
-fn unlock_dialog(siv: &mut Cursive, secrets_store: &Arc<dyn SecretsStore>, name: &str, identities: Vec<Identity>) {
+fn unlock_dialog(
+  siv: &mut CursiveRunnable,
+  secrets_store: &Arc<dyn SecretsStore>,
+  name: &str,
+  identities: Vec<Identity>,
+) {
   siv.set_user_data(secrets_store.clone());
   siv.add_global_callback(Key::Esc, Cursive::quit);
   siv.add_layer(

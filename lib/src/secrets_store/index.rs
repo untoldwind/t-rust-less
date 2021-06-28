@@ -320,7 +320,10 @@ impl Index {
 
     let (name_score, name_highlights) = match &filter.name {
       Some(name_filter) => match sublime_fuzzy::best_match(name_filter, &entry.name) {
-        Some(fuzzy_match) => (fuzzy_match.score(), fuzzy_match.matches().clone()),
+        Some(fuzzy_match) => (
+          fuzzy_match.score(),
+          fuzzy_match.matched_indices().cloned().collect::<Vec<usize>>(),
+        ),
         _ => return Ok(None),
       },
       None => (0, vec![]),

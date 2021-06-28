@@ -17,7 +17,7 @@ impl PasswordEstimator for ZxcvbnEstimator {
         crack_time_display: format!("{}", entropy.crack_times().offline_fast_hashing_1e10_per_second()),
         score: entropy.score(),
       },
-      Err(ZxcvbnError::BlankPassword) => PasswordStrength {
+      Err(ZxcvbnError::BlankPassword) | Err(ZxcvbnError::DurationOutOfRange) => PasswordStrength {
         entropy: 0.0,
         crack_time: 0.0,
         crack_time_display: "Instant".to_string(),

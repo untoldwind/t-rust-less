@@ -1,4 +1,4 @@
-use cursive::Cursive;
+use cursive::CursiveRunnable;
 use log::error;
 
 const THEME: &str = r##"
@@ -22,7 +22,7 @@ borders = "simple"
     highlight_inactive = "#5555FF"
 "##;
 
-pub fn create_tui() -> Cursive {
+pub fn create_tui() -> CursiveRunnable {
   let mut siv = cursive::default();
 
   if let Err(error) = siv.load_toml(THEME) {

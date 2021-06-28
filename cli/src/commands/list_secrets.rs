@@ -10,7 +10,7 @@ use cursive::traits::{Boxable, Identifiable, Scrollable};
 use cursive::utils::markup::StyledString;
 use cursive::view::View;
 use cursive::views::{EditView, LinearLayout, ResizedView, SelectView, TextContent};
-use cursive::{Cursive, Vec2};
+use cursive::{Cursive, CursiveRunnable, Vec2};
 use std::env;
 use std::sync::Arc;
 use t_rust_less_lib::api::{
@@ -61,7 +61,7 @@ struct ListUIState {
   last_update: Option<DateTime<Utc>>,
 }
 
-fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState, status: Status) {
+fn list_secrets_ui(siv: &mut CursiveRunnable, initial_state: ListUIState, status: Status) {
   let mut name_search = EditView::new();
   if let Some(name_filter) = &initial_state.filter.name {
     name_search.set_content(name_filter.to_string());
@@ -81,6 +81,7 @@ fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState, status: Status
   siv.add_global_callback(Event::CtrlChar('o'), secret_to_clipboard(&[PROPERTY_TOTP_URL]));
   siv.add_global_callback(Event::Refresh, update_status);
   siv.add_global_callback(Event::WindowResize, on_event);
+  let screen_size = siv.screen_size();
   siv.add_fullscreen_layer(
     LinearLayout::vertical()
       .child(
@@ -92,7 +93,7 @@ fn list_secrets_ui(siv: &mut Cursive, initial_state: ListUIState, status: Status
               .fixed_width(14),
           ),
       )
-      .child(create_list_view(siv.screen_size(), &initial_state))
+      .child(create_list_view(screen_size, &initial_state))
       .with_name("list_view"),
   );
   siv.set_user_data(initial_state);
