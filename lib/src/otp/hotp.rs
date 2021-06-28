@@ -35,7 +35,7 @@ impl<'a> HOTPGenerator<'a> {
 
     format!(
       "{:01$}",
-      base % (10 as u32).pow(u32::from(self.digits)),
+      base % (10_u32).pow(u32::from(self.digits)),
       self.digits as usize
     )
   }

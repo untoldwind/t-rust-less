@@ -83,7 +83,7 @@ impl LocalDirBlockStore {
     HEXLOWER.encode(&hasher.finalize())
   }
 
-  fn block_file(base_dir: &PathBuf, block_id: &str) -> StoreResult<PathBuf> {
+  fn block_file(base_dir: &Path, block_id: &str) -> StoreResult<PathBuf> {
     if block_id.len() < 3 {
       return Err(StoreError::InvalidBlock(block_id.to_string()));
     }

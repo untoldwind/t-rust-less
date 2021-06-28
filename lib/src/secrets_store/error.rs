@@ -85,16 +85,16 @@ impl From<capnp::Error> for SecretStoreError {
   }
 }
 
-impl Into<capnp::Error> for SecretStoreError {
-  fn into(self) -> capnp::Error {
-    match serde_json::to_string(&self) {
+impl From<SecretStoreError> for capnp::Error {
+  fn from(error : SecretStoreError) -> capnp::Error {
+    match serde_json::to_string(&error) {
       Ok(json) => capnp::Error {
         kind: capnp::ErrorKind::Failed,
         description: json,
       },
       _ => capnp::Error {
         kind: capnp::ErrorKind::Failed,
-        description: format!("{}", self),
+        description: format!("{}", error),
       },
     }
   }

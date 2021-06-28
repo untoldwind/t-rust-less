@@ -32,7 +32,7 @@ impl Index {
     let data = SecretWords::from_secured(raw);
     let heads = Self::read_heads(&data)?;
 
-    Ok(Index { data, heads })
+    Ok(Index { heads, data })
   }
 
   pub fn find_versions(&self, secret_id: &str) -> SecretStoreResult<Vec<SecretVersionRef>> {

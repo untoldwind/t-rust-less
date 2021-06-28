@@ -2,7 +2,7 @@ use clap::{App, AppSettings, Arg, SubCommand};
 
 pub fn app() -> App<'static, 'static> {
   App::new("t-rust-less")
-    .version(&clap::crate_version!()[..])
+    .version(clap::crate_version!())
     .about("Manages passwords")
     .setting(AppSettings::ArgRequiredElseHelp)
     .arg(
