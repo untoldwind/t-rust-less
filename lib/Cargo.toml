@@ -55,7 +55,7 @@ hex-literal = "0"
 with_x11 = ["x11"]
 with_xcb = ["xcb"]
 rust_crypto = ["rsa", "rsa-export", "aes-gcm"]
-default = ["with_x11", "openssl"]
+default = ["with_x11", "rust_crypto"]
 
 [target.'cfg(unix)'.dependencies]
 xcb = { version = "0.8", features = [ "thread", "xfixes" ], optional = true }
