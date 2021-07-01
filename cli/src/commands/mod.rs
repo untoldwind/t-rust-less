@@ -27,7 +27,8 @@ fn generate_id(length: usize) -> String {
   let rng = thread_rng();
 
   rng
-    .sample_iter(&distributions::Alphanumeric)
+    .sample_iter(distributions::Alphanumeric)
+    .map(char::from)
     .take(length)
     .collect::<String>()
 }

@@ -5,6 +5,7 @@ use crate::memguard::weak::ZeroingWords;
 use rand::rngs::ThreadRng;
 use rand::{distributions, thread_rng, Rng};
 use spectral::prelude::*;
+use std::iter;
 use std::sync::Arc;
 use tempdir::TempDir;
 
@@ -16,17 +17,20 @@ fn common_store_tests(store: Arc<dyn BlockStore>) {
 }
 
 fn common_test_ring(store: &dyn BlockStore, rng: &mut ThreadRng) {
-  let ring1a = rng
-    .sample_iter(&distributions::Standard)
+  let ring1a = iter::repeat(())
+    .map(|_| rng.sample(distributions::Standard))
     .take(200 * 8)
     .collect::<Vec<u8>>();
-  let ring1b = rng.sample_iter(&distributions::Standard).take(200).collect::<Vec<u8>>();
-  let ring2a = rng
-    .sample_iter(&distributions::Standard)
+  let ring1b = iter::repeat(())
+    .map(|_| rng.sample(distributions::Standard))
+    .take(200)
+    .collect::<Vec<u8>>();
+  let ring2a = iter::repeat(())
+    .map(|_| rng.sample(distributions::Standard))
     .take(300 * 8)
     .collect::<Vec<u8>>();
-  let ring2b = rng
-    .sample_iter(&distributions::Standard)
+  let ring2b = iter::repeat(())
+    .map(|_| rng.sample(distributions::Standard))
     .take(300 * 8)
     .collect::<Vec<u8>>();
 
@@ -51,28 +55,30 @@ fn common_test_ring(store: &dyn BlockStore, rng: &mut ThreadRng) {
 }
 
 fn common_test_index(store: &dyn BlockStore, rng: &mut ThreadRng) {
-  let node1 = rng
-    .sample_iter(&distributions::Alphanumeric)
+  let node1 = iter::repeat(())
+    .map(|_| rng.sample(distributions::Alphanumeric))
+    .map(char::from)
     .take(40)
     .collect::<String>();
-  let node1_index1 = rng
-    .sample_iter(&distributions::Standard)
+  let node1_index1 = iter::repeat(())
+    .map(|_| rng.sample(distributions::Standard))
     .take(200 * 8)
     .collect::<Vec<u8>>();
-  let node1_index2 = rng
-    .sample_iter(&distributions::Standard)
+  let node1_index2 = iter::repeat(())
+    .map(|_| rng.sample(distributions::Standard))
     .take(200 * 8)
     .collect::<Vec<u8>>();
-  let node2 = rng
-    .sample_iter(&distributions::Alphanumeric)
+  let node2 = iter::repeat(())
+    .map(|_| rng.sample(distributions::Alphanumeric))
+    .map(char::from)
     .take(40)
     .collect::<String>();
-  let node2_index1 = rng
-    .sample_iter(&distributions::Standard)
+  let node2_index1 = iter::repeat(())
+    .map(|_| rng.sample(distributions::Standard))
     .take(200 * 8)
     .collect::<Vec<u8>>();
-  let node2_index2 = rng
-    .sample_iter(&distributions::Standard)
+  let node2_index2 = iter::repeat(())
+    .map(|_| rng.sample(distributions::Standard))
     .take(200 * 8)
     .collect::<Vec<u8>>();
 

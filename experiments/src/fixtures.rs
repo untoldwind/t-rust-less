@@ -1,4 +1,5 @@
 use rand::{distributions, thread_rng, Rng};
+use std::iter;
 use t_rust_less_lib::secrets_store_capnp::block;
 use t_rust_less_lib::{
   memguard::SecretBytes,
@@ -9,8 +10,8 @@ pub fn generate_fixtures() {
   let cipher = &RUST_RSA_AES_GCM;
 
   let mut rng = thread_rng();
-  let seal_nonce = rng
-    .sample_iter(&distributions::Standard)
+  let seal_nonce = iter::repeat(())
+    .map(|_| rng.sample(distributions::Standard))
     .take(cipher.seal_min_nonce_length())
     .collect::<Vec<u8>>();
   let seal_key = SecretBytes::random(&mut rng, cipher.seal_key_length());

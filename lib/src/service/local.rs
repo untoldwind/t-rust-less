@@ -263,7 +263,8 @@ impl TrustlessService for LocalTrustlessService {
 
     Ok(
       rng
-        .sample_iter(&distributions::Alphanumeric)
+        .sample_iter(distributions::Alphanumeric)
+        .map(char::from)
         .take(64)
         .collect::<String>(),
     )

@@ -1,5 +1,6 @@
 use rand::{distributions, thread_rng, Rng};
 use spectral::prelude::*;
+use std::iter;
 
 use crate::memguard::SecretBytes;
 use crate::secrets_store::cipher::RUST_X25519CHA_CHA20POLY1305;
@@ -28,8 +29,8 @@ where
   assert_that(&public_key.len()).is_greater_than_or_equal_to(30);
 
   let mut rng = thread_rng();
-  let nonce = rng
-    .sample_iter(&distributions::Standard)
+  let nonce = iter::repeat(())
+    .map(|_| rng.sample(distributions::Standard))
     .take(cipher.seal_min_nonce_length())
     .collect::<Vec<u8>>();
   let seal_key = SecretBytes::random(&mut rng, cipher.seal_key_length());

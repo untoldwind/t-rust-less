@@ -10,7 +10,7 @@ env_logger = "0"
 t-rust-less-lib = { path = "../lib", features = ["rust_crypto"] }
 serde = "1"
 serde_derive = "1"
-rand = "0.7"
+rand = "0.8"
 dirs = "1"
 url = "2"
 serde_json = "1"

@@ -8,8 +8,9 @@ use aes_gcm::aead::generic_array::GenericArray;
 use aes_gcm::aead::{Aead, NewAead};
 use aes_gcm::Aes256Gcm;
 use rand::{thread_rng, RngCore};
-use rsa::{PaddingScheme, PublicKey as PublicKeyForRSA, RSAPrivateKey, RSAPublicKey};
-use rsa_export::Encode;
+use rsa::{
+  PaddingScheme, PrivateKeyEncoding, PublicKey as PublicKeyForRSA, PublicKeyEncoding, RSAPrivateKey, RSAPublicKey,
+};
 
 const RSA_KEY_BITS: usize = 4096;
 
@@ -32,12 +33,12 @@ impl Cipher for RustRsaAesGcmCipher {
     let private = RSAPrivateKey::new(&mut rng, RSA_KEY_BITS)?;
     let private_der = SecretBytes::from(
       private
-        .as_pkcs1()
+        .to_pkcs1()
         .map_err(|e| SecretStoreError::Cipher(format!("Pkcs1 export: {}", e)))?,
     );
     let public_der = private
       .to_public_key()
-      .as_pkcs1()
+      .to_pkcs1()
       .map_err(|e| SecretStoreError::Cipher(format!("Pkcs1 export: {}", e)))?;
 
     Ok((public_der, private_der))

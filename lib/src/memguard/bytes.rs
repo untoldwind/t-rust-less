@@ -408,6 +408,7 @@ impl std::fmt::Debug for SecretBytes {
 mod tests {
   use rand::{distributions, thread_rng, Rng};
   use spectral::prelude::*;
+  use std::iter;
 
   use super::*;
 
@@ -475,14 +476,14 @@ mod tests {
 
   #[test]
   fn test_borrow_read_write() {
-    let rng = thread_rng();
-    let mut source = rng
-      .sample_iter(&distributions::Standard)
+    let mut rng = thread_rng();
+    let mut source = iter::repeat(())
+      .map(|_| rng.sample(distributions::Standard))
       .filter(|b| *b != 0)
       .take(200)
       .collect::<Vec<u8>>();
-    let source2 = rng
-      .sample_iter(&distributions::Standard)
+    let source2 = iter::repeat(())
+      .map(|_| rng.sample(distributions::Standard))
       .filter(|b| *b != 0)
       .take(200)
       .collect::<Vec<u8>>();

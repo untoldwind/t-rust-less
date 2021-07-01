@@ -27,7 +27,7 @@ x25519-dalek = "1"
 chacha20-poly1305-aead = "0"
 capnp = "0.14"
 capnp-rpc = "0.14"
-rand = "0.7"
+rand = "0.8"
 rust-argon2 = "0"
 zxcvbn = "2"
 log = "0"
@@ -40,8 +40,7 @@ tokio = { version = "1", features = ["net", "rt" ] }
 tokio-util = { version = "0.6", features = ["compat"] }
 zeroize = "1"
 zeroize_derive  = "1"
-rsa = { version = "0.3", optional = true }
-rsa-export = { version = "0", optional = true }
+rsa = { version = "0.4", optional = true }
 aes-gcm = { version = "0", optional = true }
 
 [dev-dependencies]
@@ -54,7 +53,7 @@ hex-literal = "0"
 [features]
 with_x11 = ["x11"]
 with_xcb = ["xcb"]
-rust_crypto = ["rsa", "rsa-export", "aes-gcm"]
+rust_crypto = ["rsa", "aes-gcm"]
 default = ["with_x11", "rust_crypto"]
 
 [target.'cfg(unix)'.dependencies]
