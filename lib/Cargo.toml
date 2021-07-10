@@ -1,6 +1,6 @@
 [package]
 name = "t-rust-less-lib"
-version = "0.1.13"
+version = "0.1.14"
 authors = ["Untoldwind <landru@untoldwind.net>"]
 build = "build.rs"
 edition = "2018"
@@ -23,7 +23,7 @@ num-traits = "0"
 sha-1 = "0"
 sha2 = "0"
 hmac = "0"
-x25519-dalek = "1"
+x25519-dalek-ng = "1"
 chacha20-poly1305-aead = "0"
 capnp = "0.14"
 capnp-rpc = "0.14"
