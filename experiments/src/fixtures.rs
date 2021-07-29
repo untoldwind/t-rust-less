@@ -26,6 +26,10 @@ pub fn generate_fixtures() {
     hex::encode(seal_key.borrow().as_bytes())
   );
   println!(
+    "const PUBLIC_KEY : &[u8] = &hex!(\"{}\n\");",
+    long_hex(&public_key)
+  );
+  println!(
     "const CRYPTED_KEY : &[u8] = &hex!(\"{}\n\");",
     long_hex(&crypted_private)
   );

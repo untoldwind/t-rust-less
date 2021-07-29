@@ -38,7 +38,7 @@ impl Cipher for RustRsaAesGcmCipher {
     );
     let public_der = private
       .to_public_key()
-      .to_pkcs1()
+      .to_pkcs8()
       .map_err(|e| SecretStoreError::Cipher(format!("Pkcs1 export: {}", e)))?;
 
     Ok((public_der, private_der))
@@ -94,7 +94,7 @@ impl Cipher for RustRsaAesGcmCipher {
     let mut recipient_keys = header_builder.init_recipients(recipients.len() as u32);
 
     for (idx, (recipient_id, recipient_public_key)) in recipients.iter().enumerate() {
-      let public_key = RSAPublicKey::from_pkcs1(recipient_public_key)?;
+      let public_key = RSAPublicKey::from_pkcs8(recipient_public_key)?;
 
       let crypled_key_buffer = public_key.encrypt(
         &mut rng,

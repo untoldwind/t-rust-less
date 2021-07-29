@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 log = "0"
 env_logger = "0"
-t-rust-less-lib = { path = "../lib", features = ["rust_crypto"] }
+t-rust-less-lib = { path = "../lib", features = ["with_x11", "rust_crypto"], default-features = false }
 serde = "1"
 serde_derive = "1"
 rand = "0.8"
