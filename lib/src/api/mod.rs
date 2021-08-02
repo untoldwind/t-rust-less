@@ -4,7 +4,7 @@ use crate::api_capnp::{
 };
 use capnp::{struct_list, text_list};
 use chrono::{TimeZone, Utc};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::collections::HashMap;

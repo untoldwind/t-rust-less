@@ -1,6 +1,6 @@
 use crate::api::Identity;
 use crate::api_capnp::{event, EventType};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Zeroize)]

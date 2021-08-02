@@ -1,5 +1,5 @@
 use chrono::{DateTime, Duration, TimeZone, Utc};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::ops;
 use zeroize::Zeroize;
 

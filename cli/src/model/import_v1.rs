@@ -1,4 +1,4 @@
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use t_rust_less_lib::api::{SecretAttachment, SecretProperties, SecretType, ZeroizeDateTime};
 use zeroize::Zeroize;
 

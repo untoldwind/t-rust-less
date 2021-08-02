@@ -1562,6 +1562,9 @@ name = "serde"
 version = "1.0.126"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec7505abeacaec74ae4778d9d9328fe5a5d04253220a85c4ee022239fc996d03"
+dependencies = [
+ "serde_derive",
+]
 
 [[package]]
 name = "serde_derive"
@@ -1753,7 +1756,6 @@ dependencies = [
  "log",
  "rand 0.8.4",
  "serde",
- "serde_derive",
  "serde_json",
  "spectral",
  "t-rust-less-lib",
@@ -1792,7 +1794,6 @@ dependencies = [
  "log",
  "rand 0.8.4",
  "serde",
- "serde_derive",
  "serde_json",
  "spectral",
  "t-rust-less-lib",
@@ -1829,7 +1830,6 @@ dependencies = [
  "rsa",
  "rust-argon2",
  "serde",
- "serde_derive",
  "serde_json",
  "sha-1",
  "sha2",
@@ -1857,7 +1857,6 @@ dependencies = [
  "env_logger 0.7.1",
  "log",
  "serde",
- "serde_derive",
  "serde_json",
  "spectral",
  "t-rust-less-lib",

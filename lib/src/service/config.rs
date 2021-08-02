@@ -1,6 +1,6 @@
 use crate::service::ServiceResult;
 use crate::{api::read_option, api_capnp::store_config};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{self, Read, Write};

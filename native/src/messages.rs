@@ -1,4 +1,4 @@
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use t_rust_less_lib::api::{Event, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
 use t_rust_less_lib::service::{ServiceError, ServiceResult, StoreConfig};
 use zeroize::Zeroize;
