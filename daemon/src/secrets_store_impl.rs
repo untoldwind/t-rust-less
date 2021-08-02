@@ -60,7 +60,7 @@ impl secrets_store::Server for SecretsStoreImpl {
     let mut result = results.get().init_identities(identities.len() as u32);
 
     for (idx, identity) in identities.into_iter().enumerate() {
-      identity.to_builder(result.reborrow().get(idx as u32));
+      stry!(identity.to_builder(result.reborrow().get(idx as u32)));
     }
 
     Promise::ok(())

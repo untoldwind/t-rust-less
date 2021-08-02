@@ -16,7 +16,7 @@ pub use self::error::*;
 
 use crate::secrets_store::SecretsStore;
 
-pub trait ClipboardControl : Send + Sync {
+pub trait ClipboardControl: Send + Sync {
   fn is_done(&self) -> ServiceResult<bool>;
 
   fn currently_providing(&self) -> ServiceResult<Option<String>>;

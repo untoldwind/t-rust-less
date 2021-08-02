@@ -106,6 +106,7 @@ fn test_rust_x25519_chacha20_poly1305() {
 
 #[test]
 #[cfg(feature = "rust_crypto")]
+#[cfg_attr(debug_assertions, ignore)]
 fn test_rust_rsa_aes_gcm() {
   common_chiper_tests(&crate::secrets_store::cipher::RUST_RSA_AES_GCM);
 }

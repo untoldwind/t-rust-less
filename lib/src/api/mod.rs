@@ -14,6 +14,9 @@ use zeroize::Zeroize;
 mod event;
 mod zeroize_datetime;
 
+#[cfg(test)]
+mod tests;
+
 pub use event::*;
 pub use zeroize_datetime::*;
 
@@ -22,9 +25,15 @@ pub const PROPERTY_PASSWORD: &str = "password";
 pub const PROPERTY_TOTP_URL: &str = "totpUrl";
 pub const PROPERTY_NOTES: &str = "notes";
 
+pub trait CapnpSerializable: Sized {
+  fn deserialize_capnp(raw: &[u8]) -> capnp::Result<Self>;
+
+  fn serialize_capnp(&self) -> capnp::Result<Vec<u8>>;
+}
+
 /// Status information of a secrets store
 ///
-#[derive(Clone, Debug, Serialize, Deserialize, Zeroize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Zeroize)]
 #[zeroize(drop)]
 pub struct Status {
   pub locked: bool,
@@ -57,7 +66,7 @@ impl Status {
   pub fn to_builder(&self, mut builder: status::Builder) -> capnp::Result<()> {
     builder.set_locked(self.locked);
     match &self.unlocked_by {
-      Some(identity) => identity.to_builder(builder.reborrow().get_unlocked_by()?.init_some()),
+      Some(identity) => identity.to_builder(builder.reborrow().get_unlocked_by()?.init_some())?,
       None => builder.reborrow().get_unlocked_by()?.set_none(()),
     }
     match &self.autolock_at {
@@ -70,6 +79,8 @@ impl Status {
     Ok(())
   }
 }
+
+impl_capnp_serialize!(Status, status);
 
 /// An Identity that might be able to unlock a
 /// secrets store and be a recipient of secrets.
@@ -93,11 +104,12 @@ impl Identity {
     })
   }
 
-  pub fn to_builder(&self, mut builder: identity::Builder) {
+  pub fn to_builder(&self, mut builder: identity::Builder) -> capnp::Result<()> {
     builder.set_id(&self.id);
     builder.set_name(&self.name);
     builder.set_email(&self.email);
     builder.set_hidden(self.hidden);
+    Ok(())
   }
 }
 
@@ -106,6 +118,8 @@ impl std::fmt::Display for Identity {
     write!(f, "{} <{}>", self.name, self.email)
   }
 }
+
+impl_capnp_serialize!(Identity, identity);
 
 /// General type of a secret.
 ///
@@ -186,7 +200,7 @@ impl fmt::Display for SecretType {
 /// to match).
 /// Match on `name` is supposed to be "fuzzy" by some fancy scheme.
 ///
-#[derive(Clone, Debug, Serialize, Deserialize, Default, Zeroize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default, PartialEq, Eq, Zeroize)]
 #[zeroize(drop)]
 pub struct SecretListFilter {
   pub url: Option<String>,
@@ -243,6 +257,8 @@ impl SecretListFilter {
     Ok(())
   }
 }
+
+impl_capnp_serialize!(SecretListFilter, secret_list_filter);
 
 /// SecretEntry contains all the information of a secrets that should be
 /// indexed.
@@ -353,6 +369,7 @@ impl SecretEntryMatch {
       tags_highlights: reader.get_tags_highlights()?.into_iter().map(|h| h as usize).collect(),
     })
   }
+
   pub fn to_builder(&self, mut builder: secret_entry_match::Builder) {
     self.entry.to_builder(builder.reborrow().init_entry());
     builder.set_name_score(self.name_score as i64);
@@ -362,13 +379,11 @@ impl SecretEntryMatch {
     for (idx, highlight) in self.name_highlights.iter().enumerate() {
       name_highlights.set(idx as u32, *highlight as u64);
     }
-    let mut url_highlights = builder
-      .reborrow()
-      .init_url_highlights(self.name_highlights.len() as u32);
+    let mut url_highlights = builder.reborrow().init_url_highlights(self.url_highlights.len() as u32);
     for (idx, highlight) in self.url_highlights.iter().enumerate() {
       url_highlights.set(idx as u32, *highlight as u64);
     }
-    let mut tags_highlights = builder.init_tags_highlights(self.name_highlights.len() as u32);
+    let mut tags_highlights = builder.init_tags_highlights(self.tags_highlights.len() as u32);
     for (idx, highlight) in self.tags_highlights.iter().enumerate() {
       tags_highlights.set(idx as u32, *highlight as u64);
     }
@@ -399,7 +414,7 @@ impl PartialEq for SecretEntryMatch {
 /// Convenient wrapper of a list of SecretEntryMatch'es.
 ///
 /// Also contains a unique list of tags of all secrets (e.g. to support autocompletion)
-#[derive(Clone, Debug, Serialize, Deserialize, Default, Zeroize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default, PartialEq, Eq, Zeroize)]
 #[zeroize(drop)]
 pub struct SecretList {
   pub all_tags: Vec<String>,
@@ -437,11 +452,17 @@ impl SecretList {
   }
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+impl_capnp_serialize!(SecretList, secret_list);
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(transparent)]
 pub struct SecretProperties(BTreeMap<String, String>);
 
 impl SecretProperties {
+  pub fn new(properties: BTreeMap<String, String>) -> Self {
+    SecretProperties(properties)
+  }
+
   pub fn get(&self, name: &str) -> Option<&String> {
     self.0.get(name)
   }
@@ -495,7 +516,7 @@ impl Zeroize for SecretProperties {
 /// secure document store. Nevertheless, sometimes it might be convenient added some
 /// sort of (small) document to a password.
 ///
-#[derive(Clone, Debug, Serialize, Deserialize, Zeroize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Zeroize)]
 #[zeroize(drop)]
 pub struct SecretAttachment {
   name: String,
@@ -525,7 +546,7 @@ impl SecretAttachment {
 /// than a group-by view over all SecretVersion's. As a rule a SecretVersion shall never be
 /// overwritten or modified once stored. To change a Secret just add a new SecretVersion for it.
 ///
-#[derive(Clone, Debug, Serialize, Deserialize, Zeroize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Zeroize)]
 #[zeroize(drop)]
 pub struct SecretVersion {
   /// Identifier of the secret this version belongs to.
@@ -638,6 +659,8 @@ impl SecretVersion {
   }
 }
 
+impl_capnp_serialize!(SecretVersion, secret_version);
+
 #[derive(Clone, Debug, Serialize, Deserialize, Zeroize)]
 #[zeroize(drop)]
 pub struct PasswordEstimate {
@@ -645,7 +668,7 @@ pub struct PasswordEstimate {
   pub inputs: Vec<String>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Zeroize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Zeroize)]
 #[zeroize(drop)]
 pub struct PasswordStrength {
   pub entropy: f64,
@@ -701,7 +724,7 @@ impl std::fmt::Display for SecretVersionRef {
 /// Reperentation of a secret with all its versions.
 ///
 /// The is the default view when retrieving a specific secret.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Secret {
   pub id: String,
   #[serde(rename = "type")]
@@ -758,6 +781,8 @@ impl Secret {
     Ok(())
   }
 }
+
+impl_capnp_serialize!(Secret, secret);
 
 impl Zeroize for Secret {
   fn zeroize(&mut self) {
@@ -875,6 +900,8 @@ impl PasswordGeneratorParam {
     }
   }
 }
+
+impl_capnp_serialize!(PasswordGeneratorParam, password_generator_param);
 
 pub fn read_option<T>(reader: option::Reader<T>) -> capnp::Result<Option<<T as capnp::traits::Owned<'_>>::Reader>>
 where

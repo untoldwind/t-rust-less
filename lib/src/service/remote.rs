@@ -297,7 +297,7 @@ impl SecretsStore for RemoteSecretsStore {
     let rt = self.runtime.borrow();
     let mut request = self.client.add_identity_request();
 
-    identity.to_builder(request.get().init_identity());
+    identity.to_builder(request.get().init_identity())?;
     request.get().set_passphrase(&passphrase.borrow());
     self.local_set.block_on(
       &rt,

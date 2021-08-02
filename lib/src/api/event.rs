@@ -73,7 +73,7 @@ impl Event {
       Event::StoreUnlocked { store_name, identity } => {
         builder.set_type(EventType::StoreUnlocked);
         builder.set_store_name(store_name);
-        identity.to_builder(builder.init_identity());
+        identity.to_builder(builder.init_identity())?;
       }
       Event::StoreLocked { store_name } => {
         builder.set_type(EventType::StoreLocked);
@@ -87,7 +87,7 @@ impl Event {
         builder.set_type(EventType::SecretOpened);
         builder.set_store_name(store_name);
         builder.set_secret_id(secret_id);
-        identity.to_builder(builder.init_identity());
+        identity.to_builder(builder.init_identity())?;
       }
       Event::SecretVersionAdded {
         store_name,
@@ -97,12 +97,12 @@ impl Event {
         builder.set_type(EventType::SecretVersionAdded);
         builder.set_store_name(store_name);
         builder.set_secret_id(secret_id);
-        identity.to_builder(builder.init_identity());
+        identity.to_builder(builder.init_identity())?;
       }
       Event::IdentityAdded { store_name, identity } => {
         builder.set_type(EventType::IdentityAdded);
         builder.set_store_name(store_name);
-        identity.to_builder(builder.init_identity());
+        identity.to_builder(builder.init_identity())?;
       }
       Event::ClipboardProviding {
         store_name,
@@ -122,12 +122,14 @@ impl Event {
   }
 }
 
-pub trait EventHandler : Send + Sync {
+impl_capnp_serialize!(Event, event);
+
+pub trait EventHandler: Send + Sync {
   fn handle(&self, event: Event);
 }
 
-pub trait EventHub : Send + Sync {
+pub trait EventHub: Send + Sync {
   fn send(&self, event: Event);
 }
 
-pub trait EventSubscription : Send + Sync {}
+pub trait EventSubscription: Send + Sync {}
