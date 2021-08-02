@@ -21,7 +21,7 @@ pub struct Processor<I, O> {
 impl<I, O> Processor<I, O>
 where
   I: Read,
-  O: Write + 'static,
+  O: Write + 'static + Sync + Send,
 {
   pub fn new(service: Arc<dyn TrustlessService>, input: I, raw_output: O) -> Result<Processor<I, O>> {
     let output = Arc::new(Output::new(raw_output));
@@ -184,7 +184,7 @@ struct EventForwarder<O> {
 
 impl<O> EventForwarder<O>
 where
-  O: Write + 'static,
+  O: Write + 'static + Sync + Send,
 {
   fn new(output: Arc<Output<O>>) -> EventForwarder<O> {
     EventForwarder { output }
@@ -193,7 +193,7 @@ where
 
 impl<O> EventHandler for EventForwarder<O>
 where
-  O: Write + 'static,
+  O: Write + 'static + Sync + Send,
 {
   fn handle(&self, event: Event) {
     if let Err(err) = self.output.send(Response::Event(event)) {

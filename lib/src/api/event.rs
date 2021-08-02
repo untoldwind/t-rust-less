@@ -122,12 +122,12 @@ impl Event {
   }
 }
 
-pub trait EventHandler {
+pub trait EventHandler : Send + Sync {
   fn handle(&self, event: Event);
 }
 
-pub trait EventHub {
+pub trait EventHub : Send + Sync {
   fn send(&self, event: Event);
 }
 
-pub trait EventSubscription {}
+pub trait EventSubscription : Send + Sync {}

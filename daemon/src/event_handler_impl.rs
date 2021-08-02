@@ -8,6 +8,10 @@ pub struct EventHandlerClient {
   client: event_handler::Client,
 }
 
+unsafe impl Sync for EventHandlerClient {}
+
+unsafe impl Send for EventHandlerClient {}
+
 impl EventHandlerClient {
   pub fn new(client: event_handler::Client) -> EventHandlerClient {
     EventHandlerClient { client }

@@ -18,6 +18,10 @@ pub struct RemoteTrustlessService {
   local_set: Rc<LocalSet>,
 }
 
+unsafe impl Send for RemoteTrustlessService {}
+
+unsafe impl Sync for RemoteTrustlessService {}
+
 impl RemoteTrustlessService {
   pub fn new(client: service::Client, runtime: Runtime, local_set: LocalSet) -> RemoteTrustlessService {
     RemoteTrustlessService {
@@ -211,6 +215,10 @@ pub struct RemoteSecretsStore {
   local_set: Rc<LocalSet>,
 }
 
+unsafe impl Send for RemoteSecretsStore {}
+
+unsafe impl Sync for RemoteSecretsStore {}
+
 impl RemoteSecretsStore {
   fn new(
     client: secrets_store::Client,
@@ -402,6 +410,10 @@ struct RemoteClipboardControl {
   local_set: Rc<LocalSet>,
 }
 
+unsafe impl Send for RemoteClipboardControl {}
+
+unsafe impl Sync for RemoteClipboardControl {}
+
 impl RemoteClipboardControl {
   fn new(
     client: clipboard_control::Client,
@@ -478,6 +490,10 @@ impl ClipboardControl for RemoteClipboardControl {
 struct RemoteEventSubscription(event_subscription::Client);
 
 impl EventSubscription for RemoteEventSubscription {}
+
+unsafe impl Send for RemoteEventSubscription {}
+
+unsafe impl Sync for RemoteEventSubscription {}
 
 struct RemoteEventHandlerImpl {
   event_handler: Box<dyn EventHandler>,

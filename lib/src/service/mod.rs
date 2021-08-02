@@ -16,7 +16,7 @@ pub use self::error::*;
 
 use crate::secrets_store::SecretsStore;
 
-pub trait ClipboardControl {
+pub trait ClipboardControl : Send + Sync {
   fn is_done(&self) -> ServiceResult<bool>;
 
   fn currently_providing(&self) -> ServiceResult<Option<String>>;
@@ -27,7 +27,7 @@ pub trait ClipboardControl {
 }
 
 /// Main entrypoint for all interactions with the t-rust-less system
-pub trait TrustlessService: std::fmt::Debug {
+pub trait TrustlessService: std::fmt::Debug + Send + Sync {
   /// List all store configurations
   fn list_stores(&self) -> ServiceResult<Vec<StoreConfig>>;
 
