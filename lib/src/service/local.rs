@@ -1,16 +1,17 @@
 use super::pw_generator::{generate_chars, generate_words};
-use crate::api::{Event, EventHandler, EventHub, EventSubscription, PasswordGeneratorParam};
+use crate::api::{Event, EventData, EventHub, PasswordGeneratorParam, StoreConfig};
+use crate::block_store::StoreError;
 use crate::clipboard::Clipboard;
-use crate::secrets_store::{open_secrets_store, SecretsStore};
+use crate::secrets_store::{open_secrets_store, SecretStoreResult, SecretsStore};
 use crate::service::config::{read_config, write_config, Config};
 use crate::service::error::{ServiceError, ServiceResult};
 #[cfg(unix)]
 use crate::service::secrets_provider::SecretsProvider;
-use crate::service::{ClipboardControl, StoreConfig, TrustlessService};
+use crate::service::{ClipboardControl, TrustlessService};
 use chrono::Utc;
 use log::{error, info};
 use rand::{distributions, thread_rng, Rng};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
@@ -49,80 +50,65 @@ impl ClipboardControl for ClipboardHolder {
   }
 }
 
-struct LocalEventHubInner {
-  next_id: u32,
-  handlers: HashMap<u32, Box<dyn EventHandler>>,
+struct LocalEventQueue {
+  last_id: u64,
+  limit: usize,
+  queue: VecDeque<Event>,
+}
+
+impl LocalEventQueue {
+  fn new(limit: usize) -> Self {
+    LocalEventQueue {
+      last_id: 0,
+      limit,
+      queue: VecDeque::with_capacity(limit),
+    }
+  }
+
+  fn queue(&mut self, data: EventData) {
+    if self.queue.len() >= self.limit {
+      self.queue.pop_front();
+    }
+    self.last_id += 1;
+    self.queue.push_back(Event { id: self.last_id, data });
+  }
+
+  fn poll(&self, last_id: u64) -> Vec<Event> {
+    match self.queue.iter().position(|e| e.id > last_id) {
+      Some(start) => self.queue.iter().skip(start).cloned().collect(),
+      None => vec![],
+    }
+  }
 }
 
 struct LocalEventHub {
-  inner: RwLock<LocalEventHubInner>,
+  event_queue: RwLock<LocalEventQueue>,
 }
 
 impl LocalEventHub {
-  fn new() -> LocalEventHub {
+  fn new(limit: usize) -> Self {
     LocalEventHub {
-      inner: RwLock::new(LocalEventHubInner {
-        next_id: 0,
-        handlers: HashMap::new(),
-      }),
+      event_queue: RwLock::new(LocalEventQueue::new(limit)),
     }
   }
 
-  fn add_event_handler(&self, handler: Box<dyn EventHandler>) -> ServiceResult<u32> {
-    let mut inner = self.inner.write()?;
-    let id = inner.next_id;
+  fn poll_events(&self, last_id: u64) -> ServiceResult<Vec<Event>> {
+    let event_queue = self.event_queue.read()?;
 
-    inner.handlers.insert(id, handler);
-    inner.next_id += 1;
-
-    Ok(id)
-  }
-
-  fn remove_event_handler(&self, id: u32) {
-    match self.inner.write() {
-      Ok(mut inner) => {
-        inner.handlers.remove(&id);
-      }
-      Err(err) => {
-        error!("Unregister event handler failed: {}", err);
-      }
-    }
+    Ok(event_queue.poll(last_id))
   }
 }
 
 impl EventHub for LocalEventHub {
-  fn send(&self, event: Event) {
-    match self.inner.read() {
-      Ok(inner) => {
-        for event_handler in inner.handlers.values() {
-          event_handler.handle(event.clone());
-        }
-      }
+  fn send(&self, event: EventData) {
+    match self.event_queue.write() {
+      Ok(mut event_queue) => event_queue.queue(event),
       Err(e) => {
         error!("Queue event failed: {}", e);
       }
     };
   }
 }
-
-struct LocalEventSubscription {
-  event_hub: Arc<LocalEventHub>,
-  id: u32,
-}
-
-impl LocalEventSubscription {
-  fn new(event_hub: Arc<LocalEventHub>, id: u32) -> LocalEventSubscription {
-    LocalEventSubscription { event_hub, id }
-  }
-}
-
-impl Drop for LocalEventSubscription {
-  fn drop(&mut self) {
-    self.event_hub.remove_event_handler(self.id)
-  }
-}
-
-impl EventSubscription for LocalEventSubscription {}
 
 pub struct LocalTrustlessService {
   config: RwLock<Config>,
@@ -139,7 +125,7 @@ impl LocalTrustlessService {
       config: RwLock::new(config),
       opened_stores: RwLock::new(HashMap::new()),
       clipboard: RwLock::new(Arc::new(ClipboardHolder::Empty)),
-      event_hub: Arc::new(LocalEventHub::new()),
+      event_hub: Arc::new(LocalEventHub::new(100)),
     })
   }
 }
@@ -173,7 +159,7 @@ impl TrustlessService for LocalTrustlessService {
     Ok(())
   }
 
-  fn open_store(&self, name: &str) -> ServiceResult<Arc<dyn SecretsStore>> {
+  fn open_store(&self, name: &str) -> SecretStoreResult<Arc<dyn SecretsStore>> {
     {
       let opened_stores = self.opened_stores.read()?;
 
@@ -186,7 +172,7 @@ impl TrustlessService for LocalTrustlessService {
     let store_config = config
       .stores
       .get(name)
-      .ok_or_else(|| ServiceError::StoreNotFound(name.to_string()))?;
+      .ok_or_else(|| StoreError::StoreNotFound(name.to_string()))?;
     let store = open_secrets_store(
       name,
       &store_config.store_url,
@@ -252,10 +238,8 @@ impl TrustlessService for LocalTrustlessService {
     }
   }
 
-  fn add_event_handler(&self, handler: Box<dyn EventHandler>) -> ServiceResult<Box<dyn EventSubscription>> {
-    let id = self.event_hub.add_event_handler(handler)?;
-
-    Ok(Box::new(LocalEventSubscription::new(self.event_hub.clone(), id)))
+  fn poll_events(&self, last_id: u64) -> ServiceResult<Vec<Event>> {
+    self.event_hub.poll_events(last_id)
   }
 
   fn generate_id(&self) -> ServiceResult<String> {

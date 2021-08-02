@@ -1,4 +1,4 @@
-use crate::api::{EventHandler, EventSubscription, PasswordGeneratorParam};
+use crate::api::{Event, PasswordGeneratorParam, StoreConfig};
 use std::sync::Arc;
 
 mod config;
@@ -11,10 +11,10 @@ mod secrets_provider;
 #[cfg(unix)]
 pub mod unix;
 
-pub use self::config::{config_file, StoreConfig};
+pub use self::config::config_file;
 pub use self::error::*;
 
-use crate::secrets_store::SecretsStore;
+use crate::secrets_store::{SecretStoreResult, SecretsStore};
 
 pub trait ClipboardControl: Send + Sync {
   fn is_done(&self) -> ServiceResult<bool>;
@@ -39,7 +39,7 @@ pub trait TrustlessService: std::fmt::Debug + Send + Sync {
   fn delete_store_config(&self, name: &str) -> ServiceResult<()>;
 
   /// Open a store
-  fn open_store(&self, name: &str) -> ServiceResult<Arc<dyn SecretsStore>>;
+  fn open_store(&self, name: &str) -> SecretStoreResult<Arc<dyn SecretsStore>>;
 
   /// Get the name of the store that should be opened by default
   fn get_default_store(&self) -> ServiceResult<Option<String>>;
@@ -55,7 +55,7 @@ pub trait TrustlessService: std::fmt::Debug + Send + Sync {
     display_name: &str,
   ) -> ServiceResult<Arc<dyn ClipboardControl>>;
 
-  fn add_event_handler(&self, handler: Box<dyn EventHandler>) -> ServiceResult<Box<dyn EventSubscription>>;
+  fn poll_events(&self, last_id: u64) -> ServiceResult<Vec<Event>>;
 
   fn generate_id(&self) -> ServiceResult<String>;
 

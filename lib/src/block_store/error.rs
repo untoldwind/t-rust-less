@@ -9,6 +9,7 @@ pub enum StoreError {
   IO(String),
   Mutex(String),
   Conflict(String),
+  StoreNotFound(String),
 }
 
 impl fmt::Display for StoreError {
@@ -19,6 +20,7 @@ impl fmt::Display for StoreError {
       StoreError::IO(error) => write!(f, "IO: {}", error)?,
       StoreError::Mutex(error) => write!(f, "Internal locking problem: {}", error)?,
       StoreError::Conflict(error) => write!(f, "Conflict: {}", error)?,
+      StoreError::StoreNotFound(name) => write!(f, "Store with name {} not found", name)?,
     }
     Ok(())
   }

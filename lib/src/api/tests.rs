@@ -171,7 +171,7 @@ impl Arbitrary for Secret {
 #[test]
 fn identity_capnp_serialization() {
   fn check_serialize(identity: Identity) -> bool {
-    let raw = identity.serialize_capnp().unwrap();
+    let raw = identity.clone().serialize_capnp().unwrap();
     let deserialized = Identity::deserialize_capnp(&raw).unwrap();
 
     identity == deserialized
@@ -183,7 +183,7 @@ fn identity_capnp_serialization() {
 #[test]
 fn status_capnp_serialization() {
   fn check_serialize(status: Status) -> bool {
-    let raw = status.serialize_capnp().unwrap();
+    let raw = status.clone().serialize_capnp().unwrap();
     let deserialized = Status::deserialize_capnp(&raw).unwrap();
 
     status == deserialized
@@ -195,7 +195,7 @@ fn status_capnp_serialization() {
 #[test]
 fn secret_list_filter_capnp_serialization() {
   fn check_serialize(filter: SecretListFilter) -> bool {
-    let raw = filter.serialize_capnp().unwrap();
+    let raw = filter.clone().serialize_capnp().unwrap();
     let deserialized = SecretListFilter::deserialize_capnp(&raw).unwrap();
 
     filter == deserialized
@@ -207,7 +207,7 @@ fn secret_list_filter_capnp_serialization() {
 #[test]
 fn secret_list_capnp_serialization() {
   fn check_serialize(list: SecretList) -> bool {
-    let raw = list.serialize_capnp().unwrap();
+    let raw = list.clone().serialize_capnp().unwrap();
     let deserialized = SecretList::deserialize_capnp(&raw).unwrap();
 
     list == deserialized
@@ -219,7 +219,7 @@ fn secret_list_capnp_serialization() {
 #[test]
 fn secret_version_capnp_serialization() {
   fn check_serialize(secret_version: SecretVersion) -> bool {
-    let raw = secret_version.serialize_capnp().unwrap();
+    let raw = secret_version.clone().serialize_capnp().unwrap();
     let deserialized = SecretVersion::deserialize_capnp(&raw).unwrap();
 
     secret_version == deserialized
@@ -231,7 +231,7 @@ fn secret_version_capnp_serialization() {
 #[test]
 fn secret_capnp_serialization() {
   fn check_serialize(secret: Secret) -> bool {
-    let raw = secret.serialize_capnp().unwrap();
+    let raw = secret.clone().serialize_capnp().unwrap();
     let deserialized = Secret::deserialize_capnp(&raw).unwrap();
 
     secret == deserialized

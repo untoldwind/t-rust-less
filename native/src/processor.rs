@@ -2,12 +2,11 @@ use crate::input::Input;
 use crate::messages::{Command, CommandResult, Request, Response};
 use crate::output::Output;
 use log::error;
-use std::io::{ErrorKind, Read, Result, Write};
+use std::io::{Read, Result, Write};
 use std::sync::Arc;
-use t_rust_less_lib::api::{Event, EventHandler, EventSubscription};
 use t_rust_less_lib::memguard::SecretBytes;
-use t_rust_less_lib::secrets_store::SecretsStore;
-use t_rust_less_lib::service::{ClipboardControl, ServiceResult, TrustlessService};
+use t_rust_less_lib::secrets_store::{SecretStoreResult, SecretsStore};
+use t_rust_less_lib::service::{ClipboardControl, TrustlessService};
 
 pub struct Processor<I, O> {
   service: Arc<dyn TrustlessService>,
@@ -15,7 +14,6 @@ pub struct Processor<I, O> {
   output: Arc<Output<O>>,
   current_store: Option<(String, Arc<dyn SecretsStore>)>,
   current_clipboard: Option<Arc<dyn ClipboardControl>>,
-  _event_subscription: Box<dyn EventSubscription>,
 }
 
 impl<I, O> Processor<I, O>
@@ -26,21 +24,12 @@ where
   pub fn new(service: Arc<dyn TrustlessService>, input: I, raw_output: O) -> Result<Processor<I, O>> {
     let output = Arc::new(Output::new(raw_output));
 
-    let _event_subscription = match service.add_event_handler(Box::new(EventForwarder::new(output.clone()))) {
-      Ok(subscription) => subscription,
-      Err(err) => {
-        error!("Failed subscribing to events: {}", err);
-        return Err(ErrorKind::Other.into());
-      }
-    };
-
     Ok(Processor {
       service,
       input: Input::new(input),
       output,
       current_store: None,
       current_clipboard: None,
-      _event_subscription,
     })
   }
 
@@ -89,11 +78,8 @@ where
         }
       },
 
-      Command::Status { store_name } => self
-        .open_store(&store_name)
-        .and_then(|store| Ok(store.status()?))
-        .into(),
-      Command::Lock { store_name } => self.open_store(&store_name).and_then(|store| Ok(store.lock()?)).into(),
+      Command::Status { store_name } => self.open_store(&store_name).and_then(|store| store.status()).into(),
+      Command::Lock { store_name } => self.open_store(&store_name).and_then(|store| store.lock()).into(),
       Command::Unlock {
         store_name,
         identity_id,
@@ -102,13 +88,12 @@ where
         let passphrase_in = SecretBytes::from(passphrase);
         self
           .open_store(&store_name)
-          .and_then(move |store| Ok(store.unlock(&identity_id, passphrase_in)?))
+          .and_then(move |store| store.unlock(&identity_id, passphrase_in))
           .into()
       }
-      Command::ListIdentities { store_name } => self
-        .open_store(&store_name)
-        .and_then(|store| Ok(store.identities()?))
-        .into(),
+      Command::ListIdentities { store_name } => {
+        self.open_store(&store_name).and_then(|store| store.identities()).into()
+      }
       Command::AddIdentity {
         store_name,
         identity,
@@ -118,7 +103,7 @@ where
         self
           .service
           .open_store(&store_name)
-          .and_then(move |store| Ok(store.add_identity(identity, passphrase_in)?))
+          .and_then(move |store| store.add_identity(identity, passphrase_in))
           .into()
       }
       Command::ChangePassphrase { store_name, passphrase } => {
@@ -126,24 +111,24 @@ where
         self
           .service
           .open_store(&store_name)
-          .and_then(move |store| Ok(store.change_passphrase(passphrase_in)?))
+          .and_then(move |store| store.change_passphrase(passphrase_in))
           .into()
       }
       Command::ListSecrets { store_name, filter } => self
         .open_store(&store_name)
-        .and_then(move |store| Ok(store.list(&filter)?))
+        .and_then(move |store| store.list(&filter))
         .into(),
       Command::GetSecret { store_name, secret_id } => self
         .open_store(&store_name)
-        .and_then(move |store| Ok(store.get(&secret_id)?))
+        .and_then(move |store| store.get(&secret_id))
         .into(),
       Command::AddSecret { store_name, version } => self
         .open_store(&store_name)
-        .and_then(move |store| Ok(store.add(version)?))
+        .and_then(move |store| store.add(version))
         .into(),
       Command::GetSecretVersion { store_name, block_id } => self
         .open_store(&store_name)
-        .and_then(move |store| Ok(store.get_version(&block_id)?))
+        .and_then(move |store| store.get_version(&block_id))
         .into(),
 
       Command::ClipboardIsDone => match &self.current_clipboard {
@@ -164,7 +149,7 @@ where
     Response::Command { id: request.id, result }
   }
 
-  fn open_store(&mut self, store_name: &str) -> ServiceResult<Arc<dyn SecretsStore>> {
+  fn open_store(&mut self, store_name: &str) -> SecretStoreResult<Arc<dyn SecretsStore>> {
     match &self.current_store {
       Some((name, store)) if name == store_name => Ok(store.clone()),
       _ => match self.service.open_store(store_name) {
@@ -174,30 +159,6 @@ where
         }
         err => err,
       },
-    }
-  }
-}
-
-struct EventForwarder<O> {
-  output: Arc<Output<O>>,
-}
-
-impl<O> EventForwarder<O>
-where
-  O: Write + 'static + Sync + Send,
-{
-  fn new(output: Arc<Output<O>>) -> EventForwarder<O> {
-    EventForwarder { output }
-  }
-}
-
-impl<O> EventHandler for EventForwarder<O>
-where
-  O: Write + 'static + Sync + Send,
-{
-  fn handle(&self, event: Event) {
-    if let Err(err) = self.output.send(Response::Event(event)) {
-      error!("Failed forwarding event: {}", err)
     }
   }
 }

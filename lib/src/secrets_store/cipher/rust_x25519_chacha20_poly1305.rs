@@ -22,7 +22,7 @@ impl RustX25519ChaCha20Poly1305Cipher {
   fn unpack_public(key: &[u8]) -> x25519_dalek_ng::PublicKey {
     let mut raw = [0u8; 32];
 
-    raw.copy_from_slice(&key.borrow());
+    raw.copy_from_slice(key.borrow());
 
     x25519_dalek_ng::PublicKey::from(raw)
   }
@@ -161,7 +161,7 @@ impl Cipher for RustX25519ChaCha20Poly1305Cipher {
       let mut ephemeral_public_raw = [0u8; 32];
       ephemeral_public_raw.copy_from_slice(&crypted_key[0..32]);
       let ephemeral_public = x25519_dalek_ng::PublicKey::from(ephemeral_public_raw);
-      let recipient_private = Self::unpack_private(&user.1);
+      let recipient_private = Self::unpack_private(user.1);
       let shared_secret = recipient_private.diffie_hellman(&ephemeral_public);
       let mut seal_key = SecretBytes::zeroed(32);
 

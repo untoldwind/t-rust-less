@@ -6,6 +6,7 @@ use std::ops::{Deref, DerefMut};
 use std::ptr::{copy_nonoverlapping, NonNull};
 use std::slice;
 use std::sync::atomic::{AtomicIsize, Ordering};
+use zeroize::Zeroize;
 
 use rand::{CryptoRng, RngCore};
 
@@ -184,6 +185,16 @@ unsafe impl Send for SecretBytes {}
 
 unsafe impl Sync for SecretBytes {}
 
+impl Zeroize for SecretBytes {
+  fn zeroize(&mut self) {
+    self.lock_write();
+    unsafe {
+      memory::memzero(self.ptr.as_ptr(), self.capacity);
+    }
+    self.unlock_write();
+  }
+}
+
 impl Drop for SecretBytes {
   fn drop(&mut self) {
     unsafe { alloc::free(self.ptr) }
@@ -330,7 +341,7 @@ impl<'a> RefMut<'a> {
   pub fn remove_char(&mut self) {
     unsafe {
       let bytes = slice::from_raw_parts_mut(self.bytes.ptr.as_ptr(), self.bytes.size);
-      let tail_len = match std::str::from_utf8_unchecked(&bytes).chars().last() {
+      let tail_len = match std::str::from_utf8_unchecked(bytes).chars().last() {
         Some(ch) => ch.len_utf8(),
         None => return,
       };

@@ -21,7 +21,7 @@ impl<'a> HOTPGenerator<'a> {
     D::BlockSize: ArrayLength<u8> + Clone,
     D::OutputSize: ArrayLength<u8>,
   {
-    let mut mac = Hmac::<D>::new_from_slice(&self.secret).unwrap();
+    let mut mac = Hmac::<D>::new_from_slice(self.secret).unwrap();
     mac.update(&self.counter.to_be_bytes());
 
     self.counter += 1;

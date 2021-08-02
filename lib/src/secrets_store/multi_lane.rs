@@ -18,7 +18,7 @@ use crate::{
   block_store::{BlockStore, Change, Operation, StoreError},
 };
 use crate::{
-  api::{Event, EventHub, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status},
+  api::{EventData, EventHub, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status},
   memguard::ZeroizeBytesBuffer,
 };
 use log::{info, warn};
@@ -89,7 +89,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     info!("Locking store");
     let mut unlocked_user = self.unlocked_user.write()?;
     unlocked_user.take();
-    self.event_hub.send(Event::StoreLocked {
+    self.event_hub.send(EventData::StoreLocked {
       store_name: self.name.clone(),
     });
 
@@ -152,7 +152,7 @@ impl SecretsStore for MultiLaneSecretsStore {
 
     self.update_index()?;
 
-    self.event_hub.send(Event::StoreUnlocked {
+    self.event_hub.send(EventData::StoreUnlocked {
       store_name: self.name.clone(),
       identity,
     });
@@ -219,7 +219,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     let new_ring_raw = serialize::write_message_to_words(&ring_message);
 
     self.block_store.store_ring(&identity.id, &new_ring_raw)?;
-    self.event_hub.send(Event::IdentityAdded {
+    self.event_hub.send(EventData::IdentityAdded {
       store_name: self.name.clone(),
       identity,
     });
@@ -244,7 +244,7 @@ impl SecretsStore for MultiLaneSecretsStore {
         let mut user_public_key = user_public_keys.reborrow().get(idx as u32);
 
         user_public_key.set_type(*key_type);
-        user_public_key.set_key(&public_key);
+        user_public_key.set_key(public_key);
       }
     }
 
@@ -261,7 +261,7 @@ impl SecretsStore for MultiLaneSecretsStore {
         &nonce,
         cipher.seal_key_length(),
       )?;
-      let crypted_key = cipher.seal_private_key(&seal_key, &nonce, &private_key)?;
+      let crypted_key = cipher.seal_private_key(&seal_key, &nonce, private_key)?;
       let mut user_private_key = user_private_keys.reborrow().get(idx as u32);
 
       user_private_key.set_type(cipher.key_type());
@@ -330,7 +330,7 @@ impl SecretsStore for MultiLaneSecretsStore {
       op: Operation::Add,
       block: block_id.clone(),
     }])?;
-    self.event_hub.send(Event::SecretVersionAdded {
+    self.event_hub.send(EventData::SecretVersionAdded {
       store_name: self.name.clone(),
       secret_id: secret_version.secret_id.clone(),
       identity: unlocked_user.identity.clone(),
@@ -363,7 +363,7 @@ impl SecretsStore for MultiLaneSecretsStore {
         password_strengths.insert((*property).to_string(), strength);
       }
     }
-    self.event_hub.send(Event::SecretOpened {
+    self.event_hub.send(EventData::SecretOpened {
       store_name: self.name.clone(),
       secret_id: current.secret_id.clone(),
       identity: unlocked_user.identity.clone(),
@@ -485,7 +485,7 @@ impl MultiLaneSecretsStore {
   ) -> SecretStoreResult<Option<SecretVersion>> {
     let block_words = self.block_store.get_block(block_id)?;
 
-    match self.decrypt_block(identity_id, &private_keys, &block_words)? {
+    match self.decrypt_block(identity_id, private_keys, &block_words)? {
       Some(padded_content) => {
         let borrowed = padded_content.borrow();
         let version = serde_json::from_slice(NonZeroPadding::unpad_data(&borrowed)?)?;

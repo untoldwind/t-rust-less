@@ -1,6 +1,6 @@
 #![cfg(all(unix, feature = "with_x11"))]
 
-use crate::api::{Event, EventHub};
+use crate::api::{EventData, EventHub};
 use crate::clipboard::debounce::SelectionDebounce;
 use crate::clipboard::{ClipboardError, ClipboardResult, SelectionProvider};
 use log::debug;
@@ -268,7 +268,7 @@ fn run(context: Arc<Context>) {
             match debounce.get_selection() {
               Some(mut value) => {
                 if let Some(property) = debounce.current_selection_name() {
-                  context.event_hub.send(Event::ClipboardProviding {
+                  context.event_hub.send(EventData::ClipboardProviding {
                     store_name: context.store_name.clone(),
                     block_id: context.block_id.clone(),
                     property,
@@ -323,7 +323,7 @@ fn run(context: Arc<Context>) {
     }
 
     debug!("Ending event loop");
-    context.event_hub.send(Event::ClipboardDone);
+    context.event_hub.send(EventData::ClipboardDone);
     context.destroy();
   }
 }

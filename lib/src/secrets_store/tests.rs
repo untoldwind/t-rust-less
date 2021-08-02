@@ -1,5 +1,5 @@
 use super::{open_secrets_store, SecretStoreError, SecretStoreResult, SecretsStore};
-use crate::api::{Event, EventHub, Identity, SecretType, SecretVersion};
+use crate::api::{EventData, EventHub, Identity, SecretType, SecretVersion};
 use crate::memguard::SecretBytes;
 use chrono::Utc;
 use spectral::prelude::*;
@@ -131,7 +131,7 @@ fn secret_from_str(s: &str) -> SecretBytes {
 struct TestEventHub;
 
 impl EventHub for TestEventHub {
-  fn send(&self, _event: Event) {}
+  fn send(&self, _event: EventData) {}
 }
 
 #[test]

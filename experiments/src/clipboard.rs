@@ -3,7 +3,7 @@ use std::env;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
-use t_rust_less_lib::api::{Event, EventHub};
+use t_rust_less_lib::api::{EventData, EventHub};
 use t_rust_less_lib::clipboard::{Clipboard, SelectionProvider};
 
 struct DummyProvider {
@@ -34,7 +34,7 @@ impl SelectionProvider for DummyProvider {
 struct TestEventHub;
 
 impl EventHub for TestEventHub {
-  fn send(&self, _event: Event) {}
+  fn send(&self, _event: EventData) {}
 }
 
 pub fn experimental_clipboard() {

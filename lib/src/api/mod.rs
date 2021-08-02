@@ -11,12 +11,18 @@ use std::collections::HashMap;
 use std::fmt;
 use zeroize::Zeroize;
 
+mod capnp_serializable;
+mod command;
+mod config;
 mod event;
 mod zeroize_datetime;
 
 #[cfg(test)]
 mod tests;
 
+pub use capnp_serializable::*;
+pub use command::*;
+pub use config::*;
 pub use event::*;
 pub use zeroize_datetime::*;
 
@@ -24,12 +30,6 @@ pub const PROPERTY_USERNAME: &str = "username";
 pub const PROPERTY_PASSWORD: &str = "password";
 pub const PROPERTY_TOTP_URL: &str = "totpUrl";
 pub const PROPERTY_NOTES: &str = "notes";
-
-pub trait CapnpSerializable: Sized {
-  fn deserialize_capnp(raw: &[u8]) -> capnp::Result<Self>;
-
-  fn serialize_capnp(&self) -> capnp::Result<Vec<u8>>;
-}
 
 /// Status information of a secrets store
 ///
@@ -43,12 +43,15 @@ pub struct Status {
   pub autolock_timeout: u64,
 }
 
-impl Status {
-  pub fn from_reader(reader: status::Reader) -> capnp::Result<Self> {
+impl CapnpSerializing for Status {
+  type Owned = status::Owned;
+
+  #[allow(clippy::redundant_closure)]
+  fn from_reader(reader: status::Reader) -> capnp::Result<Self> {
     Ok(Status {
       locked: reader.get_locked(),
       unlocked_by: read_option(reader.get_unlocked_by()?)?
-        .map(Identity::from_reader)
+        .map(|i| Identity::from_reader(i))
         .transpose()?,
       autolock_at: {
         let autolock_at = reader.get_autolock_at();
@@ -63,7 +66,7 @@ impl Status {
     })
   }
 
-  pub fn to_builder(&self, mut builder: status::Builder) -> capnp::Result<()> {
+  fn to_builder(&self, mut builder: status::Builder) -> capnp::Result<()> {
     builder.set_locked(self.locked);
     match &self.unlocked_by {
       Some(identity) => identity.to_builder(builder.reborrow().get_unlocked_by()?.init_some())?,
@@ -80,8 +83,6 @@ impl Status {
   }
 }
 
-impl_capnp_serialize!(Status, status);
-
 /// An Identity that might be able to unlock a
 /// secrets store and be a recipient of secrets.
 ///
@@ -94,8 +95,10 @@ pub struct Identity {
   pub hidden: bool,
 }
 
-impl Identity {
-  pub fn from_reader(reader: identity::Reader) -> capnp::Result<Self> {
+impl CapnpSerializing for Identity {
+  type Owned = identity::Owned;
+
+  fn from_reader(reader: identity::Reader) -> capnp::Result<Self> {
     Ok(Identity {
       id: reader.get_id()?.to_string(),
       name: reader.get_name()?.to_string(),
@@ -104,7 +107,7 @@ impl Identity {
     })
   }
 
-  pub fn to_builder(&self, mut builder: identity::Builder) -> capnp::Result<()> {
+  fn to_builder(&self, mut builder: identity::Builder) -> capnp::Result<()> {
     builder.set_id(&self.id);
     builder.set_name(&self.name);
     builder.set_email(&self.email);
@@ -118,8 +121,6 @@ impl std::fmt::Display for Identity {
     write!(f, "{} <{}>", self.name, self.email)
   }
 }
-
-impl_capnp_serialize!(Identity, identity);
 
 /// General type of a secret.
 ///
@@ -212,8 +213,10 @@ pub struct SecretListFilter {
   pub deleted: bool,
 }
 
-impl SecretListFilter {
-  pub fn from_reader(reader: secret_list_filter::Reader) -> capnp::Result<Self> {
+impl CapnpSerializing for SecretListFilter {
+  type Owned = secret_list_filter::Owned;
+
+  fn from_reader(reader: secret_list_filter::Reader) -> capnp::Result<Self> {
     Ok(SecretListFilter {
       url: read_option(reader.get_url()?)?.map(ToString::to_string),
       tag: read_option(reader.get_tag()?)?.map(ToString::to_string),
@@ -226,7 +229,7 @@ impl SecretListFilter {
     })
   }
 
-  pub fn to_builder(&self, mut builder: secret_list_filter::Builder) -> capnp::Result<()> {
+  fn to_builder(&self, mut builder: secret_list_filter::Builder) -> capnp::Result<()> {
     match &self.url {
       Some(url) => builder
         .reborrow()
@@ -257,8 +260,6 @@ impl SecretListFilter {
     Ok(())
   }
 }
-
-impl_capnp_serialize!(SecretListFilter, secret_list_filter);
 
 /// SecretEntry contains all the information of a secrets that should be
 /// indexed.
@@ -421,8 +422,10 @@ pub struct SecretList {
   pub entries: Vec<SecretEntryMatch>,
 }
 
-impl SecretList {
-  pub fn from_reader(reader: secret_list::Reader) -> capnp::Result<Self> {
+impl CapnpSerializing for SecretList {
+  type Owned = secret_list::Owned;
+
+  fn from_reader(reader: secret_list::Reader) -> capnp::Result<Self> {
     Ok(SecretList {
       all_tags: reader
         .get_all_tags()?
@@ -437,7 +440,7 @@ impl SecretList {
     })
   }
 
-  pub fn to_builder(&self, mut builder: secret_list::Builder) -> capnp::Result<()> {
+  fn to_builder(&self, mut builder: secret_list::Builder) -> capnp::Result<()> {
     set_text_list(
       builder.reborrow().init_all_tags(self.all_tags.len() as u32),
       &self.all_tags,
@@ -451,8 +454,6 @@ impl SecretList {
     Ok(())
   }
 }
-
-impl_capnp_serialize!(SecretList, secret_list);
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(transparent)]
@@ -593,7 +594,22 @@ pub struct SecretVersion {
 }
 
 impl SecretVersion {
-  pub fn from_reader(reader: secret_version::Reader) -> capnp::Result<Self> {
+  pub fn to_entry_builder(&self, mut builder: secret_entry::Builder) -> capnp::Result<()> {
+    builder.set_id(&self.secret_id);
+    builder.set_timestamp(self.timestamp.timestamp_millis());
+    builder.set_name(&self.name);
+    builder.set_type(self.secret_type.to_builder());
+    set_text_list(builder.reborrow().init_tags(self.tags.len() as u32), &self.tags)?;
+    set_text_list(builder.reborrow().init_urls(self.urls.len() as u32), &self.urls)?;
+    builder.set_deleted(self.deleted);
+    Ok(())
+  }
+}
+
+impl CapnpSerializing for SecretVersion {
+  type Owned = secret_version::Owned;
+
+  fn from_reader(reader: secret_version::Reader) -> capnp::Result<Self> {
     Ok(SecretVersion {
       secret_id: reader.get_secret_id()?.to_string(),
       secret_type: SecretType::from_reader(reader.get_type()?),
@@ -624,7 +640,7 @@ impl SecretVersion {
     })
   }
 
-  pub fn to_builder(&self, mut builder: secret_version::Builder) -> capnp::Result<()> {
+  fn to_builder(&self, mut builder: secret_version::Builder) -> capnp::Result<()> {
     builder.set_secret_id(&self.secret_id);
     builder.set_type(self.secret_type.to_builder());
     builder.set_timestamp(self.timestamp.timestamp_millis());
@@ -646,20 +662,7 @@ impl SecretVersion {
 
     Ok(())
   }
-
-  pub fn to_entry_builder(&self, mut builder: secret_entry::Builder) -> capnp::Result<()> {
-    builder.set_id(&self.secret_id);
-    builder.set_timestamp(self.timestamp.timestamp_millis());
-    builder.set_name(&self.name);
-    builder.set_type(self.secret_type.to_builder());
-    set_text_list(builder.reborrow().init_tags(self.tags.len() as u32), &self.tags)?;
-    set_text_list(builder.reborrow().init_urls(self.urls.len() as u32), &self.urls)?;
-    builder.set_deleted(self.deleted);
-    Ok(())
-  }
 }
-
-impl_capnp_serialize!(SecretVersion, secret_version);
 
 #[derive(Clone, Debug, Serialize, Deserialize, Zeroize)]
 #[zeroize(drop)]
@@ -735,8 +738,10 @@ pub struct Secret {
   pub password_strengths: HashMap<String, PasswordStrength>,
 }
 
-impl Secret {
-  pub fn from_reader(reader: secret::Reader) -> capnp::Result<Self> {
+impl CapnpSerializing for Secret {
+  type Owned = secret::Owned;
+
+  fn from_reader(reader: secret::Reader) -> capnp::Result<Self> {
     Ok(Secret {
       id: reader.get_id()?.to_string(),
       secret_type: SecretType::from_reader(reader.get_type()?),
@@ -760,7 +765,7 @@ impl Secret {
     })
   }
 
-  pub fn to_builder(&self, mut builder: secret::Builder) -> capnp::Result<()> {
+  fn to_builder(&self, mut builder: secret::Builder) -> capnp::Result<()> {
     builder.set_id(&self.id);
     builder.set_type(self.secret_type.to_builder());
     self.current.to_builder(builder.reborrow().init_current())?;
@@ -774,15 +779,13 @@ impl Secret {
       .init_password_strengths(self.password_strengths.len() as u32);
     for (idx, (key, strength)) in self.password_strengths.iter().enumerate() {
       let mut password_strength = password_strengths.reborrow().get(idx as u32);
-      password_strength.set_key(&key);
+      password_strength.set_key(key);
       strength.to_builder(password_strength.init_strength());
     }
 
     Ok(())
   }
 }
-
-impl_capnp_serialize!(Secret, secret);
 
 impl Zeroize for Secret {
   fn zeroize(&mut self) {
@@ -881,8 +884,10 @@ pub enum PasswordGeneratorParam {
   Words(PasswordGeneratorWordsParam),
 }
 
-impl PasswordGeneratorParam {
-  pub fn from_reader(reader: password_generator_param::Reader) -> capnp::Result<Self> {
+impl CapnpSerializing for PasswordGeneratorParam {
+  type Owned = password_generator_param::Owned;
+
+  fn from_reader(reader: password_generator_param::Reader) -> capnp::Result<Self> {
     match reader.which()? {
       password_generator_param::Chars(inner) => Ok(PasswordGeneratorParam::Chars(
         PasswordGeneratorCharsParam::from_reader(inner?)?,
@@ -893,15 +898,13 @@ impl PasswordGeneratorParam {
     }
   }
 
-  pub fn to_builder(&self, builder: password_generator_param::Builder) -> capnp::Result<()> {
+  fn to_builder(&self, builder: password_generator_param::Builder) -> capnp::Result<()> {
     match self {
       PasswordGeneratorParam::Chars(param) => param.to_builder(builder.init_chars()),
       PasswordGeneratorParam::Words(param) => param.to_builder(builder.init_words()),
     }
   }
 }
-
-impl_capnp_serialize!(PasswordGeneratorParam, password_generator_param);
 
 pub fn read_option<T>(reader: option::Reader<T>) -> capnp::Result<Option<<T as capnp::traits::Owned<'_>>::Reader>>
 where

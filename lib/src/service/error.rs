@@ -9,6 +9,7 @@ pub enum ServiceError {
   IO(String),
   Mutex(String),
   StoreNotFound(String),
+  ClipboardClosed,
   NotAvailable,
 }
 
@@ -21,6 +22,7 @@ impl fmt::Display for ServiceError {
       ServiceError::IO(error) => write!(f, "IO: {}", error)?,
       ServiceError::Mutex(error) => write!(f, "Mutex: {}", error)?,
       ServiceError::StoreNotFound(name) => write!(f, "Store with name {} not found", name)?,
+      ServiceError::ClipboardClosed => write!(f, "Clipboard closed")?,
       ServiceError::NotAvailable => write!(f, "Functionality not available (on your platform)")?,
     }
     Ok(())
@@ -34,6 +36,7 @@ error_convert_from!(toml::de::Error, ServiceError, IO(display));
 error_convert_from!(SecretStoreError, ServiceError, SecretsStore(direct));
 error_convert_from!(ClipboardError, ServiceError, IO(display));
 error_convert_from!(futures::task::SpawnError, ServiceError, IO(display));
+error_convert_from!(serde_json::Error, ServiceError, IO(display));
 
 impl<T> From<std::sync::PoisonError<T>> for ServiceError {
   fn from(error: std::sync::PoisonError<T>) -> Self {
@@ -45,7 +48,7 @@ impl From<capnp::Error> for ServiceError {
   fn from(error: capnp::Error) -> Self {
     match error.kind {
       capnp::ErrorKind::Failed => {
-        match serde_json::from_str::<ServiceError>(&error.description.trim_start_matches("remote exception: ")) {
+        match serde_json::from_str::<ServiceError>(error.description.trim_start_matches("remote exception: ")) {
           Ok(service_error) => service_error,
           _ => ServiceError::IO(format!("{}", error)),
         }

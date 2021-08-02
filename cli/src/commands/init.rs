@@ -4,6 +4,7 @@ use atty::Stream;
 use cursive::traits::{Boxable, Identifiable};
 use cursive::views::{Dialog, DummyView, EditView, LinearLayout, TextView};
 use cursive::Cursive;
+use t_rust_less_lib::api::StoreConfig;
 
 use crate::commands::add_identity::add_identity_dialog;
 use crate::commands::generate_id;
@@ -13,7 +14,7 @@ use crate::error::exit_with_error;
 use cursive::event::Key;
 use std::fs;
 use std::sync::Arc;
-use t_rust_less_lib::service::{StoreConfig, TrustlessService};
+use t_rust_less_lib::service::TrustlessService;
 use url::Url;
 
 pub fn init(service: Arc<dyn TrustlessService>, maybe_store_name: Option<String>) {
@@ -37,14 +38,14 @@ pub fn init(service: Arc<dyn TrustlessService>, maybe_store_name: Option<String>
     .iter()
     .find(|config| config.name.as_str() == store_name.as_str());
   let store_path = match maybe_config {
-    Some(ref config) => match Url::parse(&config.store_url) {
+    Some(config) => match Url::parse(&config.store_url) {
       Ok(url) => url.path().to_string(),
       _ => default_store_dir(&store_name).to_string_lossy().to_string(),
     },
     _ => default_store_dir(&store_name).to_string_lossy().to_string(),
   };
   let autolock_timeout_secs = match maybe_config {
-    Some(ref config) => config.autolock_timeout_secs,
+    Some(config) => config.autolock_timeout_secs,
     _ => default_autolock_timeout().as_secs(),
   };
 

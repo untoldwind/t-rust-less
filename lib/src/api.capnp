@@ -15,37 +15,41 @@ struct StoreConfig {
     defaultIdentityId @4 : Option(Text) = (none = void);
 }
 
-interface ClipboardControl {
-    isDone @0 () -> (isDone: Bool);
-    currentlyProviding @1 () -> (providing: Option(Text));
-    provideNext @2 ();
-    destroy @3 ();
-}
-
-enum EventType {
-    storeUnlocked @0;
-    storeLocked @1;
-    secretOpened @2;
-    secretVersionAdded @3;
-    identityAdded @4;
-    clipboardProviding @5;
-    clipboardDone @6;
+struct EventData {
+    union {
+        storeUnlocked :group {
+            storeName @0 : Text;
+            identity @1 : Identity;
+        }
+        storeLocked :group {
+            storeName @2 : Text;
+        }
+        secretOpened :group {
+            storeName @3 : Text;
+            identity @4 : Identity;
+            secretId @5 : Text;
+        }
+        secretVersionAdded :group {
+            storeName @6 : Text;
+            identity @7 : Identity;
+            secretId @8 : Text;
+        }
+        identityAdded :group {
+            storeName @9 : Text;
+            identity @10 : Identity;
+        }
+        clipboardProviding :group {
+            storeName @11 : Text;
+            blockId @12 : Text;
+            property @13 : Text;
+        }
+        clipboardDone @14 : Void;
+    }
 }
 
 struct Event {
-    type @0: EventType;
-    storeName @1: Text;
-    identity @2: Identity;
-    secretId @3: Text;
-    property @4: Text;
-    blockId @5: Text;
-}
-
-interface EventSubscription {
-}
-
-interface EventHandler {
-    handle @0 (event: Event);
+    id @0 : UInt64;
+    data @1 : EventData;
 }
 
 struct PasswordGeneratorParam {
@@ -70,19 +74,6 @@ struct PasswordGeneratorParam {
         numWords @0: UInt8;
         delim @1: UInt32;
     }
-}
-
-interface Service {
-    listStores @0 () -> (storeConfigs : List(StoreConfig));
-    upsertStoreConfig @1 (storeConfig : StoreConfig);
-    deleteStoreConfig @2 (storeName : Text);
-    getDefaultStore @3 () -> (storeName : Option(Text));
-    setDefaultStore @4 (storeName : Text);
-    openStore @5 (storeName : Text) -> (store: SecretsStore);
-    secretToClipboard @6 (storeName : Text, blockId : Text, properties : List(Text), displayName: Text) -> (clipboardControl: ClipboardControl);
-    addEventHandler @7 (handler: EventHandler) -> (subscription: EventSubscription);
-    generateId @8 () -> (id: Text);
-    generatePassword @9 (param: PasswordGeneratorParam) -> (password: Text);
 }
 
 struct Identity {
@@ -199,16 +190,78 @@ struct Secret {
     }
 }
 
-interface SecretsStore {
-    status @0 () -> (status: Status);
-    lock @1 ();
-    unlock @2 (identityId: Text, passphrase: Data);
-    identities @3 () -> (identities: List(Identity));
-    addIdentity @4 (identity: Identity, passphrase: Data);
-    changePassphrase @5 (passphrase: Data);
-    list @6 (filter: SecretListFilter) -> (list: SecretList);
-    updateIndex @7 ();
-    add @8 (version: SecretVersion) -> (blockId: Text);
-    get @9 (id: Text) -> (secret: Secret);
-    getVersion @10 (blockId: Text) -> (version: SecretVersion);
+struct Command {
+    union {
+        listStores @0 : Void;
+        upsertStoreConfig @1 : StoreConfig;
+        deleteStoreConfig @2 : Text;
+        getDefaultStore @3 : Void;
+        setDefaultStore @4 : Text;
+        generateId @5 : Void;
+        generatePassword @6 : PasswordGeneratorParam;
+        pollEvents @7 : UInt64;
+
+        status @8 : Text;
+        lock @9 : Text;
+        unlock :group {
+            storeName @10 : Text;
+            identityId @11 : Text;
+            passphrase @12 : Data;
+        }
+        identities @13 : Text;
+        addIdentity :group {
+            storeName @14 : Text;
+            identity @15 : Identity;
+            passphrase @16 : Data;
+        }
+        changePassphrase :group {
+            storeName @17 : Text;
+            passphrase @18 : Data;
+        }
+        list :group {
+            storeName @19 : Text;
+            filter @20 : SecretListFilter;
+        }
+        updateIndex @21 : Text;
+        add :group {
+            storeName @22 : Text;
+            secretVersion @23 : SecretVersion;
+        }
+        get :group {
+            storeName @24 : Text;
+            secretId @25 : Text;
+        }
+        getVersion :group {
+            storeName @26 : Text;
+            blockId @27 : Text;
+        }
+
+        secretToClipboard :group {
+            storeName @28 : Text;
+            blockId @29 : Text;
+            properties @30 : List(Text);
+            displayName @31 : Text;
+        }
+
+        clipboardIsDone @32 : Void;
+        clipboardCurrentlyProviding @33 : Void;
+        clipboardProvideNext @34 : Void;
+        clipboardDestroy @35 : Void;
+    }
+}
+
+struct ResultStoreConfigs {
+    configs @0 : List(StoreConfig);
+}
+
+struct ResultOptionString {
+    content @0 : Option(Text);
+}
+
+struct ResultIdentities {
+    identities @0 : List(Identity);
+}
+
+struct ResultEvents {
+    events @0 : List(Event);
 }

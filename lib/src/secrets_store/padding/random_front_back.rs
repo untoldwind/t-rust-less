@@ -42,7 +42,7 @@ impl Padding for RandomFrontBack {
       padded_writer.write_all(head_pad)?;
       padded_writer.write_all(&[0u8])?;
       padded_writer.write_all(&encoded_length)?;
-      padded_writer.write_all(&data)?;
+      padded_writer.write_all(data)?;
       padded_writer.write_all(tail_pad)?;
     }
 

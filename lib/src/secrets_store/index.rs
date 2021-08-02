@@ -69,7 +69,7 @@ impl Index {
           all_tags.insert(tag.to_string());
         }
       }
-      if let Some(entry_match) = Self::match_entry(entry, &filter)? {
+      if let Some(entry_match) = Self::match_entry(entry, filter)? {
         entries.push(entry_match);
       }
     }
@@ -175,7 +175,7 @@ impl Index {
     for (idx, (node_id, change)) in heads.iter().enumerate() {
       let mut new_head = new_heads.reborrow().get(idx as u32);
 
-      new_head.set_node_id(&node_id);
+      new_head.set_node_id(node_id);
       match change.op {
         Operation::Add => new_head.set_operation(index::HeadOperation::Add),
         Operation::Delete => new_head.set_operation(index::HeadOperation::Delete),

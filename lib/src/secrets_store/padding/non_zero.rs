@@ -55,7 +55,7 @@ impl Padding for NonZeroPadding {
       let mut padded_writer = padded_data.borrow_mut();
 
       padded_writer.write_all(&pad_bytes[..=first_zero])?;
-      padded_writer.write_all(&data)?;
+      padded_writer.write_all(data)?;
       padded_writer.write_all(&pad_bytes[first_zero..])?;
     }
 

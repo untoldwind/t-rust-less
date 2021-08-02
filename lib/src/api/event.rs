@@ -1,11 +1,12 @@
+use super::CapnpSerializing;
 use crate::api::Identity;
-use crate::api_capnp::{event, EventType};
+use crate::api_capnp::{event, event_data};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Zeroize)]
 #[zeroize(drop)]
-pub enum Event {
+pub enum EventData {
   StoreUnlocked {
     store_name: String,
     identity: Identity,
@@ -35,101 +36,119 @@ pub enum Event {
   ClipboardDone,
 }
 
-impl Event {
-  pub fn from_reader(reader: event::Reader) -> capnp::Result<Self> {
-    match reader.get_type()? {
-      EventType::StoreUnlocked => Ok(Event::StoreUnlocked {
-        store_name: reader.get_store_name()?.to_string(),
-        identity: Identity::from_reader(reader.get_identity()?)?,
+impl CapnpSerializing for EventData {
+  type Owned = event_data::Owned;
+
+  fn from_reader(reader: event_data::Reader) -> capnp::Result<Self> {
+    match reader.which()? {
+      event_data::StoreUnlocked(args) => Ok(EventData::StoreUnlocked {
+        store_name: args.get_store_name()?.to_string(),
+        identity: Identity::from_reader(args.get_identity()?)?,
       }),
-      EventType::StoreLocked => Ok(Event::StoreLocked {
-        store_name: reader.get_store_name()?.to_string(),
+      event_data::StoreLocked(args) => Ok(EventData::StoreLocked {
+        store_name: args.get_store_name()?.to_string(),
       }),
-      EventType::SecretOpened => Ok(Event::SecretOpened {
-        store_name: reader.get_store_name()?.to_string(),
-        identity: Identity::from_reader(reader.get_identity()?)?,
-        secret_id: reader.get_secret_id()?.to_string(),
+      event_data::SecretOpened(args) => Ok(EventData::SecretOpened {
+        store_name: args.get_store_name()?.to_string(),
+        identity: Identity::from_reader(args.get_identity()?)?,
+        secret_id: args.get_secret_id()?.to_string(),
       }),
-      EventType::SecretVersionAdded => Ok(Event::SecretVersionAdded {
-        store_name: reader.get_store_name()?.to_string(),
-        identity: Identity::from_reader(reader.get_identity()?)?,
-        secret_id: reader.get_secret_id()?.to_string(),
+      event_data::SecretVersionAdded(args) => Ok(EventData::SecretVersionAdded {
+        store_name: args.get_store_name()?.to_string(),
+        identity: Identity::from_reader(args.get_identity()?)?,
+        secret_id: args.get_secret_id()?.to_string(),
       }),
-      EventType::IdentityAdded => Ok(Event::IdentityAdded {
-        store_name: reader.get_store_name()?.to_string(),
-        identity: Identity::from_reader(reader.get_identity()?)?,
+      event_data::IdentityAdded(args) => Ok(EventData::IdentityAdded {
+        store_name: args.get_store_name()?.to_string(),
+        identity: Identity::from_reader(args.get_identity()?)?,
       }),
-      EventType::ClipboardProviding => Ok(Event::ClipboardProviding {
-        store_name: reader.get_store_name()?.to_string(),
-        block_id: reader.get_block_id()?.to_string(),
-        property: reader.get_property()?.to_string(),
+      event_data::ClipboardProviding(args) => Ok(EventData::ClipboardProviding {
+        store_name: args.get_store_name()?.to_string(),
+        block_id: args.get_block_id()?.to_string(),
+        property: args.get_property()?.to_string(),
       }),
-      EventType::ClipboardDone => Ok(Event::ClipboardDone),
+      event_data::ClipboardDone(_) => Ok(EventData::ClipboardDone),
     }
   }
 
-  pub fn to_builder(&self, mut builder: event::Builder) -> capnp::Result<()> {
-    match &self {
-      Event::StoreUnlocked { store_name, identity } => {
-        builder.set_type(EventType::StoreUnlocked);
-        builder.set_store_name(store_name);
-        identity.to_builder(builder.init_identity())?;
+  fn to_builder(&self, mut builder: event_data::Builder) -> capnp::Result<()> {
+    match self {
+      EventData::StoreUnlocked { store_name, identity } => {
+        let mut store_unlocked = builder.init_store_unlocked();
+        store_unlocked.set_store_name(store_name);
+        identity.to_builder(store_unlocked.init_identity())?;
       }
-      Event::StoreLocked { store_name } => {
-        builder.set_type(EventType::StoreLocked);
-        builder.set_store_name(store_name);
+      EventData::StoreLocked { store_name } => {
+        let mut store_locked = builder.init_store_locked();
+        store_locked.set_store_name(store_name);
       }
-      Event::SecretOpened {
+      EventData::SecretOpened {
         store_name,
         identity,
         secret_id,
       } => {
-        builder.set_type(EventType::SecretOpened);
-        builder.set_store_name(store_name);
-        builder.set_secret_id(secret_id);
-        identity.to_builder(builder.init_identity())?;
+        let mut secret_opened = builder.init_secret_opened();
+        secret_opened.set_store_name(store_name);
+        secret_opened.set_secret_id(secret_id);
+        identity.to_builder(secret_opened.init_identity())?;
       }
-      Event::SecretVersionAdded {
+      EventData::SecretVersionAdded {
         store_name,
         identity,
         secret_id,
       } => {
-        builder.set_type(EventType::SecretVersionAdded);
-        builder.set_store_name(store_name);
-        builder.set_secret_id(secret_id);
-        identity.to_builder(builder.init_identity())?;
+        let mut secret_version_added = builder.init_secret_version_added();
+        secret_version_added.set_store_name(store_name);
+        secret_version_added.set_secret_id(secret_id);
+        identity.to_builder(secret_version_added.init_identity())?;
       }
-      Event::IdentityAdded { store_name, identity } => {
-        builder.set_type(EventType::IdentityAdded);
-        builder.set_store_name(store_name);
-        identity.to_builder(builder.init_identity())?;
+      EventData::IdentityAdded { store_name, identity } => {
+        let mut identity_added = builder.init_identity_added();
+        identity_added.set_store_name(store_name);
+        identity.to_builder(identity_added.init_identity())?;
       }
-      Event::ClipboardProviding {
+      EventData::ClipboardProviding {
         store_name,
         block_id,
         property,
       } => {
-        builder.set_type(EventType::ClipboardProviding);
-        builder.set_store_name(store_name);
-        builder.set_block_id(block_id);
-        builder.set_property(property);
+        let mut clipboard_providing = builder.init_clipboard_providing();
+        clipboard_providing.set_store_name(store_name);
+        clipboard_providing.set_block_id(block_id);
+        clipboard_providing.set_property(property);
       }
-      Event::ClipboardDone => {
-        builder.set_type(EventType::ClipboardDone);
+      EventData::ClipboardDone => {
+        builder.set_clipboard_done(());
       }
     }
     Ok(())
   }
 }
 
-impl_capnp_serialize!(Event, event);
-
-pub trait EventHandler: Send + Sync {
-  fn handle(&self, event: Event);
-}
-
 pub trait EventHub: Send + Sync {
-  fn send(&self, event: Event);
+  fn send(&self, event: EventData);
 }
 
-pub trait EventSubscription: Send + Sync {}
+#[derive(Clone, Debug, Serialize, Deserialize, Zeroize)]
+#[zeroize(drop)]
+pub struct Event {
+  pub id: u64,
+  pub data: EventData,
+}
+
+impl CapnpSerializing for Event {
+  type Owned = event::Owned;
+
+  fn from_reader(reader: event::Reader) -> capnp::Result<Self> {
+    Ok(Event {
+      id: reader.get_id(),
+      data: EventData::from_reader(reader.get_data()?)?,
+    })
+  }
+
+  fn to_builder(&self, mut builder: event::Builder) -> capnp::Result<()> {
+    builder.set_id(self.id);
+    self.data.to_builder(builder.init_data())?;
+    Ok(())
+  }
+}

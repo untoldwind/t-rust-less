@@ -1,6 +1,6 @@
 [package]
 name = "t-rust-less-daemon"
-version = "0.1.15"
+version = "0.2.0"
 authors = ["Untoldwind <landru@untoldwind.net>"]
 build = "build.rs"
 edition = "2018"
@@ -10,11 +10,11 @@ log = "0"
 env_logger = "0"
 clap = { version = "2", default-features = false, features = ["suggestions", "color"]}
 t-rust-less-lib = { path = "../lib" }
-capnp = "0.14"
-capnp-rpc = "0.14"
 futures = "0.3"
-tokio = { version = "1", features = ["net", "rt", "signal", "time"] }
-tokio-util = { version = "0.6", features = ["compat"] }
+tokio = { version = "1", features = ["full"] }
+zeroize = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0"

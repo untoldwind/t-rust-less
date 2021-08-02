@@ -1,126 +1,111 @@
-use crate::api::{read_option, set_text_list, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
-use crate::api::{Event, EventHandler, EventSubscription, PasswordGeneratorParam};
-use crate::api_capnp::{clipboard_control, event_handler, event_subscription, secrets_store, service};
+use crate::api::{
+  CapnpSerializable, Command, Identity, ResultEvents, ResultIdentities, ResultOptionString, ResultStoreConfigs, Secret,
+  SecretList, SecretListFilter, SecretVersion, Status, StoreConfig,
+};
+use crate::api::{Event, PasswordGeneratorParam};
 use crate::memguard::SecretBytes;
-use crate::secrets_store::{SecretStoreResult, SecretsStore};
-use crate::service::{ClipboardControl, ServiceResult, StoreConfig, TrustlessService};
-use capnp::capability::Promise;
-use futures::FutureExt;
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::sync::Arc;
-use tokio::runtime::Runtime;
-use tokio::task::LocalSet;
+use crate::secrets_store::{SecretStoreError, SecretStoreResult, SecretsStore};
+use crate::service::{ClipboardControl, ServiceError, ServiceResult, TrustlessService};
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use serde::de::DeserializeOwned;
+use std::fmt::Debug;
+use std::io::{Read, Write};
+use std::sync::{Arc, Mutex, MutexGuard};
+use zeroize::Zeroizing;
 
-pub struct RemoteTrustlessService {
-  client: service::Client,
-  runtime: Rc<RefCell<Runtime>>,
-  local_set: Rc<LocalSet>,
+fn write_command<S, C, E>(writer: &mut MutexGuard<S>, command: C) -> Result<(), E>
+where
+  S: Write,
+  C: CapnpSerializable,
+  E: From<std::io::Error> + From<capnp::Error>,
+{
+  let message = command.serialize_capnp()?;
+
+  writer.write_u32::<LittleEndian>(message.len() as u32)?;
+  writer.write_all(&message)?;
+
+  Ok(())
 }
 
-unsafe impl Send for RemoteTrustlessService {}
+fn recv_result<S, R, E>(reader: &mut MutexGuard<S>) -> Result<R, E>
+where
+  S: Read,
+  R: CapnpSerializable,
+  E: From<std::io::Error> + From<capnp::Error> + From<serde_json::Error> + DeserializeOwned,
+{
+  let len = reader.read_u32::<LittleEndian>()? as usize;
+  let success = reader.read_u8()?;
+  let mut buf = Zeroizing::from(vec![0; len - 1]);
 
-unsafe impl Sync for RemoteTrustlessService {}
+  reader.read_exact(&mut buf)?;
 
-impl RemoteTrustlessService {
-  pub fn new(client: service::Client, runtime: Runtime, local_set: LocalSet) -> RemoteTrustlessService {
+  if success == 0 {
+    Err(serde_json::from_reader(buf.as_slice())?)
+  } else {
+    Ok(R::deserialize_capnp(buf.as_slice())?)
+  }
+}
+
+fn send_recv<'a, S, C, R, E>(stream: &'a Arc<Mutex<S>>, command: C) -> Result<R, E>
+where
+  S: Read + Write + 'a,
+  C: CapnpSerializable,
+  R: CapnpSerializable,
+  E: From<std::io::Error>
+    + From<capnp::Error>
+    + From<serde_json::Error>
+    + From<std::sync::PoisonError<std::sync::MutexGuard<'a, S>>>
+    + DeserializeOwned,
+{
+  let mut stream = stream.lock()?;
+
+  write_command::<S, C, E>(&mut stream, command)?;
+
+  recv_result(&mut stream)
+}
+
+#[derive(Debug)]
+pub struct RemoteTrustlessService<S> {
+  stream: Arc<Mutex<S>>,
+}
+
+impl<S> RemoteTrustlessService<S>
+where
+  S: Read + Write + Debug + Send + Sync,
+{
+  pub fn new(stream: S) -> Self {
     RemoteTrustlessService {
-      client,
-      runtime: Rc::new(RefCell::new(runtime)),
-      local_set: Rc::new(local_set),
+      stream: Arc::new(Mutex::new(stream)),
     }
   }
 }
 
-impl TrustlessService for RemoteTrustlessService {
+impl<S> TrustlessService for RemoteTrustlessService<S>
+where
+  S: Read + Write + Debug + Send + Sync + 'static,
+{
   fn list_stores(&self) -> ServiceResult<Vec<StoreConfig>> {
-    let rt = self.runtime.borrow();
-    let request = self.client.list_stores_request();
-    self.local_set.block_on(
-      &rt,
-      request.send().promise.map(|response| {
-        let store_configs = response?
-          .get()?
-          .get_store_configs()?
-          .into_iter()
-          .map(StoreConfig::from_reader)
-          .collect::<capnp::Result<Vec<StoreConfig>>>()?;
-        Ok(store_configs)
-      }),
-    )
+    Ok(send_recv::<_, _, ResultStoreConfigs, ServiceError>(&self.stream, Command::ListStores)?.0)
   }
 
   fn upsert_store_config(&self, store_config: StoreConfig) -> ServiceResult<()> {
-    let rt = self.runtime.borrow();
-    let mut request = self.client.upsert_store_config_request();
-    store_config.to_builder(request.get().init_store_config())?;
-
-    self.local_set.block_on(
-      &rt,
-      request.send().promise.map(|response| {
-        response?.get()?;
-
-        Ok(())
-      }),
-    )
+    send_recv(&self.stream, Command::UpsertStoreConfig(store_config))
   }
 
   fn delete_store_config(&self, name: &str) -> ServiceResult<()> {
-    let rt = self.runtime.borrow();
-    let mut request = self.client.delete_store_config_request();
-    request.get().set_store_name(&name);
-
-    self.local_set.block_on(
-      &rt,
-      request.send().promise.map(|response| {
-        response?.get()?;
-
-        Ok(())
-      }),
-    )
+    send_recv(&self.stream, Command::DeleteStoreConfig(name.to_string()))
   }
 
-  fn open_store(&self, name: &str) -> ServiceResult<Arc<dyn SecretsStore>> {
-    let rt = self.runtime.borrow();
-    let mut request = self.client.open_store_request();
-    request.get().set_store_name(name);
-    let store_client: ServiceResult<secrets_store::Client> = self.local_set.block_on(
-      &rt,
-      request.send().promise.map(|response| Ok(response?.get()?.get_store()?)),
-    );
-
-    Ok(Arc::new(RemoteSecretsStore::new(
-      store_client?,
-      self.runtime.clone(),
-      self.local_set.clone(),
-    )?))
+  fn open_store(&self, name: &str) -> SecretStoreResult<Arc<dyn SecretsStore>> {
+    Ok(Arc::new(RemoteSecretsStore::new(&self.stream, name)))
   }
 
   fn get_default_store(&self) -> ServiceResult<Option<String>> {
-    let rt = self.runtime.borrow();
-    let request = self.client.get_default_store_request();
-    self.local_set.block_on(
-      &rt,
-      request
-        .send()
-        .promise
-        .map(|response| Ok(read_option(response?.get()?.get_store_name()?)?.map(ToString::to_string))),
-    )
+    Ok(send_recv::<_, _, ResultOptionString, ServiceError>(&self.stream, Command::GetDefaultStore)?.0)
   }
 
   fn set_default_store(&self, name: &str) -> ServiceResult<()> {
-    let rt = self.runtime.borrow();
-    let mut request = self.client.set_default_store_request();
-    request.get().set_store_name(&name);
-
-    self.local_set.block_on(
-      &rt,
-      request.send().promise.map(|response| {
-        response?.get()?;
-
-        Ok(())
-      }),
-    )
+    send_recv(&self.stream, Command::SetDefaultStore(name.to_string()))
   }
 
   fn secret_to_clipboard(
@@ -130,397 +115,177 @@ impl TrustlessService for RemoteTrustlessService {
     properties: &[&str],
     display_name: &str,
   ) -> ServiceResult<Arc<dyn ClipboardControl>> {
-    let rt = self.runtime.borrow();
-    let mut request = self.client.secret_to_clipboard_request();
-
-    request.get().set_store_name(store_name);
-    request.get().set_block_id(block_id);
-    set_text_list(request.get().init_properties(properties.len() as u32), properties)?;
-    request.get().set_display_name(display_name);
-
-    let clipboard_control_client: ServiceResult<clipboard_control::Client> = self.local_set.block_on(
-      &rt,
-      request
-        .send()
-        .promise
-        .map(|response| Ok(response?.get()?.get_clipboard_control()?)),
-    );
-
-    Ok(Arc::new(RemoteClipboardControl::new(
-      clipboard_control_client?,
-      self.runtime.clone(),
-      self.local_set.clone(),
-    )?))
+    send_recv::<_, _, (), ServiceError>(
+      &self.stream,
+      Command::SecretToClipboard {
+        store_name: store_name.to_string(),
+        block_id: block_id.to_string(),
+        properties: properties.iter().map(ToString::to_string).collect(),
+        display_name: display_name.to_string(),
+      },
+    )?;
+    Ok(Arc::new(RemoteClipboardControl::new(&self.stream)))
   }
 
-  fn add_event_handler(&self, handler: Box<dyn EventHandler>) -> ServiceResult<Box<dyn EventSubscription>> {
-    let rt = self.runtime.borrow();
-    let mut request = self.client.add_event_handler_request();
-
-    request
-      .get()
-      .set_handler(capnp_rpc::new_client(RemoteEventHandlerImpl::new(handler)));
-    let subscription_client: ServiceResult<event_subscription::Client> = self.local_set.block_on(
-      &rt,
-      request
-        .send()
-        .promise
-        .map(|response| Ok(response?.get()?.get_subscription()?)),
-    );
-
-    Ok(Box::new(RemoteEventSubscription(subscription_client?)))
+  fn poll_events(&self, last_id: u64) -> ServiceResult<Vec<Event>> {
+    Ok(send_recv::<_, _, ResultEvents, ServiceError>(&self.stream, Command::PollEvents(last_id))?.0)
   }
 
   fn generate_id(&self) -> ServiceResult<String> {
-    let rt = self.runtime.borrow();
-    let request = self.client.generate_id_request();
-
-    self.local_set.block_on(
-      &rt,
-      request
-        .send()
-        .promise
-        .map(|response| Ok(response?.get()?.get_id()?.to_string())),
-    )
+    send_recv(&self.stream, Command::GenerateId)
   }
 
   fn generate_password(&self, param: PasswordGeneratorParam) -> ServiceResult<String> {
-    let rt = self.runtime.borrow();
-    let mut request = self.client.generate_password_request();
-    param.to_builder(request.get().init_param())?;
-
-    self.local_set.block_on(
-      &rt,
-      request
-        .send()
-        .promise
-        .map(|response| Ok(response?.get()?.get_password()?.to_string())),
-    )
+    send_recv(&self.stream, Command::GeneratePassword(param))
   }
 
   fn check_autolock(&self) {
-    // This is done by the daemon itself
+    // This should be done by the remote sever itself
   }
 }
 
-impl std::fmt::Debug for RemoteTrustlessService {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "Remote Trustless service")
+#[derive(Debug)]
+struct RemoteSecretsStore<S> {
+  stream: Arc<Mutex<S>>,
+  name: String,
+}
+
+impl<S> RemoteSecretsStore<S>
+where
+  S: Read + Write + Debug + Send + Sync,
+{
+  fn new(stream: &Arc<Mutex<S>>, name: &str) -> Self {
+    RemoteSecretsStore {
+      stream: stream.clone(),
+      name: name.to_string(),
+    }
   }
 }
 
-pub struct RemoteSecretsStore {
-  client: secrets_store::Client,
-  runtime: Rc<RefCell<Runtime>>,
-  local_set: Rc<LocalSet>,
-}
-
-unsafe impl Send for RemoteSecretsStore {}
-
-unsafe impl Sync for RemoteSecretsStore {}
-
-impl RemoteSecretsStore {
-  fn new(
-    client: secrets_store::Client,
-    runtime: Rc<RefCell<Runtime>>,
-    local_set: Rc<LocalSet>,
-  ) -> ServiceResult<RemoteSecretsStore> {
-    Ok(RemoteSecretsStore {
-      client,
-      runtime,
-      local_set,
-    })
-  }
-}
-
-impl SecretsStore for RemoteSecretsStore {
+impl<S> SecretsStore for RemoteSecretsStore<S>
+where
+  S: Read + Write + Debug + Send + Sync,
+{
   fn status(&self) -> SecretStoreResult<Status> {
-    let rt = self.runtime.borrow();
-    let request = self.client.status_request();
-    self.local_set.block_on(
-      &rt,
-      request
-        .send()
-        .promise
-        .map(|response| Ok(Status::from_reader(response?.get()?.get_status()?)?)),
-    )
+    send_recv(&self.stream, Command::Status(self.name.clone()))
   }
 
   fn lock(&self) -> SecretStoreResult<()> {
-    let rt = self.runtime.borrow();
-    let request = self.client.lock_request();
-
-    self.local_set.block_on(
-      &rt,
-      request.send().promise.map(|response| {
-        response?.get()?;
-
-        Ok(())
-      }),
-    )
+    send_recv(&self.stream, Command::Lock(self.name.clone()))
   }
 
   fn unlock(&self, identity_id: &str, passphrase: SecretBytes) -> SecretStoreResult<()> {
-    let rt = self.runtime.borrow();
-    let mut request = self.client.unlock_request();
-    request.get().set_identity_id(&identity_id);
-    request.get().set_passphrase(&passphrase.borrow());
-
-    self.local_set.block_on(
-      &rt,
-      request.send().promise.map(|response| {
-        response?.get()?;
-
-        Ok(())
-      }),
+    send_recv(
+      &self.stream,
+      Command::Unlock {
+        store_name: self.name.clone(),
+        identity_id: identity_id.to_string(),
+        passphrase,
+      },
     )
   }
 
   fn identities(&self) -> SecretStoreResult<Vec<Identity>> {
-    let rt = self.runtime.borrow();
-    let request = self.client.identities_request();
-    self.local_set.block_on(
-      &rt,
-      request.send().promise.map(|response| {
-        let names = response?
-          .get()?
-          .get_identities()?
-          .into_iter()
-          .map(Identity::from_reader)
-          .collect::<capnp::Result<Vec<Identity>>>()?;
-        Ok(names)
-      }),
-    )
+    Ok(send_recv::<_, _, ResultIdentities, SecretStoreError>(&self.stream, Command::Identities(self.name.clone()))?.0)
   }
 
   fn add_identity(&self, identity: Identity, passphrase: SecretBytes) -> SecretStoreResult<()> {
-    let rt = self.runtime.borrow();
-    let mut request = self.client.add_identity_request();
-
-    identity.to_builder(request.get().init_identity())?;
-    request.get().set_passphrase(&passphrase.borrow());
-    self.local_set.block_on(
-      &rt,
-      request.send().promise.map(|response| {
-        response?.get()?;
-
-        Ok(())
-      }),
+    send_recv(
+      &self.stream,
+      Command::AddIdentity {
+        store_name: self.name.clone(),
+        identity,
+        passphrase,
+      },
     )
   }
 
   fn change_passphrase(&self, passphrase: SecretBytes) -> SecretStoreResult<()> {
-    let rt = self.runtime.borrow();
-    let mut request = self.client.change_passphrase_request();
-    request.get().set_passphrase(&passphrase.borrow());
-
-    self.local_set.block_on(
-      &rt,
-      request.send().promise.map(|response| {
-        response?.get()?;
-
-        Ok(())
-      }),
+    send_recv(
+      &self.stream,
+      Command::ChangePassphrase {
+        store_name: self.name.clone(),
+        passphrase,
+      },
     )
   }
 
   fn list(&self, filter: &SecretListFilter) -> SecretStoreResult<SecretList> {
-    let rt = self.runtime.borrow();
-    let mut request = self.client.list_request();
-    filter.to_builder(request.get().init_filter())?;
-
-    self.local_set.block_on(
-      &rt,
-      request.send().promise.map(|response| {
-        let list = SecretList::from_reader(response?.get()?.get_list()?)?;
-
-        Ok(list)
-      }),
+    send_recv(
+      &self.stream,
+      Command::List {
+        store_name: self.name.clone(),
+        filter: filter.clone(),
+      },
     )
   }
 
   fn update_index(&self) -> SecretStoreResult<()> {
-    let rt = self.runtime.borrow();
-    let request = self.client.update_index_request();
-
-    self.local_set.block_on(
-      &rt,
-      request.send().promise.map(|response| {
-        response?.get()?;
-
-        Ok(())
-      }),
-    )
+    send_recv(&self.stream, Command::UpdateIndex(self.name.clone()))
   }
 
   fn add(&self, secret_version: SecretVersion) -> SecretStoreResult<String> {
-    let rt = self.runtime.borrow();
-    let mut request = self.client.add_request();
-
-    secret_version.to_builder(request.get().init_version())?;
-    self.local_set.block_on(
-      &rt,
-      request
-        .send()
-        .promise
-        .map(|response| Ok(response?.get()?.get_block_id()?.to_string())),
+    send_recv(
+      &self.stream,
+      Command::Add {
+        store_name: self.name.clone(),
+        secret_version,
+      },
     )
   }
 
   fn get(&self, secret_id: &str) -> SecretStoreResult<Secret> {
-    let rt = self.runtime.borrow();
-    let mut request = self.client.get_request();
-    request.get().set_id(&secret_id);
-
-    self.local_set.block_on(
-      &rt,
-      request.send().promise.map(|response| {
-        let secret = Secret::from_reader(response?.get()?.get_secret()?)?;
-
-        Ok(secret)
-      }),
+    send_recv(
+      &self.stream,
+      Command::Get {
+        store_name: self.name.clone(),
+        secret_id: secret_id.to_string(),
+      },
     )
   }
 
   fn get_version(&self, block_id: &str) -> SecretStoreResult<SecretVersion> {
-    let rt = self.runtime.borrow();
-    let mut request = self.client.get_version_request();
-    request.get().set_block_id(&block_id);
-
-    self.local_set.block_on(
-      &rt,
-      request.send().promise.map(|response| {
-        let secret_version = SecretVersion::from_reader(response?.get()?.get_version()?)?;
-
-        Ok(secret_version)
-      }),
+    send_recv(
+      &self.stream,
+      Command::GetVersion {
+        store_name: self.name.clone(),
+        block_id: block_id.to_string(),
+      },
     )
   }
 }
 
-impl std::fmt::Debug for RemoteSecretsStore {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "Remote secrets store")
+#[derive(Debug)]
+struct RemoteClipboardControl<S> {
+  stream: Arc<Mutex<S>>,
+}
+
+impl<S> RemoteClipboardControl<S>
+where
+  S: Read + Write + Debug + Send + Sync,
+{
+  fn new(stream: &Arc<Mutex<S>>) -> Self {
+    RemoteClipboardControl { stream: stream.clone() }
   }
 }
 
-struct RemoteClipboardControl {
-  client: clipboard_control::Client,
-  runtime: Rc<RefCell<Runtime>>,
-  local_set: Rc<LocalSet>,
-}
-
-unsafe impl Send for RemoteClipboardControl {}
-
-unsafe impl Sync for RemoteClipboardControl {}
-
-impl RemoteClipboardControl {
-  fn new(
-    client: clipboard_control::Client,
-    runtime: Rc<RefCell<Runtime>>,
-    local_set: Rc<LocalSet>,
-  ) -> ServiceResult<RemoteClipboardControl> {
-    Ok(RemoteClipboardControl {
-      client,
-      runtime,
-      local_set,
-    })
-  }
-}
-
-impl ClipboardControl for RemoteClipboardControl {
+impl<S> ClipboardControl for RemoteClipboardControl<S>
+where
+  S: Read + Write + Debug + Send + Sync,
+{
   fn is_done(&self) -> ServiceResult<bool> {
-    let rt = self.runtime.borrow();
-    let request = self.client.is_done_request();
-
-    self.local_set.block_on(
-      &rt,
-      request
-        .send()
-        .promise
-        .map(|response| Ok(response?.get()?.get_is_done())),
-    )
+    send_recv(&self.stream, Command::ClipboardIsDone)
   }
 
   fn currently_providing(&self) -> ServiceResult<Option<String>> {
-    let rt = self.runtime.borrow();
-    let request = self.client.currently_providing_request();
-
-    self.local_set.block_on(
-      &rt,
-      request
-        .send()
-        .promise
-        .map(|response| match read_option(response?.get()?.get_providing()?)? {
-          None => Ok(None),
-          Some(name) => Ok(Some(name.to_string())),
-        }),
-    )
+    Ok(send_recv::<_, _, ResultOptionString, ServiceError>(&self.stream, Command::ClipboardCurrentlyProviding)?.0)
   }
 
   fn provide_next(&self) -> ServiceResult<()> {
-    let rt = self.runtime.borrow();
-    let request = self.client.provide_next_request();
-
-    self.local_set.block_on(
-      &rt,
-      request.send().promise.map(|response| {
-        response?.get()?;
-
-        Ok(())
-      }),
-    )
+    send_recv(&self.stream, Command::ClipboardProvideNext)
   }
 
   fn destroy(&self) -> ServiceResult<()> {
-    let rt = self.runtime.borrow();
-    let request = self.client.destroy_request();
-
-    self.local_set.block_on(
-      &rt,
-      request.send().promise.map(|response| {
-        response?.get()?;
-
-        Ok(())
-      }),
-    )
-  }
-}
-
-struct RemoteEventSubscription(event_subscription::Client);
-
-impl EventSubscription for RemoteEventSubscription {}
-
-unsafe impl Send for RemoteEventSubscription {}
-
-unsafe impl Sync for RemoteEventSubscription {}
-
-struct RemoteEventHandlerImpl {
-  event_handler: Box<dyn EventHandler>,
-}
-
-impl RemoteEventHandlerImpl {
-  fn new(event_handler: Box<dyn EventHandler>) -> RemoteEventHandlerImpl {
-    RemoteEventHandlerImpl { event_handler }
-  }
-}
-
-impl event_handler::Server for RemoteEventHandlerImpl {
-  fn handle(
-    &mut self,
-    params: event_handler::HandleParams,
-    _: event_handler::HandleResults,
-  ) -> Promise<(), capnp::Error> {
-    let event = match params
-      .get()
-      .and_then(event_handler::handle_params::Reader::get_event)
-      .and_then(Event::from_reader)
-    {
-      Ok(event) => event,
-      Err(err) => return Promise::err(err),
-    };
-    self.event_handler.handle(event);
-
-    Promise::ok(())
+    send_recv(&self.stream, Command::ClipboardDestroy)
   }
 }

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
-use t_rust_less_lib::api::{Event, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status};
-use t_rust_less_lib::service::{ServiceError, ServiceResult, StoreConfig};
+use t_rust_less_lib::api::{Event, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status, StoreConfig};
+use t_rust_less_lib::secrets_store::SecretStoreResult;
+use t_rust_less_lib::service::{ServiceError, ServiceResult};
 use zeroize::Zeroize;
 
 #[derive(Debug, Serialize, Deserialize, Zeroize)]
@@ -99,6 +100,24 @@ where
       Err(error) => {
         let display = format!("{}", error);
         CommandResult::Error { error, display }
+      }
+    }
+  }
+}
+
+impl<T> From<SecretStoreResult<T>> for CommandResult
+where
+  T: Into<CommandResult>,
+{
+  fn from(result: SecretStoreResult<T>) -> Self {
+    match result {
+      Ok(success) => success.into(),
+      Err(error) => {
+        let display = format!("{}", error);
+        CommandResult::Error {
+          error: ServiceError::SecretsStore(error),
+          display,
+        }
       }
     }
   }
