@@ -219,6 +219,14 @@ impl Clone for SecretBytes {
   }
 }
 
+impl PartialEq for SecretBytes {
+  fn eq(&self, other: &Self) -> bool {
+    self.borrow().as_bytes() == other.borrow().as_bytes()
+  }
+}
+
+impl Eq for SecretBytes {}
+
 impl From<&mut [u8]> for SecretBytes {
   fn from(bytes: &mut [u8]) -> Self {
     unsafe {

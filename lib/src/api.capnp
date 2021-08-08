@@ -1,18 +1,11 @@
 @0x981c355b6da046c4; 
 
-struct Option(T) {
-    union {
-        some @0 : T;
-        none @1 : Void;
-    }
-}
-
 struct StoreConfig {
     name @0 : Text;
     storeUrl @1 : Text;
     clientId @2 : Text;
     autolockTimeoutSecs @3 : UInt64;
-    defaultIdentityId @4 : Option(Text) = (none = void);
+    defaultIdentityId @4 : Text;
 }
 
 struct EventData {
@@ -85,7 +78,7 @@ struct Identity {
 
 struct Status {
     locked @0 : Bool;
-    unlockedBy @1: Option(Identity);
+    unlockedBy @1: Identity;
     autolockAt @2 : Int64;
     version @3 : Text;
     autolockTimeout @4: UInt64;
@@ -111,10 +104,10 @@ struct SecretEntry {
 }
 
 struct SecretListFilter {
-    url @0 : Option(Text);
-    tag @1 : Option(Text);
+    url @0 : Text;
+    tag @1 : Text;
     type @2 : OptionType;
-    name @3 : Option(Text);
+    name @3 : Text;
     deleted @4 : Bool;
 
     # Workaround since enum can not be used as generic parameters

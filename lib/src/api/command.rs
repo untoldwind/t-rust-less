@@ -9,7 +9,7 @@ use super::{
   SecretVersion, Status, StoreConfig,
 };
 
-#[derive(Debug, Zeroize)]
+#[derive(Debug, Clone, PartialEq, Eq, Zeroize)]
 #[allow(clippy::large_enum_variant)]
 #[zeroize(drop)]
 pub enum Command {

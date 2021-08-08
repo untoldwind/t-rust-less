@@ -2,7 +2,7 @@ use crate::api_capnp::store_config;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
-use super::{read_option, CapnpSerializing};
+use super::CapnpSerializing;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Zeroize)]
 #[zeroize(drop)]
@@ -23,7 +23,11 @@ impl CapnpSerializing for StoreConfig {
       store_url: reader.get_store_url()?.to_string(),
       client_id: reader.get_client_id()?.to_string(),
       autolock_timeout_secs: reader.get_autolock_timeout_secs(),
-      default_identity_id: read_option(reader.get_default_identity_id()?)?.map(ToString::to_string),
+      default_identity_id: if reader.has_default_identity_id() {
+        Some(reader.get_default_identity_id()?.to_string())
+      } else {
+        None
+      },
     })
   }
 
@@ -32,12 +36,8 @@ impl CapnpSerializing for StoreConfig {
     builder.set_store_url(&self.store_url);
     builder.set_client_id(&self.client_id);
     builder.set_autolock_timeout_secs(self.autolock_timeout_secs);
-    match &self.default_identity_id {
-      Some(default_identity_id) => builder
-        .reborrow()
-        .init_default_identity_id()
-        .set_some(capnp::text::new_reader(default_identity_id.as_bytes())?)?,
-      None => builder.reborrow().init_default_identity_id().set_none(()),
+    if let Some(default_identity_id) = &self.default_identity_id {
+      builder.set_default_identity_id(default_identity_id);
     }
 
     Ok(())

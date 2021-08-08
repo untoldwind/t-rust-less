@@ -1,10 +1,15 @@
-use crate::api::{
-  CapnpSerializable, Identity, PasswordStrength, Secret, SecretAttachment, SecretEntry, SecretEntryMatch, SecretList,
-  SecretListFilter, SecretProperties, SecretType, SecretVersion, SecretVersionRef, Status, ZeroizeDateTime,
+use crate::{
+  api::{
+    CapnpSerializable, Identity, PasswordStrength, Secret, SecretAttachment, SecretEntry, SecretEntryMatch, SecretList,
+    SecretListFilter, SecretProperties, SecretType, SecretVersion, SecretVersionRef, Status, ZeroizeDateTime,
+  },
+  memguard::SecretBytes,
 };
 use chrono::{TimeZone, Utc};
 use quickcheck::{quickcheck, Arbitrary, Gen};
 use std::collections::{BTreeMap, HashMap};
+
+use super::{Command, PasswordGeneratorCharsParam, PasswordGeneratorParam, PasswordGeneratorWordsParam, StoreConfig};
 
 impl Arbitrary for Identity {
   fn arbitrary<G: Gen>(g: &mut G) -> Self {
@@ -168,6 +173,107 @@ impl Arbitrary for Secret {
   }
 }
 
+impl Arbitrary for StoreConfig {
+  fn arbitrary<G: Gen>(g: &mut G) -> Self {
+    StoreConfig {
+      name: String::arbitrary(g),
+      store_url: String::arbitrary(g),
+      client_id: String::arbitrary(g),
+      autolock_timeout_secs: u64::arbitrary(g),
+      default_identity_id: Option::arbitrary(g),
+    }
+  }
+}
+
+impl Arbitrary for PasswordGeneratorParam {
+  fn arbitrary<G: Gen>(g: &mut G) -> Self {
+    match g.next_u32() % 2 {
+      0 => PasswordGeneratorParam::Chars(PasswordGeneratorCharsParam {
+        num_chars: u8::arbitrary(g),
+        include_uppers: bool::arbitrary(g),
+        include_numbers: bool::arbitrary(g),
+        include_symbols: bool::arbitrary(g),
+        require_upper: bool::arbitrary(g),
+        require_number: bool::arbitrary(g),
+        require_symbol: bool::arbitrary(g),
+        exlcude_similar: bool::arbitrary(g),
+        exclude_ambiguous: bool::arbitrary(g),
+      }),
+      _ => PasswordGeneratorParam::Words(PasswordGeneratorWordsParam {
+        num_words: u8::arbitrary(g),
+        delim: char::arbitrary(g),
+      }),
+    }
+  }
+}
+
+impl Arbitrary for SecretBytes {
+  fn arbitrary<G: Gen>(g: &mut G) -> Self {
+    SecretBytes::from(Vec::arbitrary(g))
+  }
+}
+
+impl Arbitrary for Command {
+  fn arbitrary<G: Gen>(g: &mut G) -> Self {
+    match g.next_u32() % 24 {
+      0 => Command::ListStores,
+      1 => Command::UpsertStoreConfig(StoreConfig::arbitrary(g)),
+      2 => Command::DeleteStoreConfig(String::arbitrary(g)),
+      3 => Command::GetDefaultStore,
+      4 => Command::SetDefaultStore(String::arbitrary(g)),
+      5 => Command::GenerateId,
+      6 => Command::GeneratePassword(PasswordGeneratorParam::arbitrary(g)),
+      7 => Command::PollEvents(u64::arbitrary(g)),
+
+      8 => Command::Status(String::arbitrary(g)),
+      9 => Command::Lock(String::arbitrary(g)),
+      10 => Command::Unlock {
+        store_name: String::arbitrary(g),
+        identity_id: String::arbitrary(g),
+        passphrase: SecretBytes::arbitrary(g),
+      },
+      11 => Command::Identities(String::arbitrary(g)),
+      12 => Command::AddIdentity {
+        store_name: String::arbitrary(g),
+        identity: Identity::arbitrary(g),
+        passphrase: SecretBytes::arbitrary(g),
+      },
+      13 => Command::ChangePassphrase {
+        store_name: String::arbitrary(g),
+        passphrase: SecretBytes::arbitrary(g),
+      },
+      14 => Command::List {
+        store_name: String::arbitrary(g),
+        filter: SecretListFilter::arbitrary(g),
+      },
+      15 => Command::UpdateIndex(String::arbitrary(g)),
+      16 => Command::Add {
+        store_name: String::arbitrary(g),
+        secret_version: SecretVersion::arbitrary(g),
+      },
+      17 => Command::Get {
+        store_name: String::arbitrary(g),
+        secret_id: String::arbitrary(g),
+      },
+      18 => Command::GetVersion {
+        store_name: String::arbitrary(g),
+        block_id: String::arbitrary(g),
+      },
+
+      19 => Command::SecretToClipboard {
+        store_name: String::arbitrary(g),
+        block_id: String::arbitrary(g),
+        properties: Vec::arbitrary(g),
+        display_name: String::arbitrary(g),
+      },
+      20 => Command::ClipboardIsDone,
+      21 => Command::ClipboardCurrentlyProviding,
+      22 => Command::ClipboardProvideNext,
+      _ => Command::ClipboardDestroy,
+    }
+  }
+}
+
 #[test]
 fn identity_capnp_serialization() {
   fn check_serialize(identity: Identity) -> bool {
@@ -238,4 +344,16 @@ fn secret_capnp_serialization() {
   }
 
   quickcheck(check_serialize as fn(Secret) -> bool);
+}
+
+#[test]
+fn command_serialization() {
+  fn check_serialize(command: Command) -> bool {
+    let raw = command.clone().serialize_capnp().unwrap();
+    let deserialized = Command::deserialize_capnp(&raw).unwrap();
+
+    command == deserialized
+  }
+
+  quickcheck(check_serialize as fn(Command) -> bool);
 }

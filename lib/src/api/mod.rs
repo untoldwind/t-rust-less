@@ -1,6 +1,6 @@
 use crate::api_capnp::{
-  self, identity, option, password_generator_param, password_strength, secret, secret_entry, secret_entry_match,
-  secret_list, secret_list_filter, secret_version, status,
+  self, identity, password_generator_param, password_strength, secret, secret_entry, secret_entry_match, secret_list,
+  secret_list_filter, secret_version, status,
 };
 use capnp::{struct_list, text_list};
 use chrono::{TimeZone, Utc};
@@ -50,9 +50,11 @@ impl CapnpSerializing for Status {
   fn from_reader(reader: status::Reader) -> capnp::Result<Self> {
     Ok(Status {
       locked: reader.get_locked(),
-      unlocked_by: read_option(reader.get_unlocked_by()?)?
-        .map(|i| Identity::from_reader(i))
-        .transpose()?,
+      unlocked_by: if reader.has_unlocked_by() {
+        Some(Identity::from_reader(reader.get_unlocked_by()?)?)
+      } else {
+        None
+      },
       autolock_at: {
         let autolock_at = reader.get_autolock_at();
         if autolock_at == std::i64::MIN {
@@ -68,9 +70,8 @@ impl CapnpSerializing for Status {
 
   fn to_builder(&self, mut builder: status::Builder) -> capnp::Result<()> {
     builder.set_locked(self.locked);
-    match &self.unlocked_by {
-      Some(identity) => identity.to_builder(builder.reborrow().get_unlocked_by()?.init_some())?,
-      None => builder.reborrow().get_unlocked_by()?.set_none(()),
+    if let Some(identity) = &self.unlocked_by {
+      identity.to_builder(builder.reborrow().init_unlocked_by())?;
     }
     match &self.autolock_at {
       Some(autolock_at) => builder.set_autolock_at(autolock_at.timestamp_millis()),
@@ -218,42 +219,42 @@ impl CapnpSerializing for SecretListFilter {
 
   fn from_reader(reader: secret_list_filter::Reader) -> capnp::Result<Self> {
     Ok(SecretListFilter {
-      url: read_option(reader.get_url()?)?.map(ToString::to_string),
-      tag: read_option(reader.get_tag()?)?.map(ToString::to_string),
+      url: if reader.has_url() {
+        Some(reader.get_url()?.to_string())
+      } else {
+        None
+      },
+      tag: if reader.has_tag() {
+        Some(reader.get_tag()?.to_string())
+      } else {
+        None
+      },
       secret_type: match reader.get_type()?.which()? {
         secret_list_filter::option_type::Some(reader) => Some(SecretType::from_reader(reader?)),
         secret_list_filter::option_type::None(_) => None,
       },
-      name: read_option(reader.get_name()?)?.map(ToString::to_string),
+      name: if reader.has_name() {
+        Some(reader.get_name()?.to_string())
+      } else {
+        None
+      },
       deleted: reader.get_deleted(),
     })
   }
 
   fn to_builder(&self, mut builder: secret_list_filter::Builder) -> capnp::Result<()> {
-    match &self.url {
-      Some(url) => builder
-        .reborrow()
-        .init_url()
-        .set_some(capnp::text::new_reader(url.as_bytes())?)?,
-      None => builder.reborrow().init_url().set_none(()),
+    if let Some(url) = &self.url {
+      builder.set_url(url);
     }
-    match &self.tag {
-      Some(tag) => builder
-        .reborrow()
-        .init_tag()
-        .set_some(capnp::text::new_reader(tag.as_bytes())?)?,
-      None => builder.reborrow().init_tag().set_none(()),
+    if let Some(tag) = &self.tag {
+      builder.set_tag(tag);
     }
     match &self.secret_type {
       Some(secret_type) => builder.reborrow().init_type().set_some(secret_type.to_builder()),
       None => builder.reborrow().init_type().set_none(()),
     }
-    match &self.name {
-      Some(name) => builder
-        .reborrow()
-        .init_name()
-        .set_some(capnp::text::new_reader(name.as_bytes())?)?,
-      None => builder.reborrow().init_name().set_none(()),
+    if let Some(name) = &self.name {
+      builder.set_name(name);
     }
     builder.set_deleted(self.deleted);
 
@@ -804,7 +805,7 @@ impl Drop for Secret {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Zeroize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Zeroize)]
 #[zeroize(drop)]
 pub struct PasswordGeneratorCharsParam {
   pub num_chars: u8,
@@ -850,7 +851,7 @@ impl PasswordGeneratorCharsParam {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Zeroize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Zeroize)]
 #[zeroize(drop)]
 pub struct PasswordGeneratorWordsParam {
   pub num_words: u8,
@@ -876,7 +877,7 @@ impl PasswordGeneratorWordsParam {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Zeroize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Zeroize)]
 #[serde(rename_all = "lowercase")]
 #[zeroize(drop)]
 pub enum PasswordGeneratorParam {
@@ -903,16 +904,6 @@ impl CapnpSerializing for PasswordGeneratorParam {
       PasswordGeneratorParam::Chars(param) => param.to_builder(builder.init_chars()),
       PasswordGeneratorParam::Words(param) => param.to_builder(builder.init_words()),
     }
-  }
-}
-
-pub fn read_option<T>(reader: option::Reader<T>) -> capnp::Result<Option<<T as capnp::traits::Owned<'_>>::Reader>>
-where
-  T: for<'c> capnp::traits::Owned<'c>,
-{
-  match reader.which()? {
-    option::Some(inner) => Ok(Some(inner?)),
-    option::None(_) => Ok(None),
   }
 }
 
