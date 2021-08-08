@@ -1,9 +1,12 @@
-use crate::clipboard::ClipboardError;
+use crate::api_capnp::service_error;
 use crate::secrets_store::SecretStoreError;
+use crate::{api::CapnpSerializing, clipboard::ClipboardError};
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use zeroize::Zeroize;
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Zeroize)]
+#[zeroize(drop)]
 pub enum ServiceError {
   SecretsStore(SecretStoreError),
   IO(String),
@@ -70,5 +73,32 @@ impl From<ServiceError> for capnp::Error {
         description: format!("{}", error),
       },
     }
+  }
+}
+
+impl CapnpSerializing for ServiceError {
+  type Owned = service_error::Owned;
+
+  fn from_reader(reader: service_error::Reader) -> capnp::Result<Self> {
+    match reader.which()? {
+      service_error::SecretsStore(value) => Ok(ServiceError::SecretsStore(SecretStoreError::from_reader(value?)?)),
+      service_error::Io(value) => Ok(ServiceError::IO(value?.to_string())),
+      service_error::Mutex(value) => Ok(ServiceError::Mutex(value?.to_string())),
+      service_error::StoreNotFound(value) => Ok(ServiceError::StoreNotFound(value?.to_string())),
+      service_error::ClipboardClosed(_) => Ok(ServiceError::ClipboardClosed),
+      service_error::NotAvailable(_) => Ok(ServiceError::NotAvailable),
+    }
+  }
+
+  fn to_builder(&self, mut builder: service_error::Builder) -> capnp::Result<()> {
+    match self {
+      ServiceError::SecretsStore(value) => value.to_builder(builder.init_secrets_store())?,
+      ServiceError::IO(value) => builder.set_io(value),
+      ServiceError::Mutex(value) => builder.set_mutex(value),
+      ServiceError::StoreNotFound(value) => builder.set_store_not_found(value),
+      ServiceError::ClipboardClosed => builder.set_clipboard_closed(()),
+      ServiceError::NotAvailable => builder.set_not_available(()),
+    }
+    Ok(())
   }
 }

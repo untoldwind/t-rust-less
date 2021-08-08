@@ -1,12 +1,9 @@
-use serde::Serialize;
 use std::error::Error;
 use std::io;
 use std::sync::Arc;
-use t_rust_less_lib::api::{
-  CapnpSerializable, Command, ResultEvents, ResultIdentities, ResultOptionString, ResultStoreConfigs,
-};
+use t_rust_less_lib::api::{CapnpSerializable, Command, CommandResult};
 use t_rust_less_lib::service::local::LocalTrustlessService;
-use t_rust_less_lib::service::{ClipboardControl, ServiceError, TrustlessService};
+use t_rust_less_lib::service::{ClipboardControl, ServiceError, ServiceResult, TrustlessService};
 use tokio::io::AsyncWriteExt;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite};
 use zeroize::Zeroizing;
@@ -49,14 +46,14 @@ impl Processor {
     W: AsyncWrite + Unpin,
   {
     match command {
-      Command::ListStores => write_result(wr, self.service.list_stores().map(ResultStoreConfigs)).await?,
+      Command::ListStores => write_result(wr, self.service.list_stores()).await?,
       Command::UpsertStoreConfig(config) => write_result(wr, self.service.upsert_store_config(config)).await?,
       Command::DeleteStoreConfig(name) => write_result(wr, self.service.delete_store_config(&name)).await?,
-      Command::GetDefaultStore => write_result(wr, self.service.get_default_store().map(ResultOptionString)).await?,
+      Command::GetDefaultStore => write_result(wr, self.service.get_default_store()).await?,
       Command::SetDefaultStore(name) => write_result(wr, self.service.set_default_store(&name)).await?,
       Command::GenerateId => write_result(wr, self.service.generate_id()).await?,
       Command::GeneratePassword(param) => write_result(wr, self.service.generate_password(param)).await?,
-      Command::PollEvents(last_id) => write_result(wr, self.service.poll_events(last_id).map(ResultEvents)).await?,
+      Command::PollEvents(last_id) => write_result(wr, self.service.poll_events(last_id)).await?,
       Command::Status(store_name) => {
         write_result(
           wr,
@@ -87,7 +84,7 @@ impl Processor {
           self
             .service
             .open_store(&store_name)
-            .and_then(|store| store.identities().map(ResultIdentities)),
+            .and_then(|store| store.identities()),
         )
         .await?
       }
@@ -193,19 +190,19 @@ impl Processor {
       }
       Command::ClipboardIsDone => match &self.current_clipboard {
         Some(clipboard) => write_result(wr, clipboard.is_done()).await?,
-        None => write_result::<bool, ServiceError, _>(wr, Err(ServiceError::ClipboardClosed)).await?,
+        None => write_result::<ServiceResult<bool>, _>(wr, Err(ServiceError::ClipboardClosed)).await?,
       },
       Command::ClipboardCurrentlyProviding => match &self.current_clipboard {
-        Some(clipboard) => write_result(wr, clipboard.currently_providing().map(ResultOptionString)).await?,
-        None => write_result::<bool, ServiceError, _>(wr, Err(ServiceError::ClipboardClosed)).await?,
+        Some(clipboard) => write_result(wr, clipboard.currently_providing()).await?,
+        None => write_result::<ServiceResult<()>, _>(wr, Err(ServiceError::ClipboardClosed)).await?,
       },
       Command::ClipboardProvideNext => match &self.current_clipboard {
         Some(clipboard) => write_result(wr, clipboard.provide_next()).await?,
-        None => write_result::<bool, ServiceError, _>(wr, Err(ServiceError::ClipboardClosed)).await?,
+        None => write_result::<ServiceResult<()>, _>(wr, Err(ServiceError::ClipboardClosed)).await?,
       },
       Command::ClipboardDestroy => match &self.current_clipboard.take() {
         Some(clipboard) => write_result(wr, clipboard.destroy()).await?,
-        None => write_result::<bool, ServiceError, _>(wr, Err(ServiceError::ClipboardClosed)).await?,
+        None => write_result::<ServiceResult<()>, _>(wr, Err(ServiceError::ClipboardClosed)).await?,
       },
     }
 
@@ -213,26 +210,15 @@ impl Processor {
   }
 }
 
-async fn write_result<R, E, W>(wr: &mut W, result: Result<R, E>) -> Result<(), Box<dyn Error>>
+async fn write_result<R, W>(wr: &mut W, result: R) -> Result<(), Box<dyn Error>>
 where
-  R: CapnpSerializable,
-  E: Serialize,
+  R: Into<CommandResult>,
   W: AsyncWrite + Unpin,
 {
-  match result {
-    Ok(success) => {
-      let buf = success.serialize_capnp()?;
-      wr.write_u32_le((buf.len() as u32) + 1).await?;
-      wr.write_u8(1).await?;
-      wr.write_all(&buf).await?;
-    }
-    Err(error) => {
-      let buf = serde_json::to_vec(&error)?;
-      wr.write_u32_le((buf.len() as u32) + 1).await?;
-      wr.write_u8(0).await?;
-      wr.write_all(&buf).await?;
-    }
-  }
+  let buf = result.into().serialize_capnp()?;
+
+  wr.write_u32_le(buf.len() as u32).await?;
+  wr.write_all(&buf).await?;
 
   Ok(())
 }

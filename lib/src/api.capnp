@@ -250,18 +250,63 @@ struct Command {
     }
 }
 
-struct ResultStoreConfigs {
-    configs @0 : List(StoreConfig);
+struct CommandResult {
+    union {
+        void @0 : Void;
+        bool @1 : Bool;
+        string @2 : Text;
+        configs @3 : List(StoreConfig);
+        events @4 : List(Event);
+        status @5 : Status;
+        identities @6 : List(Identity);
+        secretList @7 : SecretList;
+        secret @8 : Secret;
+        secretVersion @9 : SecretVersion;
+        secretStoreError @10 : SecretStoreError;
+        serviceError @11 : ServiceError;
+    }
 }
 
-struct ResultOptionString {
-    content @0 : Option(Text);
+struct StoreError {
+    union {
+        invalidBlock @0 : Text;
+        invalidStoreUrl @1 : Text;
+        io @2 : Text;
+        mutex @3 : Text;
+        conflict @4 : Text;
+        storeNotFound @5 : Text;
+    }
 }
 
-struct ResultIdentities {
-    identities @0 : List(Identity);
+struct SecretStoreError {
+    union {
+        locked @0 : Void;
+        forbidden @1 : Void;
+        invalidPassphrase @2 : Void;
+        alreadyUnlocked @3 : Void;
+        conflict @4 : Void;
+        keyDerivation @5 : Text;
+        cipher @6 : Text;
+        io @7 : Text;
+        noRecipient @8 : Void;
+        padding @9 : Void;
+        mutex @10 : Text;
+        blockStore @11 : StoreError;
+        invalidStoreUrl @12 : Text;
+        json @13 : Text;
+        invalidRecipient @14 : Text;
+        missingPrivateKey @15 : Text;
+        notFound @16 : Void;
+    }
 }
 
-struct ResultEvents {
-    events @0 : List(Event);
+struct ServiceError {
+    union {
+        secretsStore @0 : SecretStoreError;
+        io @1 : Text;
+        mutex @2 : Text;
+        storeNotFound @3 : Text;
+        clipboardClosed @4 : Void;
+        notAvailable @5 : Void;
+    }
 }

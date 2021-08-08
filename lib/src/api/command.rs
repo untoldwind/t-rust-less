@@ -1,10 +1,12 @@
-use crate::api_capnp::{command, result_events, result_identities, result_option_string, result_store_configs};
+use crate::api_capnp::{command, command_result};
 use crate::memguard::SecretBytes;
+use crate::secrets_store::{SecretStoreError, SecretStoreResult};
+use crate::service::{ServiceError, ServiceResult};
 use zeroize::Zeroize;
 
 use super::{
-  read_option, set_text_list, CapnpSerializing, Event, Identity, PasswordGeneratorParam, SecretListFilter,
-  SecretVersion, StoreConfig,
+  set_text_list, CapnpSerializing, Event, Identity, PasswordGeneratorParam, Secret, SecretList, SecretListFilter,
+  SecretVersion, Status, StoreConfig,
 };
 
 #[derive(Debug, Zeroize)]
@@ -217,105 +219,352 @@ impl CapnpSerializing for Command {
   }
 }
 
-pub struct ResultStoreConfigs(pub Vec<StoreConfig>);
+#[derive(Debug, Zeroize)]
+#[allow(clippy::large_enum_variant)]
+#[zeroize(drop)]
+pub enum CommandResult {
+  Void,
+  Bool(bool),
+  String(String),
+  Configs(Vec<StoreConfig>),
+  Events(Vec<Event>),
+  Status(Status),
+  SecretList(SecretList),
+  Identities(Vec<Identity>),
+  Secret(Secret),
+  SecretVersion(SecretVersion),
+  SecretStoreError(SecretStoreError),
+  ServiceError(ServiceError),
+}
 
-impl CapnpSerializing for ResultStoreConfigs {
-  type Owned = result_store_configs::Owned;
+impl CapnpSerializing for CommandResult {
+  type Owned = command_result::Owned;
 
   #[allow(clippy::redundant_closure)]
-  fn from_reader(reader: result_store_configs::Reader) -> capnp::Result<ResultStoreConfigs> {
-    Ok(ResultStoreConfigs(
-      reader
-        .get_configs()?
-        .into_iter()
-        .map(|c| StoreConfig::from_reader(c))
-        .collect::<capnp::Result<Vec<StoreConfig>>>()?,
-    ))
+  fn from_reader(reader: command_result::Reader) -> capnp::Result<Self> {
+    match reader.which()? {
+      command_result::Void(_) => Ok(CommandResult::Void),
+      command_result::Bool(value) => Ok(CommandResult::Bool(value)),
+      command_result::String(value) => Ok(CommandResult::String(value?.to_string())),
+      command_result::Configs(configs) => Ok(CommandResult::Configs(
+        configs?
+          .into_iter()
+          .map(|e| StoreConfig::from_reader(e))
+          .collect::<capnp::Result<Vec<StoreConfig>>>()?,
+      )),
+      command_result::Events(events) => Ok(CommandResult::Events(
+        events?
+          .into_iter()
+          .map(|e| Event::from_reader(e))
+          .collect::<capnp::Result<Vec<Event>>>()?,
+      )),
+      command_result::Status(status) => Ok(CommandResult::Status(Status::from_reader(status?)?)),
+      command_result::SecretList(secret_list) => Ok(CommandResult::SecretList(SecretList::from_reader(secret_list?)?)),
+      command_result::Identities(identities) => Ok(CommandResult::Identities(
+        identities?
+          .into_iter()
+          .map(|e| Identity::from_reader(e))
+          .collect::<capnp::Result<Vec<Identity>>>()?,
+      )),
+      command_result::Secret(secret) => Ok(CommandResult::Secret(Secret::from_reader(secret?)?)),
+      command_result::SecretVersion(secret_version) => Ok(CommandResult::SecretVersion(SecretVersion::from_reader(
+        secret_version?,
+      )?)),
+      command_result::SecretStoreError(error) => {
+        Ok(CommandResult::SecretStoreError(SecretStoreError::from_reader(error?)?))
+      }
+      command_result::ServiceError(error) => Ok(CommandResult::ServiceError(ServiceError::from_reader(error?)?)),
+    }
   }
 
-  fn to_builder(&self, builder: result_store_configs::Builder) -> capnp::Result<()> {
-    let mut result = builder.init_configs(self.0.len() as u32);
+  fn to_builder(&self, mut builder: command_result::Builder) -> capnp::Result<()> {
+    match self {
+      CommandResult::Void => builder.set_void(()),
+      CommandResult::Bool(value) => builder.set_bool(*value),
+      CommandResult::String(value) => builder.set_string(value),
+      CommandResult::Configs(configs) => {
+        let mut result = builder.init_configs(configs.len() as u32);
 
-    for (idx, store_config) in self.0.iter().enumerate() {
-      store_config.to_builder(result.reborrow().get(idx as u32))?;
+        for (idx, store_config) in configs.iter().enumerate() {
+          store_config.to_builder(result.reborrow().get(idx as u32))?;
+        }
+      }
+      CommandResult::Events(events) => {
+        let mut result = builder.init_events(events.len() as u32);
+
+        for (idx, event) in events.iter().enumerate() {
+          event.to_builder(result.reborrow().get(idx as u32))?;
+        }
+      }
+      CommandResult::Status(status) => status.to_builder(builder.init_status())?,
+      CommandResult::SecretList(secret_list) => secret_list.to_builder(builder.init_secret_list())?,
+      CommandResult::Identities(identities) => {
+        let mut result = builder.init_identities(identities.len() as u32);
+
+        for (idx, identity) in identities.iter().enumerate() {
+          identity.to_builder(result.reborrow().get(idx as u32))?;
+        }
+      }
+      CommandResult::Secret(secret) => secret.to_builder(builder.init_secret())?,
+      CommandResult::SecretVersion(secret_version) => secret_version.to_builder(builder.init_secret_version())?,
+      CommandResult::SecretStoreError(error) => error.to_builder(builder.init_secret_store_error())?,
+      CommandResult::ServiceError(error) => error.to_builder(builder.init_service_error())?,
     }
-
     Ok(())
   }
 }
 
-pub struct ResultOptionString(pub Option<String>);
-
-impl CapnpSerializing for ResultOptionString {
-  type Owned = result_option_string::Owned;
-
-  fn from_reader(reader: result_option_string::Reader) -> capnp::Result<ResultOptionString> {
-    Ok(ResultOptionString(
-      read_option(reader.get_content()?)?.map(ToString::to_string),
-    ))
-  }
-
-  fn to_builder(&self, builder: result_option_string::Builder) -> capnp::Result<()> {
-    match &self.0 {
-      Some(content) => builder
-        .init_content()
-        .set_some(capnp::text::new_reader(content.as_bytes())?)?,
-      None => builder.init_content().set_none(()),
+impl From<CommandResult> for ServiceResult<()> {
+  fn from(result: CommandResult) -> Self {
+    match result {
+      CommandResult::Void => Ok(()),
+      CommandResult::ServiceError(error) => Err(error),
+      CommandResult::SecretStoreError(error) => Err(ServiceError::SecretsStore(error)),
+      _ => Err(ServiceError::IO("Invalid command result".to_string())),
     }
-    Ok(())
   }
 }
 
-pub struct ResultIdentities(pub Vec<Identity>);
-
-impl CapnpSerializing for ResultIdentities {
-  type Owned = result_identities::Owned;
-
-  #[allow(clippy::redundant_closure)]
-  fn from_reader(reader: result_identities::Reader) -> capnp::Result<ResultIdentities> {
-    Ok(ResultIdentities(
-      reader
-        .get_identities()?
-        .into_iter()
-        .map(|i| Identity::from_reader(i))
-        .collect::<capnp::Result<Vec<Identity>>>()?,
-    ))
-  }
-
-  fn to_builder(&self, builder: result_identities::Builder) -> capnp::Result<()> {
-    let mut result = builder.init_identities(self.0.len() as u32);
-
-    for (idx, store_config) in self.0.iter().enumerate() {
-      store_config.to_builder(result.reborrow().get(idx as u32))?;
+impl From<ServiceResult<()>> for CommandResult {
+  fn from(result: ServiceResult<()>) -> Self {
+    match result {
+      Ok(_) => CommandResult::Void,
+      Err(error) => CommandResult::ServiceError(error),
     }
-
-    Ok(())
   }
 }
 
-pub struct ResultEvents(pub Vec<Event>);
-
-impl CapnpSerializing for ResultEvents {
-  type Owned = result_events::Owned;
-
-  #[allow(clippy::redundant_closure)]
-  fn from_reader(reader: result_events::Reader) -> capnp::Result<ResultEvents> {
-    Ok(ResultEvents(
-      reader
-        .get_events()?
-        .into_iter()
-        .map(|e| Event::from_reader(e))
-        .collect::<capnp::Result<Vec<Event>>>()?,
-    ))
-  }
-
-  fn to_builder(&self, builder: result_events::Builder) -> capnp::Result<()> {
-    let mut result = builder.init_events(self.0.len() as u32);
-
-    for (idx, store_config) in self.0.iter().enumerate() {
-      store_config.to_builder(result.reborrow().get(idx as u32))?;
+impl From<CommandResult> for ServiceResult<bool> {
+  fn from(result: CommandResult) -> Self {
+    match result {
+      CommandResult::Bool(value) => Ok(value),
+      CommandResult::ServiceError(error) => Err(error),
+      CommandResult::SecretStoreError(error) => Err(ServiceError::SecretsStore(error)),
+      _ => Err(ServiceError::IO("Invalid command result".to_string())),
     }
+  }
+}
 
-    Ok(())
+impl From<ServiceResult<bool>> for CommandResult {
+  fn from(result: ServiceResult<bool>) -> Self {
+    match result {
+      Ok(value) => CommandResult::Bool(value),
+      Err(error) => CommandResult::ServiceError(error),
+    }
+  }
+}
+
+impl From<CommandResult> for ServiceResult<String> {
+  fn from(result: CommandResult) -> Self {
+    match result {
+      CommandResult::String(value) => Ok(value),
+      CommandResult::ServiceError(error) => Err(error),
+      CommandResult::SecretStoreError(error) => Err(ServiceError::SecretsStore(error)),
+      _ => Err(ServiceError::IO("Invalid command result".to_string())),
+    }
+  }
+}
+
+impl From<ServiceResult<String>> for CommandResult {
+  fn from(result: ServiceResult<String>) -> Self {
+    match result {
+      Ok(value) => CommandResult::String(value),
+      Err(error) => CommandResult::ServiceError(error),
+    }
+  }
+}
+
+impl From<CommandResult> for ServiceResult<Option<String>> {
+  fn from(result: CommandResult) -> Self {
+    match result {
+      CommandResult::Void => Ok(None),
+      CommandResult::String(value) => Ok(Some(value)),
+      CommandResult::ServiceError(error) => Err(error),
+      CommandResult::SecretStoreError(error) => Err(ServiceError::SecretsStore(error)),
+      _ => Err(ServiceError::IO("Invalid command result".to_string())),
+    }
+  }
+}
+
+impl From<ServiceResult<Option<String>>> for CommandResult {
+  fn from(result: ServiceResult<Option<String>>) -> Self {
+    match result {
+      Ok(Some(value)) => CommandResult::String(value),
+      Ok(None) => CommandResult::Void,
+      Err(error) => CommandResult::ServiceError(error),
+    }
+  }
+}
+
+impl From<CommandResult> for ServiceResult<Vec<StoreConfig>> {
+  fn from(result: CommandResult) -> Self {
+    match result {
+      CommandResult::Configs(value) => Ok(value),
+      CommandResult::ServiceError(error) => Err(error),
+      CommandResult::SecretStoreError(error) => Err(ServiceError::SecretsStore(error)),
+      _ => Err(ServiceError::IO("Invalid command result".to_string())),
+    }
+  }
+}
+
+impl From<ServiceResult<Vec<StoreConfig>>> for CommandResult {
+  fn from(result: ServiceResult<Vec<StoreConfig>>) -> Self {
+    match result {
+      Ok(value) => CommandResult::Configs(value),
+      Err(error) => CommandResult::ServiceError(error),
+    }
+  }
+}
+
+impl From<CommandResult> for ServiceResult<Vec<Event>> {
+  fn from(result: CommandResult) -> Self {
+    match result {
+      CommandResult::Events(value) => Ok(value),
+      CommandResult::ServiceError(error) => Err(error),
+      CommandResult::SecretStoreError(error) => Err(ServiceError::SecretsStore(error)),
+      _ => Err(ServiceError::IO("Invalid command result".to_string())),
+    }
+  }
+}
+
+impl From<ServiceResult<Vec<Event>>> for CommandResult {
+  fn from(result: ServiceResult<Vec<Event>>) -> Self {
+    match result {
+      Ok(value) => CommandResult::Events(value),
+      Err(error) => CommandResult::ServiceError(error),
+    }
+  }
+}
+
+impl From<CommandResult> for SecretStoreResult<()> {
+  fn from(result: CommandResult) -> Self {
+    match result {
+      CommandResult::Void => Ok(()),
+      CommandResult::SecretStoreError(error) => Err(error),
+      _ => Err(SecretStoreError::IO("Invalid command result".to_string())),
+    }
+  }
+}
+
+impl From<SecretStoreResult<()>> for CommandResult {
+  fn from(result: SecretStoreResult<()>) -> Self {
+    match result {
+      Ok(_) => CommandResult::Void,
+      Err(error) => CommandResult::SecretStoreError(error),
+    }
+  }
+}
+
+impl From<CommandResult> for SecretStoreResult<String> {
+  fn from(result: CommandResult) -> Self {
+    match result {
+      CommandResult::String(value) => Ok(value),
+      CommandResult::SecretStoreError(error) => Err(error),
+      _ => Err(SecretStoreError::IO("Invalid command result".to_string())),
+    }
+  }
+}
+
+impl From<SecretStoreResult<String>> for CommandResult {
+  fn from(result: SecretStoreResult<String>) -> Self {
+    match result {
+      Ok(value) => CommandResult::String(value),
+      Err(error) => CommandResult::SecretStoreError(error),
+    }
+  }
+}
+
+impl From<CommandResult> for SecretStoreResult<Status> {
+  fn from(result: CommandResult) -> Self {
+    match result {
+      CommandResult::Status(value) => Ok(value),
+      CommandResult::SecretStoreError(error) => Err(error),
+      _ => Err(SecretStoreError::IO("Invalid command result".to_string())),
+    }
+  }
+}
+
+impl From<SecretStoreResult<Status>> for CommandResult {
+  fn from(result: SecretStoreResult<Status>) -> Self {
+    match result {
+      Ok(value) => CommandResult::Status(value),
+      Err(error) => CommandResult::SecretStoreError(error),
+    }
+  }
+}
+
+impl From<CommandResult> for SecretStoreResult<Vec<Identity>> {
+  fn from(result: CommandResult) -> Self {
+    match result {
+      CommandResult::Identities(value) => Ok(value),
+      CommandResult::SecretStoreError(error) => Err(error),
+      _ => Err(SecretStoreError::IO("Invalid command result".to_string())),
+    }
+  }
+}
+
+impl From<SecretStoreResult<Vec<Identity>>> for CommandResult {
+  fn from(result: SecretStoreResult<Vec<Identity>>) -> Self {
+    match result {
+      Ok(value) => CommandResult::Identities(value),
+      Err(error) => CommandResult::SecretStoreError(error),
+    }
+  }
+}
+
+impl From<CommandResult> for SecretStoreResult<SecretList> {
+  fn from(result: CommandResult) -> Self {
+    match result {
+      CommandResult::SecretList(value) => Ok(value),
+      CommandResult::SecretStoreError(error) => Err(error),
+      _ => Err(SecretStoreError::IO("Invalid command result".to_string())),
+    }
+  }
+}
+
+impl From<SecretStoreResult<SecretList>> for CommandResult {
+  fn from(result: SecretStoreResult<SecretList>) -> Self {
+    match result {
+      Ok(value) => CommandResult::SecretList(value),
+      Err(error) => CommandResult::SecretStoreError(error),
+    }
+  }
+}
+
+impl From<CommandResult> for SecretStoreResult<Secret> {
+  fn from(result: CommandResult) -> Self {
+    match result {
+      CommandResult::Secret(value) => Ok(value),
+      CommandResult::SecretStoreError(error) => Err(error),
+      _ => Err(SecretStoreError::IO("Invalid command result".to_string())),
+    }
+  }
+}
+
+impl From<SecretStoreResult<Secret>> for CommandResult {
+  fn from(result: SecretStoreResult<Secret>) -> Self {
+    match result {
+      Ok(value) => CommandResult::Secret(value),
+      Err(error) => CommandResult::SecretStoreError(error),
+    }
+  }
+}
+
+impl From<CommandResult> for SecretStoreResult<SecretVersion> {
+  fn from(result: CommandResult) -> Self {
+    match result {
+      CommandResult::SecretVersion(value) => Ok(value),
+      CommandResult::SecretStoreError(error) => Err(error),
+      _ => Err(SecretStoreError::IO("Invalid command result".to_string())),
+    }
+  }
+}
+
+impl From<SecretStoreResult<SecretVersion>> for CommandResult {
+  fn from(result: SecretStoreResult<SecretVersion>) -> Self {
+    match result {
+      Ok(value) => CommandResult::SecretVersion(value),
+      Err(error) => CommandResult::SecretStoreError(error),
+    }
   }
 }

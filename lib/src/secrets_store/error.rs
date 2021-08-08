@@ -1,8 +1,10 @@
-use crate::block_store::StoreError;
+use crate::{api::CapnpSerializing, api_capnp::secret_store_error, block_store::StoreError};
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use zeroize::Zeroize;
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Zeroize)]
+#[zeroize(drop)]
 pub enum SecretStoreError {
   Locked,
   Forbidden,
@@ -97,5 +99,56 @@ impl From<SecretStoreError> for capnp::Error {
         description: format!("{}", error),
       },
     }
+  }
+}
+
+impl CapnpSerializing for SecretStoreError {
+  type Owned = secret_store_error::Owned;
+
+  fn from_reader(reader: secret_store_error::Reader) -> capnp::Result<Self> {
+    match reader.which()? {
+      secret_store_error::Locked(_) => Ok(SecretStoreError::Locked),
+      secret_store_error::Forbidden(_) => Ok(SecretStoreError::Forbidden),
+      secret_store_error::InvalidPassphrase(_) => Ok(SecretStoreError::InvalidPassphrase),
+      secret_store_error::AlreadyUnlocked(_) => Ok(SecretStoreError::AlreadyUnlocked),
+      secret_store_error::Conflict(_) => Ok(SecretStoreError::Conflict),
+      secret_store_error::KeyDerivation(value) => Ok(SecretStoreError::KeyDerivation(value?.to_string())),
+      secret_store_error::Cipher(value) => Ok(SecretStoreError::Cipher(value?.to_string())),
+      secret_store_error::Io(value) => Ok(SecretStoreError::IO(value?.to_string())),
+      secret_store_error::NoRecipient(_) => Ok(SecretStoreError::NoRecipient),
+      secret_store_error::Padding(_) => Ok(SecretStoreError::Padding),
+      secret_store_error::Mutex(value) => Ok(SecretStoreError::Mutex(value?.to_string())),
+      secret_store_error::BlockStore(store_error) => {
+        Ok(SecretStoreError::BlockStore(StoreError::from_reader(store_error?)?))
+      }
+      secret_store_error::InvalidStoreUrl(value) => Ok(SecretStoreError::InvalidStoreUrl(value?.to_string())),
+      secret_store_error::Json(value) => Ok(SecretStoreError::Json(value?.to_string())),
+      secret_store_error::InvalidRecipient(value) => Ok(SecretStoreError::InvalidRecipient(value?.to_string())),
+      secret_store_error::MissingPrivateKey(value) => Ok(SecretStoreError::MissingPrivateKey(value?.to_string())),
+      secret_store_error::NotFound(_) => Ok(SecretStoreError::NotFound),
+    }
+  }
+
+  fn to_builder(&self, mut builder: secret_store_error::Builder) -> capnp::Result<()> {
+    match self {
+      SecretStoreError::Locked => builder.set_locked(()),
+      SecretStoreError::Forbidden => builder.set_forbidden(()),
+      SecretStoreError::InvalidPassphrase => builder.set_invalid_passphrase(()),
+      SecretStoreError::AlreadyUnlocked => builder.set_already_unlocked(()),
+      SecretStoreError::Conflict => builder.set_conflict(()),
+      SecretStoreError::KeyDerivation(value) => builder.set_key_derivation(value),
+      SecretStoreError::Cipher(value) => builder.set_cipher(value),
+      SecretStoreError::IO(value) => builder.set_io(value),
+      SecretStoreError::NoRecipient => builder.set_no_recipient(()),
+      SecretStoreError::Padding => builder.set_padding(()),
+      SecretStoreError::Mutex(value) => builder.set_mutex(value),
+      SecretStoreError::BlockStore(value) => value.to_builder(builder.init_block_store())?,
+      SecretStoreError::InvalidStoreUrl(value) => builder.set_invalid_store_url(value),
+      SecretStoreError::Json(value) => builder.set_json(value),
+      SecretStoreError::InvalidRecipient(value) => builder.set_invalid_recipient(value),
+      SecretStoreError::MissingPrivateKey(value) => builder.set_missing_private_key(value),
+      SecretStoreError::NotFound => builder.set_not_found(()),
+    }
+    Ok(())
   }
 }

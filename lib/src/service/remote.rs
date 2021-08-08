@@ -1,6 +1,6 @@
 use crate::api::{
-  CapnpSerializable, Command, Identity, ResultEvents, ResultIdentities, ResultOptionString, ResultStoreConfigs, Secret,
-  SecretList, SecretListFilter, SecretVersion, Status, StoreConfig,
+  CapnpSerializable, Command, CommandResult, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status,
+  StoreConfig,
 };
 use crate::api::{Event, PasswordGeneratorParam};
 use crate::memguard::SecretBytes;
@@ -13,10 +13,9 @@ use std::io::{Read, Write};
 use std::sync::{Arc, Mutex, MutexGuard};
 use zeroize::Zeroizing;
 
-fn write_command<S, C, E>(writer: &mut MutexGuard<S>, command: C) -> Result<(), E>
+fn write_command<S, E>(writer: &mut MutexGuard<S>, command: Command) -> Result<(), E>
 where
   S: Write,
-  C: CapnpSerializable,
   E: From<std::io::Error> + From<capnp::Error>,
 {
   let message = command.serialize_capnp()?;
@@ -27,30 +26,22 @@ where
   Ok(())
 }
 
-fn recv_result<S, R, E>(reader: &mut MutexGuard<S>) -> Result<R, E>
+fn recv_result<S, E>(reader: &mut MutexGuard<S>) -> Result<CommandResult, E>
 where
   S: Read,
-  R: CapnpSerializable,
-  E: From<std::io::Error> + From<capnp::Error> + From<serde_json::Error> + DeserializeOwned,
+  E: From<std::io::Error> + From<capnp::Error>,
 {
   let len = reader.read_u32::<LittleEndian>()? as usize;
-  let success = reader.read_u8()?;
-  let mut buf = Zeroizing::from(vec![0; len - 1]);
+  let mut buf = Zeroizing::from(vec![0; len]);
 
   reader.read_exact(&mut buf)?;
 
-  if success == 0 {
-    Err(serde_json::from_reader(buf.as_slice())?)
-  } else {
-    Ok(R::deserialize_capnp(buf.as_slice())?)
-  }
+  Ok(CommandResult::deserialize_capnp(buf.as_slice())?)
 }
 
-fn send_recv<'a, S, C, R, E>(stream: &'a Arc<Mutex<S>>, command: C) -> Result<R, E>
+fn send_recv<'a, S, E>(stream: &'a Arc<Mutex<S>>, command: Command) -> Result<CommandResult, E>
 where
   S: Read + Write + 'a,
-  C: CapnpSerializable,
-  R: CapnpSerializable,
   E: From<std::io::Error>
     + From<capnp::Error>
     + From<serde_json::Error>
@@ -59,7 +50,7 @@ where
 {
   let mut stream = stream.lock()?;
 
-  write_command::<S, C, E>(&mut stream, command)?;
+  write_command::<S, E>(&mut stream, command)?;
 
   recv_result(&mut stream)
 }
@@ -85,15 +76,15 @@ where
   S: Read + Write + Debug + Send + Sync + 'static,
 {
   fn list_stores(&self) -> ServiceResult<Vec<StoreConfig>> {
-    Ok(send_recv::<_, _, ResultStoreConfigs, ServiceError>(&self.stream, Command::ListStores)?.0)
+    send_recv::<_, ServiceError>(&self.stream, Command::ListStores)?.into()
   }
 
   fn upsert_store_config(&self, store_config: StoreConfig) -> ServiceResult<()> {
-    send_recv(&self.stream, Command::UpsertStoreConfig(store_config))
+    send_recv::<_, ServiceError>(&self.stream, Command::UpsertStoreConfig(store_config))?.into()
   }
 
   fn delete_store_config(&self, name: &str) -> ServiceResult<()> {
-    send_recv(&self.stream, Command::DeleteStoreConfig(name.to_string()))
+    send_recv::<_, ServiceError>(&self.stream, Command::DeleteStoreConfig(name.to_string()))?.into()
   }
 
   fn open_store(&self, name: &str) -> SecretStoreResult<Arc<dyn SecretsStore>> {
@@ -101,11 +92,11 @@ where
   }
 
   fn get_default_store(&self) -> ServiceResult<Option<String>> {
-    Ok(send_recv::<_, _, ResultOptionString, ServiceError>(&self.stream, Command::GetDefaultStore)?.0)
+    send_recv::<_, ServiceError>(&self.stream, Command::GetDefaultStore)?.into()
   }
 
   fn set_default_store(&self, name: &str) -> ServiceResult<()> {
-    send_recv(&self.stream, Command::SetDefaultStore(name.to_string()))
+    send_recv::<_, ServiceError>(&self.stream, Command::SetDefaultStore(name.to_string()))?.into()
   }
 
   fn secret_to_clipboard(
@@ -115,7 +106,7 @@ where
     properties: &[&str],
     display_name: &str,
   ) -> ServiceResult<Arc<dyn ClipboardControl>> {
-    send_recv::<_, _, (), ServiceError>(
+    send_recv::<_, ServiceError>(
       &self.stream,
       Command::SecretToClipboard {
         store_name: store_name.to_string(),
@@ -128,15 +119,15 @@ where
   }
 
   fn poll_events(&self, last_id: u64) -> ServiceResult<Vec<Event>> {
-    Ok(send_recv::<_, _, ResultEvents, ServiceError>(&self.stream, Command::PollEvents(last_id))?.0)
+    send_recv::<_, ServiceError>(&self.stream, Command::PollEvents(last_id))?.into()
   }
 
   fn generate_id(&self) -> ServiceResult<String> {
-    send_recv(&self.stream, Command::GenerateId)
+    send_recv::<_, ServiceError>(&self.stream, Command::GenerateId)?.into()
   }
 
   fn generate_password(&self, param: PasswordGeneratorParam) -> ServiceResult<String> {
-    send_recv(&self.stream, Command::GeneratePassword(param))
+    send_recv::<_, ServiceError>(&self.stream, Command::GeneratePassword(param))?.into()
   }
 
   fn check_autolock(&self) {
@@ -167,91 +158,98 @@ where
   S: Read + Write + Debug + Send + Sync,
 {
   fn status(&self) -> SecretStoreResult<Status> {
-    send_recv(&self.stream, Command::Status(self.name.clone()))
+    send_recv::<_, SecretStoreError>(&self.stream, Command::Status(self.name.clone()))?.into()
   }
 
   fn lock(&self) -> SecretStoreResult<()> {
-    send_recv(&self.stream, Command::Lock(self.name.clone()))
+    send_recv::<_, SecretStoreError>(&self.stream, Command::Lock(self.name.clone()))?.into()
   }
 
   fn unlock(&self, identity_id: &str, passphrase: SecretBytes) -> SecretStoreResult<()> {
-    send_recv(
+    send_recv::<_, SecretStoreError>(
       &self.stream,
       Command::Unlock {
         store_name: self.name.clone(),
         identity_id: identity_id.to_string(),
         passphrase,
       },
-    )
+    )?
+    .into()
   }
 
   fn identities(&self) -> SecretStoreResult<Vec<Identity>> {
-    Ok(send_recv::<_, _, ResultIdentities, SecretStoreError>(&self.stream, Command::Identities(self.name.clone()))?.0)
+    send_recv::<_, SecretStoreError>(&self.stream, Command::Identities(self.name.clone()))?.into()
   }
 
   fn add_identity(&self, identity: Identity, passphrase: SecretBytes) -> SecretStoreResult<()> {
-    send_recv(
+    send_recv::<_, SecretStoreError>(
       &self.stream,
       Command::AddIdentity {
         store_name: self.name.clone(),
         identity,
         passphrase,
       },
-    )
+    )?
+    .into()
   }
 
   fn change_passphrase(&self, passphrase: SecretBytes) -> SecretStoreResult<()> {
-    send_recv(
+    send_recv::<_, SecretStoreError>(
       &self.stream,
       Command::ChangePassphrase {
         store_name: self.name.clone(),
         passphrase,
       },
-    )
+    )?
+    .into()
   }
 
   fn list(&self, filter: &SecretListFilter) -> SecretStoreResult<SecretList> {
-    send_recv(
+    send_recv::<_, SecretStoreError>(
       &self.stream,
       Command::List {
         store_name: self.name.clone(),
         filter: filter.clone(),
       },
-    )
+    )?
+    .into()
   }
 
   fn update_index(&self) -> SecretStoreResult<()> {
-    send_recv(&self.stream, Command::UpdateIndex(self.name.clone()))
+    send_recv::<_, SecretStoreError>(&self.stream, Command::UpdateIndex(self.name.clone()))?.into()
   }
 
   fn add(&self, secret_version: SecretVersion) -> SecretStoreResult<String> {
-    send_recv(
+    send_recv::<_, SecretStoreError>(
       &self.stream,
       Command::Add {
         store_name: self.name.clone(),
         secret_version,
       },
-    )
+    )?
+    .into()
   }
 
   fn get(&self, secret_id: &str) -> SecretStoreResult<Secret> {
-    send_recv(
+    send_recv::<_, SecretStoreError>(
       &self.stream,
       Command::Get {
         store_name: self.name.clone(),
         secret_id: secret_id.to_string(),
       },
-    )
+    )?
+    .into()
   }
 
   fn get_version(&self, block_id: &str) -> SecretStoreResult<SecretVersion> {
-    send_recv(
+    send_recv::<_, SecretStoreError>(
       &self.stream,
       Command::GetVersion {
         store_name: self.name.clone(),
         block_id: block_id.to_string(),
       },
-    )
+    )?
+    .into()
   }
 }
 
@@ -274,18 +272,18 @@ where
   S: Read + Write + Debug + Send + Sync,
 {
   fn is_done(&self) -> ServiceResult<bool> {
-    send_recv(&self.stream, Command::ClipboardIsDone)
+    send_recv::<_, ServiceError>(&self.stream, Command::ClipboardIsDone)?.into()
   }
 
   fn currently_providing(&self) -> ServiceResult<Option<String>> {
-    Ok(send_recv::<_, _, ResultOptionString, ServiceError>(&self.stream, Command::ClipboardCurrentlyProviding)?.0)
+    send_recv::<_, ServiceError>(&self.stream, Command::ClipboardCurrentlyProviding)?.into()
   }
 
   fn provide_next(&self) -> ServiceResult<()> {
-    send_recv(&self.stream, Command::ClipboardProvideNext)
+    send_recv::<_, ServiceError>(&self.stream, Command::ClipboardProvideNext)?.into()
   }
 
   fn destroy(&self) -> ServiceResult<()> {
-    send_recv(&self.stream, Command::ClipboardDestroy)
+    send_recv::<_, ServiceError>(&self.stream, Command::ClipboardDestroy)?.into()
   }
 }
