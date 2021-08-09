@@ -1,7 +1,8 @@
 use std::error::Error;
 use std::io;
 use std::sync::Arc;
-use t_rust_less_lib::api::{CapnpSerializable, Command, CommandResult};
+use t_rust_less_lib::api::{Command, CommandResult};
+use t_rust_less_lib::memguard::ZeroizeBytesBuffer;
 use t_rust_less_lib::service::local::LocalTrustlessService;
 use t_rust_less_lib::service::{ClipboardControl, ServiceError, ServiceResult, TrustlessService};
 use tokio::io::AsyncWriteExt;
@@ -37,7 +38,9 @@ impl Processor {
 
       rd.read_exact(&mut buf).await?;
 
-      self.process_command(wr, Command::deserialize_capnp(&buf)?).await?;
+      self
+        .process_command(wr, rmp_serde::from_read_ref(buf.as_slice())?)
+        .await?;
     }
   }
 
@@ -215,7 +218,8 @@ where
   R: Into<CommandResult>,
   W: AsyncWrite + Unpin,
 {
-  let buf = result.into().serialize_capnp()?;
+  let mut buf = ZeroizeBytesBuffer::with_capacity(1024);
+  rmp_serde::encode::write(&mut buf, &result.into())?;
 
   wr.write_u32_le(buf.len() as u32).await?;
   wr.write_all(&buf).await?;

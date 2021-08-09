@@ -1488,6 +1488,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "rmp"
+version = "0.8.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f55e5fa1446c4d5dd1f5daeed2a4fe193071771a2636274d0d7a3b082aa7ad6"
+dependencies = [
+ "byteorder",
+ "num-traits",
+]
+
+[[package]]
+name = "rmp-serde"
+version = "0.15.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "723ecff9ad04f4ad92fe1c8ca6c20d2196d9286e9c60727c4cb5511629260e9d"
+dependencies = [
+ "byteorder",
+ "rmp",
+ "serde",
+]
+
+[[package]]
 name = "rsa"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1755,8 +1776,7 @@ dependencies = [
  "futures",
  "libc",
  "log",
- "serde",
- "serde_json",
+ "rmp-serde",
  "t-rust-less-lib",
  "tokio",
  "zeroize",
@@ -1806,6 +1826,7 @@ dependencies = [
  "openssl",
  "quickcheck",
  "rand 0.8.4",
+ "rmp-serde",
  "rsa",
  "rust-argon2",
  "serde",

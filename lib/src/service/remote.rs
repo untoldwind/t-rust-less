@@ -1,9 +1,8 @@
 use crate::api::{
-  CapnpSerializable, Command, CommandResult, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status,
-  StoreConfig,
+  Command, CommandResult, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status, StoreConfig,
 };
 use crate::api::{Event, PasswordGeneratorParam};
-use crate::memguard::SecretBytes;
+use crate::memguard::{SecretBytes, ZeroizeBytesBuffer};
 use crate::secrets_store::{SecretStoreError, SecretStoreResult, SecretsStore};
 use crate::service::{ClipboardControl, ServiceError, ServiceResult, TrustlessService};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -16,9 +15,10 @@ use zeroize::Zeroizing;
 fn write_command<S, E>(writer: &mut MutexGuard<S>, command: Command) -> Result<(), E>
 where
   S: Write,
-  E: From<std::io::Error> + From<capnp::Error>,
+  E: From<std::io::Error> + From<rmp_serde::encode::Error>,
 {
-  let message = command.serialize_capnp()?;
+  let mut message = ZeroizeBytesBuffer::with_capacity(1024);
+  rmp_serde::encode::write_named(&mut message, &command)?;
 
   writer.write_u32::<LittleEndian>(message.len() as u32)?;
   writer.write_all(&message)?;
@@ -29,22 +29,22 @@ where
 fn recv_result<S, E>(reader: &mut MutexGuard<S>) -> Result<CommandResult, E>
 where
   S: Read,
-  E: From<std::io::Error> + From<capnp::Error>,
+  E: From<std::io::Error> + From<rmp_serde::decode::Error>,
 {
   let len = reader.read_u32::<LittleEndian>()? as usize;
   let mut buf = Zeroizing::from(vec![0; len]);
 
   reader.read_exact(&mut buf)?;
 
-  Ok(CommandResult::deserialize_capnp(buf.as_slice())?)
+  Ok(rmp_serde::from_read_ref(buf.as_slice())?)
 }
 
 fn send_recv<'a, S, E>(stream: &'a Arc<Mutex<S>>, command: Command) -> Result<CommandResult, E>
 where
   S: Read + Write + 'a,
   E: From<std::io::Error>
-    + From<capnp::Error>
-    + From<serde_json::Error>
+    + From<rmp_serde::encode::Error>
+    + From<rmp_serde::decode::Error>
     + From<std::sync::PoisonError<std::sync::MutexGuard<'a, S>>>
     + DeserializeOwned,
 {

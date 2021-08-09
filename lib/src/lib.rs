@@ -21,12 +21,3 @@ pub mod service;
   clippy::match_single_binding
 )]
 pub mod secrets_store_capnp;
-
-#[allow(dead_code)]
-#[allow(
-  clippy::wrong_self_convention,
-  clippy::redundant_closure,
-  clippy::redundant_field_names,
-  clippy::match_single_binding
-)]
-pub mod api_capnp;

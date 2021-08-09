@@ -3,9 +3,6 @@ use std::convert::From;
 use std::fmt;
 use zeroize::Zeroize;
 
-use crate::api::CapnpSerializing;
-use crate::api_capnp::store_error;
-
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Zeroize)]
 #[zeroize(drop)]
 pub enum StoreError {
@@ -39,32 +36,5 @@ error_convert_from!(url::ParseError, StoreError, InvalidStoreUrl(display));
 impl<T> From<std::sync::PoisonError<T>> for StoreError {
   fn from(error: std::sync::PoisonError<T>) -> Self {
     StoreError::Mutex(format!("{}", error))
-  }
-}
-
-impl CapnpSerializing for StoreError {
-  type Owned = store_error::Owned;
-
-  fn from_reader(reader: store_error::Reader) -> capnp::Result<Self> {
-    match reader.which()? {
-      store_error::Which::InvalidBlock(value) => Ok(StoreError::InvalidBlock(value?.to_string())),
-      store_error::Which::InvalidStoreUrl(value) => Ok(StoreError::InvalidStoreUrl(value?.to_string())),
-      store_error::Which::Io(value) => Ok(StoreError::IO(value?.to_string())),
-      store_error::Which::Mutex(value) => Ok(StoreError::Mutex(value?.to_string())),
-      store_error::Which::Conflict(value) => Ok(StoreError::Conflict(value?.to_string())),
-      store_error::Which::StoreNotFound(value) => Ok(StoreError::StoreNotFound(value?.to_string())),
-    }
-  }
-
-  fn to_builder(&self, mut builder: store_error::Builder) -> capnp::Result<()> {
-    match self {
-      StoreError::InvalidBlock(value) => builder.set_invalid_block(value),
-      StoreError::InvalidStoreUrl(value) => builder.set_invalid_store_url(value),
-      StoreError::IO(value) => builder.set_io(value),
-      StoreError::Mutex(value) => builder.set_mutex(value),
-      StoreError::Conflict(value) => builder.set_conflict(value),
-      StoreError::StoreNotFound(value) => builder.set_store_not_found(value),
-    }
-    Ok(())
   }
 }

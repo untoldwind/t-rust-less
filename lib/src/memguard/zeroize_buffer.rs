@@ -10,6 +10,21 @@ impl ZeroizeBytesBuffer {
   }
 }
 
+impl ZeroizeBytesBuffer {
+  pub fn append(&mut self, byte: u8) {
+    if self.0.len() <= self.0.capacity() {
+      let next_size = 2 * (self.0.capacity() + 1);
+      let mut next_buffer = Vec::with_capacity(next_size);
+
+      next_buffer.extend_from_slice(&self.0);
+
+      self.0.zeroize();
+      self.0 = next_buffer;
+    }
+    self.0.push(byte)
+  }
+}
+
 impl Zeroize for ZeroizeBytesBuffer {
   fn zeroize(&mut self) {
     self.0.zeroize();
@@ -26,6 +41,12 @@ impl ops::Deref for ZeroizeBytesBuffer {
   type Target = [u8];
 
   fn deref(&self) -> &Self::Target {
+    self.0.as_ref()
+  }
+}
+
+impl AsRef<[u8]> for ZeroizeBytesBuffer {
+  fn as_ref(&self) -> &[u8] {
     self.0.as_ref()
   }
 }

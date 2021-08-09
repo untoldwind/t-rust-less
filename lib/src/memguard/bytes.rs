@@ -1,6 +1,8 @@
 use super::alloc;
 use super::memory;
+use serde::{Deserialize, Serialize};
 use std::convert::{AsMut, AsRef};
+use std::fmt;
 use std::io;
 use std::ops::{Deref, DerefMut};
 use std::ptr::{copy_nonoverlapping, NonNull};
@@ -8,6 +10,8 @@ use std::slice;
 use std::sync::atomic::{AtomicIsize, Ordering};
 use zeroize::Zeroize;
 
+use crate::memguard::ZeroizeBytesBuffer;
+use byteorder::WriteBytesExt;
 use rand::{CryptoRng, RngCore};
 
 /// Strictly memory protected bytes contain sensitive data.
@@ -285,6 +289,59 @@ impl From<String> for SecretBytes {
   }
 }
 
+// Note: This has to be used with care as it is not clear how many temporary buffers
+// the serializer uses or cleans them up correctly.
+// Some examples that are (mostly) safe to use:
+//   serde_json::ser::Serializer writes the bytes as numerical array directly to the output writer
+//   rmp_serde::encode::Serializer write the bytes directly to the output writer
+impl Serialize for SecretBytes {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: serde::Serializer,
+  {
+    serializer.serialize_bytes(self.borrow().as_bytes())
+  }
+}
+
+impl<'de> Deserialize<'de> for SecretBytes {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: serde::Deserializer<'de>,
+  {
+    deserializer.deserialize_bytes(SafeBytesVisitor())
+  }
+}
+
+struct SafeBytesVisitor();
+
+impl<'de> serde::de::Visitor<'de> for SafeBytesVisitor {
+  type Value = SecretBytes;
+
+  fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    formatter.write_str("a byte array")
+  }
+
+  fn visit_borrowed_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+  where
+    E: serde::de::Error,
+  {
+    Ok(SecretBytes::from_secured(v))
+  }
+
+  fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+  where
+    A: serde::de::SeqAccess<'de>,
+  {
+    let mut buf = ZeroizeBytesBuffer::with_capacity(seq.size_hint().unwrap_or(1024));
+
+    while let Some(value) = seq.next_element::<u8>()? {
+      buf.write_u8(value).ok();
+    }
+
+    Ok(SecretBytes::from_secured(&buf))
+  }
+}
+
 pub struct Ref<'a> {
   bytes: &'a SecretBytes,
 }
@@ -430,6 +487,7 @@ mod tests {
   use std::iter;
 
   use super::*;
+  use crate::memguard::ZeroizeBytesBuffer;
 
   fn assert_slices_equal(actual: &[u8], expected: &[u8]) {
     assert!(actual == expected)
@@ -575,5 +633,31 @@ mod tests {
 
     secret.borrow_mut().remove_char();
     assert_that(&secret.len()).is_equal_to(0);
+  }
+
+  #[test]
+  fn test_serde_json() {
+    let mut rng = thread_rng();
+    let random = SecretBytes::random(&mut rng, 32);
+    let mut buffer = ZeroizeBytesBuffer::with_capacity(1024);
+
+    serde_json::to_writer(&mut buffer, &random).unwrap();
+
+    let deserialized: SecretBytes = serde_json::from_reader(buffer.as_ref()).unwrap();
+
+    assert_that(&deserialized).is_equal_to(&random);
+  }
+
+  #[test]
+  fn test_serde_rmb() {
+    let mut rng = thread_rng();
+    let random = SecretBytes::random(&mut rng, 32);
+    let mut buffer = ZeroizeBytesBuffer::with_capacity(1024);
+
+    rmp_serde::encode::write(&mut buffer, &random).unwrap();
+
+    let deserialized: SecretBytes = rmp_serde::from_read_ref(&buffer).unwrap();
+
+    assert_that(&deserialized).is_equal_to(&random);
   }
 }

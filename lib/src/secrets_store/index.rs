@@ -1,10 +1,9 @@
 use crate::api::{SecretEntry, SecretEntryMatch, SecretList, SecretListFilter, SecretVersion, SecretVersionRef};
-use crate::api_capnp::secret_entry;
 use crate::block_store::{Change, ChangeLog, Operation};
 use crate::memguard::weak::ZeroingHeapAllocator;
 use crate::memguard::SecretWords;
 use crate::secrets_store::{SecretStoreError, SecretStoreResult};
-use crate::secrets_store_capnp::index;
+use crate::secrets_store_capnp::{index, secret_entry};
 use capnp::{message, serialize};
 use itertools::Itertools;
 use std::collections::{BTreeSet, HashMap, HashSet};
