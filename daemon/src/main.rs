@@ -7,6 +7,10 @@ mod processor;
 mod unix;
 #[cfg(unix)]
 use unix::run_server;
+#[cfg(windows)]
+mod windows;
+#[cfg(windows)]
+use windows::run_server;
 
 use std::{error::Error, sync::Arc, time::Duration};
 use t_rust_less_lib::service::local::LocalTrustlessService;

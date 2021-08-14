@@ -10,6 +10,8 @@ pub mod secrets_provider;
 
 #[cfg(unix)]
 pub mod unix;
+#[cfg(windows)]
+pub mod windows;
 
 pub use self::config::config_file;
 pub use self::error::*;
@@ -68,6 +70,12 @@ pub fn create_service() -> ServiceResult<Arc<dyn TrustlessService>> {
   #[cfg(unix)]
   {
     if let Some(remote) = self::unix::try_remote_service()? {
+      return Ok(Arc::new(remote));
+    }
+  }
+  #[cfg(windows)]
+  {
+    if let Some(remote) = self::windows::try_remote_service()? {
       return Ok(Arc::new(remote));
     }
   }

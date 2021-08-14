@@ -30,7 +30,7 @@ pub async fn run_server(service: Arc<LocalTrustlessService>) -> Result<(), Box<d
 
         info!("New client connection");
 
-        if let Err(err) = processor.handle_connection(&mut rd, &mut wr).await {
+        if let Err(err) = handle_connection(&mut processor, &mut rd, &mut wr).await {
           error!("{}", err);
         }
 
@@ -57,4 +57,19 @@ pub async fn run_server(service: Arc<LocalTrustlessService>) -> Result<(), Box<d
   }
 
   Ok(())
+}
+
+async fn handle_connection<R, W>(processor: &mut Processor, rd: &mut R, wr: &mut W) -> Result<(), Box<dyn Error>>
+where
+  R: AsyncRead + Unpin,
+  W: AsyncWrite + Unpin,
+{
+  loop {
+    let command = match processor.read_command(rd).await? {
+      Some(command) => command,
+      None => return Ok(()),
+    };
+
+    processor.process_command(wr, command).await?;
+  }
 }

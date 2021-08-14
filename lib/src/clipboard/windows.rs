@@ -31,4 +31,8 @@ impl Clipboard {
   pub fn destroy(&self) {
     unimplemented!()
   }
+
+  pub fn wait(&self) -> ClipboardResult<()> {
+    unimplemented!()
+  }
 }

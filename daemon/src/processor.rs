@@ -23,28 +23,23 @@ impl Processor {
     }
   }
 
-  pub async fn handle_connection<R, W>(&mut self, rd: &mut R, wr: &mut W) -> Result<(), Box<dyn Error>>
+  pub async fn read_command<R>(&self, rd: &mut R) -> Result<Option<Command>, Box<dyn Error>>
   where
     R: AsyncRead + Unpin,
-    W: AsyncWrite + Unpin,
   {
-    loop {
-      let buf_len = match rd.read_u32_le().await {
-        Ok(len) => len as usize,
-        Err(err) if err.kind() == io::ErrorKind::UnexpectedEof => return Ok(()),
-        Err(err) => return Err(err.into()),
-      };
-      let mut buf = Zeroizing::from(vec![0; buf_len]);
+    let buf_len = match rd.read_u32_le().await {
+      Ok(len) => len as usize,
+      Err(err) if err.kind() == io::ErrorKind::UnexpectedEof => return Ok(None),
+      Err(err) => return Err(err.into()),
+    };
+    let mut buf = Zeroizing::from(vec![0; buf_len]);
 
-      rd.read_exact(&mut buf).await?;
+    rd.read_exact(&mut buf).await?;
 
-      self
-        .process_command(wr, rmp_serde::from_read_ref(buf.as_slice())?)
-        .await?;
-    }
+    Ok(Some(rmp_serde::from_read_ref(buf.as_slice())?))
   }
 
-  async fn process_command<W>(&mut self, wr: &mut W, command: Command) -> Result<(), Box<dyn Error>>
+  pub async fn process_command<W>(&mut self, wr: &mut W, command: Command) -> Result<(), Box<dyn Error>>
   where
     W: AsyncWrite + Unpin,
   {
