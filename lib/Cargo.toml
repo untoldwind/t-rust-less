@@ -43,7 +43,7 @@ aes-gcm = { version = "0", optional = true }
 rmp-serde = "0"
 
 [dev-dependencies]
-tempdir = "0"
+tempfile = "3"
 spectral = "0"
 quickcheck = "0"
 byteorder = "1"
@@ -51,12 +51,10 @@ hex-literal = "0"
 
 [features]
 with_x11 = ["x11"]
-with_xcb = ["xcb"]
 rust_crypto = ["rsa", "aes-gcm"]
 default = ["with_x11", "rust_crypto"]
 
 [target.'cfg(unix)'.dependencies]
-xcb = { version = "0.8", features = [ "thread", "xfixes" ], optional = true }
 x11 = { version = "2", features = ["xlib"], optional = true }
 libc = "0"
 

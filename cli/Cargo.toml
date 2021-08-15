@@ -29,7 +29,7 @@ crossterm_backend = ["cursive/crossterm-backend", "cursive/toml"]
 default = ["crossterm_backend"]
 
 [dev-dependencies]
-tempdir = "0"
+tempfile = "3"
 spectral = "0"
 
 [build-dependencies]

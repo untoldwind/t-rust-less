@@ -1760,7 +1760,7 @@ dependencies = [
  "serde_json",
  "spectral",
  "t-rust-less-lib",
- "tempdir",
+ "tempfile",
  "termion",
  "url",
  "zeroize",
@@ -1797,7 +1797,7 @@ dependencies = [
  "serde_json",
  "spectral",
  "t-rust-less-lib",
- "tempdir",
+ "tempfile",
  "url",
 ]
 
@@ -1835,7 +1835,7 @@ dependencies = [
  "sha2",
  "spectral",
  "sublime_fuzzy",
- "tempdir",
+ "tempfile",
  "tokio",
  "tokio-util",
  "toml",
@@ -1843,7 +1843,6 @@ dependencies = [
  "winapi",
  "x11",
  "x25519-dalek-ng",
- "xcb",
  "zeroize",
  "zeroize_derive",
  "zxcvbn",
@@ -1865,13 +1864,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "tempdir"
-version = "0.3.7"
+name = "tempfile"
+version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15f2b5fb00ccdf689e0149d1b1b3c03fead81c2b37735d812fa8bddbbf41b6d8"
+checksum = "dac1c663cfc93810f88aed9b8941d48cabf856a1b111c29a40439018d870eb22"
 dependencies = [
- "rand 0.4.6",
+ "cfg-if 1.0.0",
+ "libc",
+ "rand 0.8.4",
+ "redox_syscall 0.2.10",
  "remove_dir_all",
+ "winapi",
 ]
 
 [[package]]
@@ -2219,16 +2222,6 @@ dependencies = [
  "rand 0.8.4",
  "rand_core 0.6.3",
  "zeroize",
-]
-
-[[package]]
-name = "xcb"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e917a3f24142e9ff8be2414e36c649d47d6cc2ba81f16201cdef96e533e02de"
-dependencies = [
- "libc",
- "log",
 ]
 
 [[package]]

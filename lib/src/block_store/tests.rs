@@ -7,7 +7,7 @@ use rand::{distributions, thread_rng, Rng};
 use spectral::prelude::*;
 use std::iter;
 use std::sync::Arc;
-use tempdir::TempDir;
+use tempfile::Builder;
 
 fn common_store_tests(store: Arc<dyn BlockStore>) {
   let mut rng = thread_rng();
@@ -185,7 +185,7 @@ fn common_test_blocks_commits(store: &dyn BlockStore, rng: &mut ThreadRng) {
 
 #[test]
 fn test_local_dir_store() {
-  let tempdir = TempDir::new("t-rust-less-test").unwrap();
+  let tempdir = Builder::new().prefix("t-rust-less-test").tempdir().unwrap();
   let url = format!("file://{}", tempdir.path().to_string_lossy());
 
   let store = open_block_store(&url, "node1").unwrap();
