@@ -51,7 +51,7 @@ fn create_base_set(params: &PasswordGeneratorCharsParam) -> Vec<u8> {
 
 fn filter_set(candidates: &mut Vec<u8>, set: &[u8], params: &PasswordGeneratorCharsParam) {
   for ch in set {
-    if params.exlcude_similar && SIMILAR_CHARS.contains(ch) {
+    if params.exclude_similar && SIMILAR_CHARS.contains(ch) {
       continue;
     }
     if params.exclude_ambiguous && AMBIGOUS_CHARS.contains(ch) {
@@ -83,7 +83,7 @@ mod tests {
       require_number: false,
       require_upper: false,
       require_symbol: false,
-      exlcude_similar: false,
+      exclude_similar: false,
       exclude_ambiguous: false,
     });
 
@@ -98,7 +98,7 @@ mod tests {
       require_number: false,
       require_upper: true,
       require_symbol: false,
-      exlcude_similar: false,
+      exclude_similar: false,
       exclude_ambiguous: false,
     });
 

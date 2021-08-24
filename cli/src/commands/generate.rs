@@ -22,7 +22,7 @@ pub fn password_generate_param_from_args(args: &ArgMatches) -> PasswordGenerator
       require_number: args.is_present("require-number"),
       require_symbol: args.is_present("require-symbol"),
       exclude_ambiguous: !args.is_present("include-ambiguous"),
-      exlcude_similar: !args.is_present("include-similar"),
+      exclude_similar: !args.is_present("include-similar"),
     })
   }
 }

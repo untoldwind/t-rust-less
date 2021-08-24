@@ -197,7 +197,7 @@ impl Arbitrary for PasswordGeneratorParam {
         require_upper: bool::arbitrary(g),
         require_number: bool::arbitrary(g),
         require_symbol: bool::arbitrary(g),
-        exlcude_similar: bool::arbitrary(g),
+        exclude_similar: bool::arbitrary(g),
         exclude_ambiguous: bool::arbitrary(g),
       }),
       _ => PasswordGeneratorParam::Words(PasswordGeneratorWordsParam {

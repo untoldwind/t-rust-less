@@ -477,7 +477,7 @@ pub struct PasswordGeneratorCharsParam {
   pub require_upper: bool,
   pub require_number: bool,
   pub require_symbol: bool,
-  pub exlcude_similar: bool,
+  pub exclude_similar: bool,
   pub exclude_ambiguous: bool,
 }
 
