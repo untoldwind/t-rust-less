@@ -48,15 +48,15 @@ impl Processor {
   where
     W: AsyncWrite + Unpin,
   {
-    match command {
+    match &command {
       Command::ListStores => write_result(wr, self.service.list_stores()).await?,
-      Command::UpsertStoreConfig(config) => write_result(wr, self.service.upsert_store_config(config)).await?,
+      Command::UpsertStoreConfig(config) => write_result(wr, self.service.upsert_store_config(config.clone())).await?,
       Command::DeleteStoreConfig(name) => write_result(wr, self.service.delete_store_config(&name)).await?,
       Command::GetDefaultStore => write_result(wr, self.service.get_default_store()).await?,
       Command::SetDefaultStore(name) => write_result(wr, self.service.set_default_store(&name)).await?,
       Command::GenerateId => write_result(wr, self.service.generate_id()).await?,
-      Command::GeneratePassword(param) => write_result(wr, self.service.generate_password(param)).await?,
-      Command::PollEvents(last_id) => write_result(wr, self.service.poll_events(last_id)).await?,
+      Command::GeneratePassword(param) => write_result(wr, self.service.generate_password(param.clone())).await?,
+      Command::PollEvents(last_id) => write_result(wr, self.service.poll_events(*last_id)).await?,
       Command::Status(store_name) => {
         write_result(
           wr,
@@ -77,7 +77,7 @@ impl Processor {
           self
             .service
             .open_store(&store_name)
-            .and_then(|store| store.unlock(&identity_id, passphrase)),
+            .and_then(|store| store.unlock(&identity_id, passphrase.clone())),
         )
         .await?
       }
@@ -101,7 +101,7 @@ impl Processor {
           self
             .service
             .open_store(&store_name)
-            .and_then(|store| store.add_identity(identity, passphrase)),
+            .and_then(|store| store.add_identity(identity.clone(), passphrase.clone())),
         )
         .await?
       }
@@ -111,7 +111,7 @@ impl Processor {
           self
             .service
             .open_store(&store_name)
-            .and_then(|store| store.change_passphrase(passphrase)),
+            .and_then(|store| store.change_passphrase(passphrase.clone())),
         )
         .await?
       }
@@ -144,7 +144,7 @@ impl Processor {
           self
             .service
             .open_store(&store_name)
-            .and_then(|store| store.add(secret_version)),
+            .and_then(|store| store.add(secret_version.clone())),
         )
         .await?
       }

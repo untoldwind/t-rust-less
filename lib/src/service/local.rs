@@ -255,7 +255,7 @@ impl TrustlessService for LocalTrustlessService {
   }
 
   fn generate_password(&self, param: PasswordGeneratorParam) -> ServiceResult<String> {
-    match param {
+    match &param {
       PasswordGeneratorParam::Chars(params) => Ok(generate_chars(params)),
       PasswordGeneratorParam::Words(params) => Ok(generate_words(params)),
     }

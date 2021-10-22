@@ -90,8 +90,8 @@ impl From<CommandResult> for ServiceResult<()> {
   fn from(result: CommandResult) -> Self {
     match result {
       CommandResult::Void => Ok(()),
-      CommandResult::ServiceError(error) => Err(error),
-      CommandResult::SecretStoreError(error) => Err(ServiceError::SecretsStore(error)),
+      CommandResult::ServiceError(ref error) => Err(error.clone()),
+      CommandResult::SecretStoreError(ref error) => Err(ServiceError::SecretsStore(error.clone())),
       _ => Err(ServiceError::IO("Invalid command result".to_string())),
     }
   }
@@ -110,8 +110,8 @@ impl From<CommandResult> for ServiceResult<bool> {
   fn from(result: CommandResult) -> Self {
     match result {
       CommandResult::Bool(value) => Ok(value),
-      CommandResult::ServiceError(error) => Err(error),
-      CommandResult::SecretStoreError(error) => Err(ServiceError::SecretsStore(error)),
+      CommandResult::ServiceError(ref error) => Err(error.clone()),
+      CommandResult::SecretStoreError(ref error) => Err(ServiceError::SecretsStore(error.clone())),
       _ => Err(ServiceError::IO("Invalid command result".to_string())),
     }
   }
@@ -128,10 +128,10 @@ impl From<ServiceResult<bool>> for CommandResult {
 
 impl From<CommandResult> for ServiceResult<String> {
   fn from(result: CommandResult) -> Self {
-    match result {
-      CommandResult::String(value) => Ok(value),
-      CommandResult::ServiceError(error) => Err(error),
-      CommandResult::SecretStoreError(error) => Err(ServiceError::SecretsStore(error)),
+    match &result {
+      CommandResult::String(value) => Ok(value.clone()),
+      CommandResult::ServiceError(ref error) => Err(error.clone()),
+      CommandResult::SecretStoreError(error) => Err(ServiceError::SecretsStore(error.clone())),
       _ => Err(ServiceError::IO("Invalid command result".to_string())),
     }
   }
@@ -148,11 +148,11 @@ impl From<ServiceResult<String>> for CommandResult {
 
 impl From<CommandResult> for ServiceResult<Option<String>> {
   fn from(result: CommandResult) -> Self {
-    match result {
+    match &result {
       CommandResult::Void => Ok(None),
-      CommandResult::String(value) => Ok(Some(value)),
-      CommandResult::ServiceError(error) => Err(error),
-      CommandResult::SecretStoreError(error) => Err(ServiceError::SecretsStore(error)),
+      CommandResult::String(value) => Ok(Some(value.clone())),
+      CommandResult::ServiceError(error) => Err(error.clone()),
+      CommandResult::SecretStoreError(error) => Err(ServiceError::SecretsStore(error.clone())),
       _ => Err(ServiceError::IO("Invalid command result".to_string())),
     }
   }
@@ -170,10 +170,10 @@ impl From<ServiceResult<Option<String>>> for CommandResult {
 
 impl From<CommandResult> for ServiceResult<Vec<StoreConfig>> {
   fn from(result: CommandResult) -> Self {
-    match result {
-      CommandResult::Configs(value) => Ok(value),
-      CommandResult::ServiceError(error) => Err(error),
-      CommandResult::SecretStoreError(error) => Err(ServiceError::SecretsStore(error)),
+    match &result {
+      CommandResult::Configs(value) => Ok(value.clone()),
+      CommandResult::ServiceError(error) => Err(error.clone()),
+      CommandResult::SecretStoreError(error) => Err(ServiceError::SecretsStore(error.clone())),
       _ => Err(ServiceError::IO("Invalid command result".to_string())),
     }
   }
@@ -190,10 +190,10 @@ impl From<ServiceResult<Vec<StoreConfig>>> for CommandResult {
 
 impl From<CommandResult> for ServiceResult<Vec<Event>> {
   fn from(result: CommandResult) -> Self {
-    match result {
-      CommandResult::Events(value) => Ok(value),
-      CommandResult::ServiceError(error) => Err(error),
-      CommandResult::SecretStoreError(error) => Err(ServiceError::SecretsStore(error)),
+    match &result {
+      CommandResult::Events(value) => Ok(value.clone()),
+      CommandResult::ServiceError(error) => Err(error.clone()),
+      CommandResult::SecretStoreError(error) => Err(ServiceError::SecretsStore(error.clone())),
       _ => Err(ServiceError::IO("Invalid command result".to_string())),
     }
   }
@@ -210,9 +210,9 @@ impl From<ServiceResult<Vec<Event>>> for CommandResult {
 
 impl From<CommandResult> for SecretStoreResult<()> {
   fn from(result: CommandResult) -> Self {
-    match result {
+    match &result {
       CommandResult::Void => Ok(()),
-      CommandResult::SecretStoreError(error) => Err(error),
+      CommandResult::SecretStoreError(error) => Err(error.clone()),
       _ => Err(SecretStoreError::IO("Invalid command result".to_string())),
     }
   }
@@ -229,9 +229,9 @@ impl From<SecretStoreResult<()>> for CommandResult {
 
 impl From<CommandResult> for SecretStoreResult<String> {
   fn from(result: CommandResult) -> Self {
-    match result {
-      CommandResult::String(value) => Ok(value),
-      CommandResult::SecretStoreError(error) => Err(error),
+    match &result {
+      CommandResult::String(value) => Ok(value.clone()),
+      CommandResult::SecretStoreError(error) => Err(error.clone()),
       _ => Err(SecretStoreError::IO("Invalid command result".to_string())),
     }
   }
@@ -248,9 +248,9 @@ impl From<SecretStoreResult<String>> for CommandResult {
 
 impl From<CommandResult> for SecretStoreResult<Status> {
   fn from(result: CommandResult) -> Self {
-    match result {
-      CommandResult::Status(value) => Ok(value),
-      CommandResult::SecretStoreError(error) => Err(error),
+    match &result {
+      CommandResult::Status(value) => Ok(value.clone()),
+      CommandResult::SecretStoreError(error) => Err(error.clone()),
       _ => Err(SecretStoreError::IO("Invalid command result".to_string())),
     }
   }
@@ -267,9 +267,9 @@ impl From<SecretStoreResult<Status>> for CommandResult {
 
 impl From<CommandResult> for SecretStoreResult<Vec<Identity>> {
   fn from(result: CommandResult) -> Self {
-    match result {
-      CommandResult::Identities(value) => Ok(value),
-      CommandResult::SecretStoreError(error) => Err(error),
+    match &result {
+      CommandResult::Identities(value) => Ok(value.clone()),
+      CommandResult::SecretStoreError(error) => Err(error.clone()),
       _ => Err(SecretStoreError::IO("Invalid command result".to_string())),
     }
   }
@@ -286,9 +286,9 @@ impl From<SecretStoreResult<Vec<Identity>>> for CommandResult {
 
 impl From<CommandResult> for SecretStoreResult<SecretList> {
   fn from(result: CommandResult) -> Self {
-    match result {
-      CommandResult::SecretList(value) => Ok(value),
-      CommandResult::SecretStoreError(error) => Err(error),
+    match &result {
+      CommandResult::SecretList(value) => Ok(value.clone()),
+      CommandResult::SecretStoreError(error) => Err(error.clone()),
       _ => Err(SecretStoreError::IO("Invalid command result".to_string())),
     }
   }
@@ -305,9 +305,9 @@ impl From<SecretStoreResult<SecretList>> for CommandResult {
 
 impl From<CommandResult> for SecretStoreResult<Secret> {
   fn from(result: CommandResult) -> Self {
-    match result {
-      CommandResult::Secret(value) => Ok(value),
-      CommandResult::SecretStoreError(error) => Err(error),
+    match &result {
+      CommandResult::Secret(value) => Ok(value.clone()),
+      CommandResult::SecretStoreError(error) => Err(error.clone()),
       _ => Err(SecretStoreError::IO("Invalid command result".to_string())),
     }
   }
@@ -324,9 +324,9 @@ impl From<SecretStoreResult<Secret>> for CommandResult {
 
 impl From<CommandResult> for SecretStoreResult<SecretVersion> {
   fn from(result: CommandResult) -> Self {
-    match result {
-      CommandResult::SecretVersion(value) => Ok(value),
-      CommandResult::SecretStoreError(error) => Err(error),
+    match &result {
+      CommandResult::SecretVersion(value) => Ok(value.clone()),
+      CommandResult::SecretStoreError(error) => Err(error.clone()),
       _ => Err(SecretStoreError::IO("Invalid command result".to_string())),
     }
   }

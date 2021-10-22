@@ -4,7 +4,7 @@ use itertools::Itertools;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 
-pub fn generate_words(params: PasswordGeneratorWordsParam) -> String {
+pub fn generate_words(params: &PasswordGeneratorWordsParam) -> String {
   let mut rng = thread_rng();
 
   WORDLIST
@@ -19,7 +19,7 @@ mod tests {
 
   #[test]
   fn test_generate_words() {
-    let pw1 = generate_words(PasswordGeneratorWordsParam {
+    let pw1 = generate_words(&PasswordGeneratorWordsParam {
       num_words: 3,
       delim: '.',
     });
@@ -27,7 +27,7 @@ mod tests {
     assert_that(&pw1.len()).is_greater_than(5);
     assert_that(&pw1.split(".").count()).is_equal_to(3);
 
-    let pw2 = generate_words(PasswordGeneratorWordsParam {
+    let pw2 = generate_words(&PasswordGeneratorWordsParam {
       num_words: 5,
       delim: '-',
     });

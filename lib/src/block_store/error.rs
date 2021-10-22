@@ -3,7 +3,7 @@ use std::convert::From;
 use std::fmt;
 use zeroize::Zeroize;
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Zeroize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Zeroize, Clone)]
 #[zeroize(drop)]
 pub enum StoreError {
   InvalidBlock(String),

@@ -9,7 +9,7 @@ const SYMBOLS: &[u8] = b"!-+*#_$%&/()=?{}[]()/\\'\"`-,;:.<>";
 const AMBIGOUS_CHARS: &[u8] = b"{}[]()/\\'\"`-,;:.<>";
 const SIMILAR_CHARS: &[u8] = b"QO01lIB8S5G62ZUV";
 
-pub fn generate_chars(params: PasswordGeneratorCharsParam) -> String {
+pub fn generate_chars(params: &PasswordGeneratorCharsParam) -> String {
   let mut rng = thread_rng();
   let mut pool = Vec::with_capacity(params.num_chars as usize);
 
@@ -75,7 +75,7 @@ mod tests {
 
   #[test]
   fn test_generate_chars() {
-    let pw1 = generate_chars(PasswordGeneratorCharsParam {
+    let pw1 = generate_chars(&PasswordGeneratorCharsParam {
       num_chars: 14,
       include_uppers: false,
       include_numbers: false,
@@ -90,7 +90,7 @@ mod tests {
     assert_that(&pw1.len()).is_equal_to(14);
     assert_that(&pw1.chars().all(|ch| ch.is_lowercase())).is_true();
 
-    let pw2: String = generate_chars(PasswordGeneratorCharsParam {
+    let pw2: String = generate_chars(&PasswordGeneratorCharsParam {
       num_chars: 20,
       include_uppers: true,
       include_numbers: false,
