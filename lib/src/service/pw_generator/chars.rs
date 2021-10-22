@@ -14,15 +14,15 @@ pub fn generate_chars(params: &PasswordGeneratorCharsParam) -> String {
   let mut pool = Vec::with_capacity(params.num_chars as usize);
 
   if params.require_upper {
-    pool.push(pick_char_from(&mut rng, UPPERS, &params));
+    pool.push(pick_char_from(&mut rng, UPPERS, params));
   }
   if params.require_number {
-    pool.push(pick_char_from(&mut rng, NUMBERS, &params));
+    pool.push(pick_char_from(&mut rng, NUMBERS, params));
   }
   if params.require_symbol {
-    pool.push(pick_char_from(&mut rng, SYMBOLS, &params));
+    pool.push(pick_char_from(&mut rng, SYMBOLS, params));
   }
-  let candidates = create_base_set(&params);
+  let candidates = create_base_set(params);
   while pool.len() < params.num_chars as usize {
     pool.push(*candidates.choose(&mut rng).unwrap());
   }

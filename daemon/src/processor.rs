@@ -51,21 +51,21 @@ impl Processor {
     match &command {
       Command::ListStores => write_result(wr, self.service.list_stores()).await?,
       Command::UpsertStoreConfig(config) => write_result(wr, self.service.upsert_store_config(config.clone())).await?,
-      Command::DeleteStoreConfig(name) => write_result(wr, self.service.delete_store_config(&name)).await?,
+      Command::DeleteStoreConfig(name) => write_result(wr, self.service.delete_store_config(name)).await?,
       Command::GetDefaultStore => write_result(wr, self.service.get_default_store()).await?,
-      Command::SetDefaultStore(name) => write_result(wr, self.service.set_default_store(&name)).await?,
+      Command::SetDefaultStore(name) => write_result(wr, self.service.set_default_store(name)).await?,
       Command::GenerateId => write_result(wr, self.service.generate_id()).await?,
       Command::GeneratePassword(param) => write_result(wr, self.service.generate_password(param.clone())).await?,
       Command::PollEvents(last_id) => write_result(wr, self.service.poll_events(*last_id)).await?,
       Command::Status(store_name) => {
         write_result(
           wr,
-          self.service.open_store(&store_name).and_then(|store| store.status()),
+          self.service.open_store(store_name).and_then(|store| store.status()),
         )
         .await?
       }
       Command::Lock(store_name) => {
-        write_result(wr, self.service.open_store(&store_name).and_then(|store| store.lock())).await?
+        write_result(wr, self.service.open_store(store_name).and_then(|store| store.lock())).await?
       }
       Command::Unlock {
         store_name,
@@ -76,8 +76,8 @@ impl Processor {
           wr,
           self
             .service
-            .open_store(&store_name)
-            .and_then(|store| store.unlock(&identity_id, passphrase.clone())),
+            .open_store(store_name)
+            .and_then(|store| store.unlock(identity_id, passphrase.clone())),
         )
         .await?
       }
@@ -86,7 +86,7 @@ impl Processor {
           wr,
           self
             .service
-            .open_store(&store_name)
+            .open_store(store_name)
             .and_then(|store| store.identities()),
         )
         .await?
@@ -100,7 +100,7 @@ impl Processor {
           wr,
           self
             .service
-            .open_store(&store_name)
+            .open_store(store_name)
             .and_then(|store| store.add_identity(identity.clone(), passphrase.clone())),
         )
         .await?
@@ -110,7 +110,7 @@ impl Processor {
           wr,
           self
             .service
-            .open_store(&store_name)
+            .open_store(store_name)
             .and_then(|store| store.change_passphrase(passphrase.clone())),
         )
         .await?
@@ -120,7 +120,7 @@ impl Processor {
           wr,
           self
             .service
-            .open_store(&store_name)
+            .open_store(store_name)
             .and_then(|store| store.update_index()),
         )
         .await?
@@ -130,8 +130,8 @@ impl Processor {
           wr,
           self
             .service
-            .open_store(&store_name)
-            .and_then(|store| store.list(&filter)),
+            .open_store(store_name)
+            .and_then(|store| store.list(filter)),
         )
         .await?
       }
@@ -143,7 +143,7 @@ impl Processor {
           wr,
           self
             .service
-            .open_store(&store_name)
+            .open_store(store_name)
             .and_then(|store| store.add(secret_version.clone())),
         )
         .await?
@@ -153,8 +153,8 @@ impl Processor {
           wr,
           self
             .service
-            .open_store(&store_name)
-            .and_then(|store| store.get(&secret_id)),
+            .open_store(store_name)
+            .and_then(|store| store.get(secret_id)),
         )
         .await?
       }
@@ -163,8 +163,8 @@ impl Processor {
           wr,
           self
             .service
-            .open_store(&store_name)
-            .and_then(|store| store.get_version(&block_id)),
+            .open_store(store_name)
+            .and_then(|store| store.get_version(block_id)),
         )
         .await?
       }
@@ -177,10 +177,10 @@ impl Processor {
         write_result(
           wr,
           match self.service.secret_to_clipboard(
-            &store_name,
-            &block_id,
+            store_name,
+            block_id,
             &properties.iter().map(String::as_str).collect::<Vec<&str>>(),
-            &display_name,
+            display_name,
           ) {
             Ok(clipboard) => {
               self.current_clipboard.replace(clipboard);
