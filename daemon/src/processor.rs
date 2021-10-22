@@ -58,11 +58,7 @@ impl Processor {
       Command::GeneratePassword(param) => write_result(wr, self.service.generate_password(param.clone())).await?,
       Command::PollEvents(last_id) => write_result(wr, self.service.poll_events(*last_id)).await?,
       Command::Status(store_name) => {
-        write_result(
-          wr,
-          self.service.open_store(store_name).and_then(|store| store.status()),
-        )
-        .await?
+        write_result(wr, self.service.open_store(store_name).and_then(|store| store.status())).await?
       }
       Command::Lock(store_name) => {
         write_result(wr, self.service.open_store(store_name).and_then(|store| store.lock())).await?
@@ -84,10 +80,7 @@ impl Processor {
       Command::Identities(store_name) => {
         write_result(
           wr,
-          self
-            .service
-            .open_store(store_name)
-            .and_then(|store| store.identities()),
+          self.service.open_store(store_name).and_then(|store| store.identities()),
         )
         .await?
       }
@@ -128,10 +121,7 @@ impl Processor {
       Command::List { store_name, filter } => {
         write_result(
           wr,
-          self
-            .service
-            .open_store(store_name)
-            .and_then(|store| store.list(filter)),
+          self.service.open_store(store_name).and_then(|store| store.list(filter)),
         )
         .await?
       }
