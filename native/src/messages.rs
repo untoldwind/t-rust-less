@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
-use t_rust_less_lib::api::{Event, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status, StoreConfig};
+use t_rust_less_lib::api::{
+  ClipboardProviding, Event, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status, StoreConfig,
+};
 use t_rust_less_lib::secrets_store::SecretStoreResult;
 use t_rust_less_lib::service::{ServiceError, ServiceResult};
 use zeroize::Zeroize;
@@ -88,6 +90,8 @@ pub enum CommandResult {
   SecretList(SecretList),
   SecretVersion(SecretVersion),
   Secret(Secret),
+
+  ClipboardProviding(ClipboardProviding),
 }
 
 impl<T> From<ServiceResult<T>> for CommandResult
@@ -198,6 +202,12 @@ impl From<Secret> for CommandResult {
 impl From<SecretVersion> for CommandResult {
   fn from(secret: SecretVersion) -> Self {
     CommandResult::SecretVersion(secret)
+  }
+}
+
+impl From<ClipboardProviding> for CommandResult {
+  fn from(clipboard_providing: ClipboardProviding) -> Self {
+    CommandResult::ClipboardProviding(clipboard_providing)
   }
 }
 

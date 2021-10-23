@@ -1,5 +1,6 @@
 use crate::api::{
-  Command, CommandResult, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status, StoreConfig,
+  ClipboardProviding, Command, CommandResult, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status,
+  StoreConfig,
 };
 use crate::api::{Event, PasswordGeneratorParam};
 use crate::memguard::{SecretBytes, ZeroizeBytesBuffer};
@@ -275,7 +276,7 @@ where
     send_recv::<_, ServiceError>(&self.stream, Command::ClipboardIsDone)?.into()
   }
 
-  fn currently_providing(&self) -> ServiceResult<Option<String>> {
+  fn currently_providing(&self) -> ServiceResult<Option<ClipboardProviding>> {
     send_recv::<_, ServiceError>(&self.stream, Command::ClipboardCurrentlyProviding)?.into()
   }
 

@@ -1,4 +1,4 @@
-use crate::api::{Event, PasswordGeneratorParam, StoreConfig};
+use crate::api::{ClipboardProviding, Event, PasswordGeneratorParam, StoreConfig};
 use std::sync::Arc;
 
 mod config;
@@ -19,7 +19,7 @@ use crate::secrets_store::{SecretStoreResult, SecretsStore};
 pub trait ClipboardControl: Send + Sync {
   fn is_done(&self) -> ServiceResult<bool>;
 
-  fn currently_providing(&self) -> ServiceResult<Option<String>>;
+  fn currently_providing(&self) -> ServiceResult<Option<ClipboardProviding>>;
 
   fn provide_next(&self) -> ServiceResult<()>;
 

@@ -44,6 +44,7 @@ pub fn experimental_clipboard() {
       DummyProvider { counter: 0 },
       "Store".to_string(),
       "SecretId".to_string(),
+      "SecretName".to_string(),
       Arc::new(TestEventHub),
     )
     .unwrap(),

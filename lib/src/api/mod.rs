@@ -436,7 +436,7 @@ impl std::fmt::Display for SecretVersionRef {
   }
 }
 
-/// Reperentation of a secret with all its versions.
+/// Representation of a secret with all its versions.
 ///
 /// The is the default view when retrieving a specific secret.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -505,4 +505,13 @@ where
     text_list.set(idx as u32, capnp::text::new_reader(text.as_ref().as_bytes())?);
   }
   Ok(())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Zeroize)]
+#[zeroize(drop)]
+pub struct ClipboardProviding {
+  pub store_name: String,
+  pub block_id: String,
+  pub secret_name: String,
+  pub property: String,
 }

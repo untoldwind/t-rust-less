@@ -1,5 +1,5 @@
 use super::pw_generator::{generate_chars, generate_words};
-use crate::api::{Event, EventData, EventHub, PasswordGeneratorParam, StoreConfig};
+use crate::api::{ClipboardProviding, Event, EventData, EventHub, PasswordGeneratorParam, StoreConfig};
 use crate::block_store::StoreError;
 use crate::clipboard::Clipboard;
 use crate::secrets_store::{open_secrets_store, SecretStoreResult, SecretsStore};
@@ -28,7 +28,7 @@ impl ClipboardControl for ClipboardHolder {
     }
   }
 
-  fn currently_providing(&self) -> ServiceResult<Option<String>> {
+  fn currently_providing(&self) -> ServiceResult<Option<ClipboardProviding>> {
     match self {
       ClipboardHolder::Empty => Ok(None),
       ClipboardHolder::Providing(clipboard) => Ok(clipboard.currently_providing()),
@@ -216,8 +216,11 @@ impl TrustlessService for LocalTrustlessService {
     {
       let store = self.open_store(store_name)?;
       let secret_version = store.get_version(block_id)?;
+      let secret_name = secret_version.name.clone();
       let secret_provider = SecretsProvider::new(secret_version, properties);
       let mut clipboard = self.clipboard.write()?;
+
+      clipboard.destroy()?;
 
       info!("Providing {} for {} in {}", properties.join(","), block_id, store_name);
 
@@ -226,6 +229,7 @@ impl TrustlessService for LocalTrustlessService {
         secret_provider,
         store_name.to_string(),
         block_id.to_string(),
+        secret_name,
         self.event_hub.clone(),
       )?));
       *clipboard = next_clipboard.clone();

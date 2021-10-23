@@ -1,6 +1,6 @@
 #![cfg(all(unix, feature = "with_x11"))]
 
-use crate::api::{EventData, EventHub};
+use crate::api::{ClipboardProviding, EventData, EventHub};
 use crate::clipboard::debounce::SelectionDebounce;
 use crate::clipboard::{ClipboardError, ClipboardResult, SelectionProvider};
 use log::debug;
@@ -29,6 +29,7 @@ struct Context {
   provider: Arc<RwLock<dyn SelectionProvider>>,
   store_name: String,
   block_id: String,
+  secret_name: String,
   event_hub: Arc<dyn EventHub>,
 }
 
@@ -37,6 +38,7 @@ impl Context {
     display_name: &str,
     store_name: String,
     block_id: String,
+    secret_name: String,
     event_hub: Arc<dyn EventHub>,
     provider: Arc<RwLock<dyn SelectionProvider>>,
   ) -> ClipboardResult<Self> {
@@ -85,6 +87,7 @@ impl Context {
         provider,
         store_name,
         block_id,
+        secret_name,
         event_hub,
       })
     }
@@ -133,8 +136,18 @@ impl Context {
     self.open.load(Ordering::Relaxed)
   }
 
-  fn currently_providing(&self) -> Option<String> {
-    self.provider.read().ok()?.current_selection_name()
+  fn currently_providing(&self) -> Option<ClipboardProviding> {
+    self
+      .provider
+      .read()
+      .ok()?
+      .current_selection_name()
+      .map(|property| ClipboardProviding {
+        store_name: self.store_name.clone(),
+        block_id: self.block_id.clone(),
+        secret_name: self.secret_name.clone(),
+        property,
+      })
   }
 
   fn provide_next(&self) {
@@ -167,6 +180,7 @@ impl Clipboard {
     selection_provider: T,
     store_name: String,
     block_id: String,
+    secret_name: String,
     event_hub: Arc<dyn EventHub>,
   ) -> ClipboardResult<Clipboard>
   where
@@ -176,6 +190,7 @@ impl Clipboard {
       display_name,
       store_name,
       block_id,
+      secret_name,
       event_hub,
       Arc::new(RwLock::new(selection_provider)),
     )?);
@@ -199,7 +214,7 @@ impl Clipboard {
     self.context.is_open()
   }
 
-  pub fn currently_providing(&self) -> Option<String> {
+  pub fn currently_providing(&self) -> Option<ClipboardProviding> {
     self.context.currently_providing()
   }
 
@@ -268,11 +283,14 @@ fn run(context: Arc<Context>) {
             match debounce.get_selection() {
               Some(mut value) => {
                 if let Some(property) = debounce.current_selection_name() {
-                  context.event_hub.send(EventData::ClipboardProviding {
-                    store_name: context.store_name.clone(),
-                    block_id: context.block_id.clone(),
-                    property,
-                  });
+                  context
+                    .event_hub
+                    .send(EventData::ClipboardProviding(ClipboardProviding {
+                      store_name: context.store_name.clone(),
+                      block_id: context.block_id.clone(),
+                      secret_name: context.secret_name.clone(),
+                      property,
+                    }));
                 }
                 let content: &[u8] = value.as_ref();
 

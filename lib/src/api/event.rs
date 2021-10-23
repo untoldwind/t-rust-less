@@ -2,6 +2,8 @@ use crate::api::Identity;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
+use super::ClipboardProviding;
+
 #[derive(Clone, Debug, Serialize, Deserialize, Zeroize)]
 #[zeroize(drop)]
 pub enum EventData {
@@ -26,11 +28,7 @@ pub enum EventData {
     store_name: String,
     identity: Identity,
   },
-  ClipboardProviding {
-    store_name: String,
-    block_id: String,
-    property: String,
-  },
+  ClipboardProviding(ClipboardProviding),
   ClipboardDone,
 }
 

@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 use super::{
-  Event, Identity, PasswordGeneratorParam, Secret, SecretList, SecretListFilter, SecretVersion, Status, StoreConfig,
+  ClipboardProviding, Event, Identity, PasswordGeneratorParam, Secret, SecretList, SecretListFilter, SecretVersion,
+  Status, StoreConfig,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Zeroize)]
@@ -82,6 +83,7 @@ pub enum CommandResult {
   Identities(Vec<Identity>),
   Secret(Secret),
   SecretVersion(SecretVersion),
+  ClipboardProviding(ClipboardProviding),
   SecretStoreError(SecretStoreError),
   ServiceError(ServiceError),
 }
@@ -203,6 +205,27 @@ impl From<ServiceResult<Vec<Event>>> for CommandResult {
   fn from(result: ServiceResult<Vec<Event>>) -> Self {
     match result {
       Ok(value) => CommandResult::Events(value),
+      Err(error) => CommandResult::ServiceError(error),
+    }
+  }
+}
+
+impl From<CommandResult> for ServiceResult<Option<ClipboardProviding>> {
+  fn from(result: CommandResult) -> Self {
+    match &result {
+      CommandResult::ClipboardProviding(clipboard_providing) => Ok(Some(clipboard_providing.clone())),
+      CommandResult::Void => Ok(None),
+      CommandResult::ServiceError(error) => Err(error.clone()),
+      _ => Err(ServiceError::IO("Invalid command result".to_string())),
+    }
+  }
+}
+
+impl From<ServiceResult<Option<ClipboardProviding>>> for CommandResult {
+  fn from(result: ServiceResult<Option<ClipboardProviding>>) -> Self {
+    match result {
+      Ok(Some(clipboard_providing)) => CommandResult::ClipboardProviding(clipboard_providing),
+      Ok(None) => CommandResult::Void,
       Err(error) => CommandResult::ServiceError(error),
     }
   }
