@@ -6,7 +6,7 @@ mod error;
 pub mod local;
 pub mod pw_generator;
 mod remote;
-mod secrets_provider;
+pub mod secrets_provider;
 
 #[cfg(unix)]
 pub mod unix;
