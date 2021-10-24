@@ -27,7 +27,7 @@ impl SelectionProvider for SecretsProvider {
   fn current_selection(&self) -> Option<ClipboardProviding> {
     self
       .properties_stack
-      .first()
+      .last()
       .cloned()
       .map(|property| ClipboardProviding {
         store_name: self.store_name.clone(),
