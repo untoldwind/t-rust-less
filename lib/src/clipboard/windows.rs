@@ -1,5 +1,5 @@
 use super::{ClipboardResult, SelectionProvider};
-use crate::api::EventHub;
+use crate::api::{ClipboardProviding, EventHub};
 use std::sync::Arc;
 
 pub struct Clipboard {}
@@ -22,7 +22,7 @@ impl Clipboard {
     unimplemented!()
   }
 
-  pub fn currently_providing(&self) -> Option<String> {
+  pub fn currently_providing(&self) -> Option<ClipboardProviding> {
     unimplemented!()
   }
 
