@@ -216,8 +216,8 @@ impl TrustlessService for LocalTrustlessService {
     {
       let store = self.open_store(store_name)?;
       let secret_version = store.get_version(block_id)?;
-      let secret_name = secret_version.name.clone();
-      let secret_provider = SecretsProvider::new(secret_version, properties);
+      let secret_provider =
+        SecretsProvider::new(store_name.to_string(), block_id.to_string(), secret_version, properties);
       let mut clipboard = self.clipboard.write()?;
 
       clipboard.destroy()?;
@@ -227,9 +227,6 @@ impl TrustlessService for LocalTrustlessService {
       let next_clipboard = Arc::new(ClipboardHolder::Providing(Clipboard::new(
         display_name,
         secret_provider,
-        store_name.to_string(),
-        block_id.to_string(),
-        secret_name,
         self.event_hub.clone(),
       )?));
       *clipboard = next_clipboard.clone();

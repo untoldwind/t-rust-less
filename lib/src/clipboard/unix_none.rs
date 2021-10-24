@@ -8,8 +8,6 @@ impl Clipboard {
   pub fn new<T>(
     _display_name: &str,
     _selection_provider: T,
-    _store_name: String,
-    _secret_id: String,
     _event_hub: Arc<dyn EventHub>,
   ) -> ClipboardResult<Clipboard>
   where

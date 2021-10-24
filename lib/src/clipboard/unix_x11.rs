@@ -1,14 +1,14 @@
 #![cfg(all(unix, feature = "with_x11"))]
 
 use crate::api::{ClipboardProviding, EventData, EventHub};
-use crate::clipboard::debounce::SelectionDebounce;
 use crate::clipboard::{ClipboardError, ClipboardResult, SelectionProvider};
-use log::debug;
+use log::{debug, error};
 use std::ffi::CString;
 use std::mem::MaybeUninit;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 use std::thread;
+use std::time::SystemTime;
 use x11::xlib;
 use zeroize::Zeroize;
 
@@ -21,27 +21,51 @@ struct Atoms {
   pub utf8_string: xlib::Atom,
 }
 
+struct SelectionProviderHolder {
+  provider: Box<dyn SelectionProvider>,
+  last_moved: Option<SystemTime>,
+  last_content: Option<String>,
+}
+
+impl SelectionProviderHolder {
+  fn get_value(&mut self) -> Option<String> {
+    let now = SystemTime::now();
+
+    if self
+      .last_moved
+      .and_then(|last| now.duration_since(last).ok())
+      .filter(|elapsed| elapsed.as_millis() < 200)
+      .is_none()
+    {
+      self.last_content = self.provider.get_selection_value();
+      self.last_moved.replace(now);
+      self.provider.next_selection();
+    }
+
+    self.last_content.clone()
+  }
+}
+
+impl Drop for SelectionProviderHolder {
+  fn drop(&mut self) {
+    self.last_content.zeroize()
+  }
+}
+
 struct Context {
   display: *mut xlib::Display,
   window: xlib::Window,
   atoms: Atoms,
   open: AtomicBool,
-  provider: Arc<RwLock<dyn SelectionProvider>>,
-  store_name: String,
-  block_id: String,
-  secret_name: String,
+  provider_holder: RwLock<SelectionProviderHolder>,
   event_hub: Arc<dyn EventHub>,
 }
 
 impl Context {
-  fn new(
-    display_name: &str,
-    store_name: String,
-    block_id: String,
-    secret_name: String,
-    event_hub: Arc<dyn EventHub>,
-    provider: Arc<RwLock<dyn SelectionProvider>>,
-  ) -> ClipboardResult<Self> {
+  fn new<T>(display_name: &str, event_hub: Arc<dyn EventHub>, provider: T) -> ClipboardResult<Self>
+  where
+    T: SelectionProvider + 'static,
+  {
     unsafe {
       let c_display_name = CString::new(display_name)?;
       let display = xlib::XOpenDisplay(c_display_name.as_ptr());
@@ -84,10 +108,11 @@ impl Context {
         window,
         atoms,
         open: AtomicBool::new(true),
-        provider,
-        store_name,
-        block_id,
-        secret_name,
+        provider_holder: RwLock::new(SelectionProviderHolder {
+          provider: Box::new(provider),
+          last_moved: None,
+          last_content: None,
+        }),
         event_hub,
       })
     }
@@ -137,22 +162,12 @@ impl Context {
   }
 
   fn currently_providing(&self) -> Option<ClipboardProviding> {
-    self
-      .provider
-      .read()
-      .ok()?
-      .current_selection_name()
-      .map(|property| ClipboardProviding {
-        store_name: self.store_name.clone(),
-        block_id: self.block_id.clone(),
-        secret_name: self.secret_name.clone(),
-        property,
-      })
+    self.provider_holder.read().ok()?.provider.current_selection()
   }
 
   fn provide_next(&self) {
-    if let Ok(mut provider) = self.provider.write() {
-      provider.get_selection();
+    if let Ok(mut provider_holder) = self.provider_holder.write() {
+      provider_holder.get_value();
     }
   }
 }
@@ -175,25 +190,16 @@ pub struct Clipboard {
 }
 
 impl Clipboard {
-  pub fn new<T>(
-    display_name: &str,
-    selection_provider: T,
-    store_name: String,
-    block_id: String,
-    secret_name: String,
-    event_hub: Arc<dyn EventHub>,
-  ) -> ClipboardResult<Clipboard>
+  pub fn new<T>(display_name: &str, selection_provider: T, event_hub: Arc<dyn EventHub>) -> ClipboardResult<Clipboard>
   where
     T: SelectionProvider + 'static,
   {
-    let context = Arc::new(Context::new(
-      display_name,
-      store_name,
-      block_id,
-      secret_name,
-      event_hub,
-      Arc::new(RwLock::new(selection_provider)),
-    )?);
+    match selection_provider.current_selection() {
+      Some(providing) => event_hub.send(EventData::ClipboardProviding(providing)),
+      None => return Err(ClipboardError("Empty provider".to_string())),
+    };
+
+    let context = Arc::new(Context::new(display_name, event_hub, selection_provider)?);
 
     let handle = thread::spawn({
       let cloned = context.clone();
@@ -238,8 +244,6 @@ impl Drop for Clipboard {
 }
 
 fn run(context: Arc<Context>) {
-  let mut debounce = SelectionDebounce::new(context.provider.clone());
-
   unsafe {
     if !context.own_selection() {
       return;
@@ -280,38 +284,37 @@ fn run(context: Arc<Context>) {
               atoms.len() as i32,
             );
           } else if selection.target == context.atoms.string || selection.target == context.atoms.utf8_string {
-            match debounce.get_selection() {
-              Some(mut value) => {
-                if let Some(property) = debounce.current_selection_name() {
-                  context
-                    .event_hub
-                    .send(EventData::ClipboardProviding(ClipboardProviding {
-                      store_name: context.store_name.clone(),
-                      block_id: context.block_id.clone(),
-                      secret_name: context.secret_name.clone(),
-                      property,
-                    }));
-                }
-                let content: &[u8] = value.as_ref();
+            match context.provider_holder.write() {
+              Ok(mut provider_holder) => {
+                match provider_holder.get_value() {
+                  Some(mut value) => {
+                    let content: &[u8] = value.as_ref();
 
-                xlib::XChangeProperty(
-                  context.display,
-                  selection.requestor,
-                  selection.property,
-                  selection.target,
-                  8,
-                  xlib::PropModeReplace,
-                  content.as_ptr(),
-                  content.len() as i32,
-                );
-                value.zeroize();
+                    xlib::XChangeProperty(
+                      context.display,
+                      selection.requestor,
+                      selection.property,
+                      selection.target,
+                      8,
+                      xlib::PropModeReplace,
+                      content.as_ptr(),
+                      content.len() as i32,
+                    );
+                    value.zeroize();
+                  }
+                  None => {
+                    context.clear_selection();
+                    debug!("Last part: Reply with NONE");
+                    selection.property = 0;
+                  }
+                };
               }
-              None => {
+              Err(err) => {
+                error!("Unable to lock provider {}", err);
                 context.clear_selection();
-                debug!("Last part: Reply with NONE");
                 selection.property = 0;
               }
-            }
+            };
           } else {
             debug!("Reply with NONE");
             selection.property = 0;
