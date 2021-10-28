@@ -32,20 +32,20 @@ log = "0"
 sublime_fuzzy = "0"
 itertools = "0"
 toml = "0"
-dirs = "2"
+dirs = "4"
 futures = "0.3"
 tokio = { version = "1", features = ["net", "rt" ] }
 tokio-util = { version = "0.6", features = ["compat"] }
 zeroize = "1"
 zeroize_derive  = "1"
-rsa = { version = "0.4", optional = true }
+rsa = { version = "0.5", optional = true }
 aes-gcm = { version = "0", optional = true }
 rmp-serde = "0"
 
 [dev-dependencies]
 tempfile = "3"
 spectral = "0"
-quickcheck = "0"
+quickcheck = "1"
 byteorder = "1"
 hex-literal = "0"
 

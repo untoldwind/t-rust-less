@@ -7,10 +7,11 @@ use crate::{
 use aes_gcm::aead::generic_array::GenericArray;
 use aes_gcm::aead::{Aead, NewAead};
 use aes_gcm::Aes256Gcm;
+use core::convert::TryFrom;
 use rand::{thread_rng, RngCore};
-use rsa::{
-  PaddingScheme, PrivateKeyEncoding, PublicKey as PublicKeyForRSA, PublicKeyEncoding, RSAPrivateKey, RSAPublicKey,
-};
+use rsa::pkcs1::{FromRsaPrivateKey, ToRsaPrivateKey};
+use rsa::pkcs8::{FromPublicKey, SubjectPublicKeyInfo, ToPublicKey};
+use rsa::{PaddingScheme, PublicKey as RSAPublicKeyTrait, RsaPrivateKey, RsaPublicKey};
 
 const RSA_KEY_BITS: usize = 4096;
 
@@ -30,16 +31,9 @@ impl Cipher for RustRsaAesGcmCipher {
 
   fn generate_key_pair(&self) -> SecretStoreResult<(PublicKey, PrivateKey)> {
     let mut rng = thread_rng();
-    let private = RSAPrivateKey::new(&mut rng, RSA_KEY_BITS)?;
-    let private_der = SecretBytes::from(
-      private
-        .to_pkcs1()
-        .map_err(|e| SecretStoreError::Cipher(format!("Pkcs1 export: {}", e)))?,
-    );
-    let public_der = private
-      .to_public_key()
-      .to_pkcs8()
-      .map_err(|e| SecretStoreError::Cipher(format!("Pkcs1 export: {}", e)))?;
+    let private = RsaPrivateKey::new(&mut rng, RSA_KEY_BITS)?;
+    let private_der = SecretBytes::from_secured(private.to_pkcs1_der()?.as_der());
+    let public_der = private.to_public_key().to_public_key_der()?.as_ref().to_vec();
 
     Ok((public_der, private_der))
   }
@@ -94,7 +88,12 @@ impl Cipher for RustRsaAesGcmCipher {
     let mut recipient_keys = header_builder.init_recipients(recipients.len() as u32);
 
     for (idx, (recipient_id, recipient_public_key)) in recipients.iter().enumerate() {
-      let public_key = RSAPublicKey::from_pkcs8(recipient_public_key)?;
+      // Note: Parameter check in PKCS8 is slightly too strict and incompatible with previous versions, so this patch becomes necessary
+      let mut s = SubjectPublicKeyInfo::try_from(recipient_public_key.as_ref())?;
+      if s.algorithm.parameters == None {
+        s.algorithm.parameters = Some(rsa::pkcs1::der::asn1::Null.into());
+      }
+      let public_key = RsaPublicKey::from_spki(s)?;
 
       let crypled_key_buffer = public_key.encrypt(
         &mut rng,
@@ -133,7 +132,7 @@ impl Cipher for RustRsaAesGcmCipher {
         continue;
       }
       let crypted_key = recipient.get_crypted_key()?;
-      let private_key = RSAPrivateKey::from_pkcs1(&user.1.borrow())?;
+      let private_key = RsaPrivateKey::from_pkcs1_der(&user.1.borrow())?;
       let seal_key = SecretBytes::from(private_key.decrypt(PaddingScheme::new_oaep::<sha1::Sha1>(), crypted_key)?);
 
       let cipher = Aes256Gcm::new(GenericArray::from_slice(&seal_key.borrow()));

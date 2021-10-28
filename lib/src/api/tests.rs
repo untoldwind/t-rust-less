@@ -13,7 +13,7 @@ use super::{Command, PasswordGeneratorCharsParam, PasswordGeneratorParam, Passwo
 use crate::memguard::ZeroizeBytesBuffer;
 
 impl Arbitrary for Identity {
-  fn arbitrary<G: Gen>(g: &mut G) -> Self {
+  fn arbitrary(g: &mut Gen) -> Self {
     Identity {
       id: String::arbitrary(g),
       name: String::arbitrary(g),
@@ -24,13 +24,13 @@ impl Arbitrary for Identity {
 }
 
 impl Arbitrary for ZeroizeDateTime {
-  fn arbitrary<G: Gen>(g: &mut G) -> Self {
+  fn arbitrary(g: &mut Gen) -> Self {
     ZeroizeDateTime::from(Utc.timestamp_millis(u32::arbitrary(g) as i64))
   }
 }
 
 impl Arbitrary for Status {
-  fn arbitrary<G: Gen>(g: &mut G) -> Self {
+  fn arbitrary(g: &mut Gen) -> Self {
     Status {
       locked: bool::arbitrary(g),
       unlocked_by: Option::arbitrary(g),
@@ -42,8 +42,8 @@ impl Arbitrary for Status {
 }
 
 impl Arbitrary for SecretType {
-  fn arbitrary<G: Gen>(g: &mut G) -> Self {
-    match g.next_u32() % 6 {
+  fn arbitrary(g: &mut Gen) -> Self {
+    match g.choose(&[0, 1, 2, 3, 4, 5]).unwrap() {
       0 => SecretType::Login,
       1 => SecretType::Note,
       2 => SecretType::Licence,
@@ -55,7 +55,7 @@ impl Arbitrary for SecretType {
 }
 
 impl Arbitrary for SecretListFilter {
-  fn arbitrary<G: Gen>(g: &mut G) -> Self {
+  fn arbitrary(g: &mut Gen) -> Self {
     SecretListFilter {
       url: Option::arbitrary(g),
       tag: Option::arbitrary(g),
@@ -67,7 +67,7 @@ impl Arbitrary for SecretListFilter {
 }
 
 impl Arbitrary for SecretEntry {
-  fn arbitrary<G: Gen>(g: &mut G) -> Self {
+  fn arbitrary(g: &mut Gen) -> Self {
     SecretEntry {
       id: String::arbitrary(g),
       name: String::arbitrary(g),
@@ -81,7 +81,7 @@ impl Arbitrary for SecretEntry {
 }
 
 impl Arbitrary for SecretEntryMatch {
-  fn arbitrary<G: Gen>(g: &mut G) -> Self {
+  fn arbitrary(g: &mut Gen) -> Self {
     SecretEntryMatch {
       entry: SecretEntry::arbitrary(g),
       name_score: isize::arbitrary(g),
@@ -93,7 +93,7 @@ impl Arbitrary for SecretEntryMatch {
 }
 
 impl Arbitrary for SecretList {
-  fn arbitrary<G: Gen>(g: &mut G) -> Self {
+  fn arbitrary(g: &mut Gen) -> Self {
     SecretList {
       all_tags: Vec::arbitrary(g),
       entries: vec![SecretEntryMatch::arbitrary(g)],
@@ -102,7 +102,7 @@ impl Arbitrary for SecretList {
 }
 
 impl Arbitrary for SecretAttachment {
-  fn arbitrary<G: Gen>(g: &mut G) -> Self {
+  fn arbitrary(g: &mut Gen) -> Self {
     SecretAttachment {
       name: String::arbitrary(g),
       mime_type: String::arbitrary(g),
@@ -112,7 +112,7 @@ impl Arbitrary for SecretAttachment {
 }
 
 impl Arbitrary for SecretProperties {
-  fn arbitrary<G: Gen>(g: &mut G) -> Self {
+  fn arbitrary(g: &mut Gen) -> Self {
     let keys = Vec::<String>::arbitrary(g);
     let mut properties = BTreeMap::new();
 
@@ -125,7 +125,7 @@ impl Arbitrary for SecretProperties {
 }
 
 impl Arbitrary for SecretVersion {
-  fn arbitrary<G: Gen>(g: &mut G) -> Self {
+  fn arbitrary(g: &mut Gen) -> Self {
     SecretVersion {
       secret_id: String::arbitrary(g),
       secret_type: SecretType::arbitrary(g),
@@ -142,7 +142,7 @@ impl Arbitrary for SecretVersion {
 }
 
 impl Arbitrary for SecretVersionRef {
-  fn arbitrary<G: Gen>(g: &mut G) -> Self {
+  fn arbitrary(g: &mut Gen) -> Self {
     SecretVersionRef {
       block_id: String::arbitrary(g),
       timestamp: ZeroizeDateTime::arbitrary(g),
@@ -151,10 +151,12 @@ impl Arbitrary for SecretVersionRef {
 }
 
 impl Arbitrary for PasswordStrength {
-  fn arbitrary<G: Gen>(g: &mut G) -> Self {
+  fn arbitrary(g: &mut Gen) -> Self {
+    let entropy = f64::arbitrary(g);
+    let crack_time = f64::arbitrary(g);
     PasswordStrength {
-      entropy: f64::arbitrary(g),
-      crack_time: f64::arbitrary(g),
+      entropy: if entropy.is_finite() { entropy } else { 0.0 },
+      crack_time: if crack_time.is_finite() { crack_time } else { 0.0 },
       crack_time_display: String::arbitrary(g),
       score: u8::arbitrary(g),
     }
@@ -162,7 +164,7 @@ impl Arbitrary for PasswordStrength {
 }
 
 impl Arbitrary for Secret {
-  fn arbitrary<G: Gen>(g: &mut G) -> Self {
+  fn arbitrary(g: &mut Gen) -> Self {
     Secret {
       id: String::arbitrary(g),
       secret_type: SecretType::arbitrary(g),
@@ -175,7 +177,7 @@ impl Arbitrary for Secret {
 }
 
 impl Arbitrary for StoreConfig {
-  fn arbitrary<G: Gen>(g: &mut G) -> Self {
+  fn arbitrary(g: &mut Gen) -> Self {
     StoreConfig {
       name: String::arbitrary(g),
       store_url: String::arbitrary(g),
@@ -187,8 +189,8 @@ impl Arbitrary for StoreConfig {
 }
 
 impl Arbitrary for PasswordGeneratorParam {
-  fn arbitrary<G: Gen>(g: &mut G) -> Self {
-    match g.next_u32() % 2 {
+  fn arbitrary(g: &mut Gen) -> Self {
+    match g.choose(&[0, 1]).unwrap() {
       0 => PasswordGeneratorParam::Chars(PasswordGeneratorCharsParam {
         num_chars: u8::arbitrary(g),
         include_uppers: bool::arbitrary(g),
@@ -209,14 +211,19 @@ impl Arbitrary for PasswordGeneratorParam {
 }
 
 impl Arbitrary for SecretBytes {
-  fn arbitrary<G: Gen>(g: &mut G) -> Self {
+  fn arbitrary(g: &mut Gen) -> Self {
     SecretBytes::from(Vec::arbitrary(g))
   }
 }
 
 impl Arbitrary for Command {
-  fn arbitrary<G: Gen>(g: &mut G) -> Self {
-    match g.next_u32() % 24 {
+  fn arbitrary(g: &mut Gen) -> Self {
+    match g
+      .choose(&[
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+      ])
+      .unwrap()
+    {
       0 => Command::ListStores,
       1 => Command::UpsertStoreConfig(StoreConfig::arbitrary(g)),
       2 => Command::DeleteStoreConfig(String::arbitrary(g)),
@@ -278,7 +285,7 @@ impl Arbitrary for Command {
 #[test]
 fn identity_capnp_serialization() {
   fn check_serialize(identity: Identity) -> bool {
-    let mut buf = ZeroizeBytesBuffer::with_capacity(1024);
+    let mut buf = ZeroizeBytesBuffer::with_capacity(8192);
     rmp_serde::encode::write_named(&mut buf, &identity).unwrap();
     let deserialized: Identity = rmp_serde::from_read_ref(&buf).unwrap();
 
@@ -291,7 +298,7 @@ fn identity_capnp_serialization() {
 #[test]
 fn status_capnp_serialization() {
   fn check_serialize(status: Status) -> bool {
-    let mut buf = ZeroizeBytesBuffer::with_capacity(1024);
+    let mut buf = ZeroizeBytesBuffer::with_capacity(8192);
     rmp_serde::encode::write_named(&mut buf, &status).unwrap();
     let deserialized: Status = rmp_serde::from_read_ref(&buf).unwrap();
 
@@ -304,7 +311,7 @@ fn status_capnp_serialization() {
 #[test]
 fn secret_list_filter_capnp_serialization() {
   fn check_serialize(filter: SecretListFilter) -> bool {
-    let mut buf = ZeroizeBytesBuffer::with_capacity(1024);
+    let mut buf = ZeroizeBytesBuffer::with_capacity(8192);
     rmp_serde::encode::write_named(&mut buf, &filter).unwrap();
     let deserialized: SecretListFilter = rmp_serde::from_read_ref(&buf).unwrap();
 
@@ -317,7 +324,7 @@ fn secret_list_filter_capnp_serialization() {
 #[test]
 fn secret_list_capnp_serialization() {
   fn check_serialize(list: SecretList) -> bool {
-    let mut buf = ZeroizeBytesBuffer::with_capacity(1024);
+    let mut buf = ZeroizeBytesBuffer::with_capacity(8192);
     rmp_serde::encode::write_named(&mut buf, &list).unwrap();
     let deserialized: SecretList = rmp_serde::from_read_ref(&buf).unwrap();
 
@@ -330,7 +337,7 @@ fn secret_list_capnp_serialization() {
 #[test]
 fn secret_version_capnp_serialization() {
   fn check_serialize(secret_version: SecretVersion) -> bool {
-    let mut buf = ZeroizeBytesBuffer::with_capacity(1024);
+    let mut buf = ZeroizeBytesBuffer::with_capacity(8192);
     rmp_serde::encode::write_named(&mut buf, &secret_version).unwrap();
     let deserialized: SecretVersion = rmp_serde::from_read_ref(&buf).unwrap();
 
@@ -341,9 +348,22 @@ fn secret_version_capnp_serialization() {
 }
 
 #[test]
+fn password_strength_capnp_serialization() {
+  fn check_serialize(password_strength: PasswordStrength) -> bool {
+    let mut buf = ZeroizeBytesBuffer::with_capacity(8192);
+    rmp_serde::encode::write_named(&mut buf, &password_strength).unwrap();
+    let deserialized: PasswordStrength = rmp_serde::from_read_ref(&buf).unwrap();
+
+    password_strength == deserialized
+  }
+
+  quickcheck(check_serialize as fn(PasswordStrength) -> bool);
+}
+
+#[test]
 fn secret_capnp_serialization() {
   fn check_serialize(secret: Secret) -> bool {
-    let mut buf = ZeroizeBytesBuffer::with_capacity(1024);
+    let mut buf = ZeroizeBytesBuffer::with_capacity(8192);
     rmp_serde::encode::write_named(&mut buf, &secret).unwrap();
     let deserialized: Secret = rmp_serde::from_read_ref(&buf).unwrap();
 
@@ -356,7 +376,7 @@ fn secret_capnp_serialization() {
 #[test]
 fn command_serialization() {
   fn check_serialize(command: Command) -> bool {
-    let mut buf = ZeroizeBytesBuffer::with_capacity(1024);
+    let mut buf = ZeroizeBytesBuffer::with_capacity(8192);
     rmp_serde::encode::write_named(&mut buf, &command).unwrap();
     let deserialized: Command = rmp_serde::from_read_ref(&buf).unwrap();
 

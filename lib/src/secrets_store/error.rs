@@ -66,6 +66,12 @@ error_convert_from!(StoreError, SecretStoreError, BlockStore(direct));
 error_convert_from!(rsa::errors::Error, SecretStoreError, Cipher(display));
 #[cfg(feature = "rust_crypto")]
 error_convert_from!(aes_gcm::Error, SecretStoreError, Cipher(display));
+#[cfg(feature = "rust_crypto")]
+error_convert_from!(rsa::pkcs1::Error, SecretStoreError, Cipher(display));
+#[cfg(feature = "rust_crypto")]
+error_convert_from!(rsa::pkcs8::Error, SecretStoreError, Cipher(display));
+#[cfg(feature = "rust_crypto")]
+error_convert_from!(rsa::pkcs1::der::Error, SecretStoreError, Cipher(display));
 error_convert_from!(rmp_serde::encode::Error, SecretStoreError, IO(display));
 error_convert_from!(rmp_serde::decode::Error, SecretStoreError, IO(display));
 
