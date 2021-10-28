@@ -13,7 +13,12 @@ pub struct SecretsProvider {
 
 impl SecretsProvider {
   pub fn new(store_name: String, block_id: String, secret_version: SecretVersion, properties: &[&str]) -> Self {
-    let properties_stack = properties.iter().rev().map(ToString::to_string).collect();
+    let properties_stack = properties
+      .iter()
+      .filter(|p| secret_version.properties.has_non_empty(p))
+      .rev()
+      .map(ToString::to_string)
+      .collect();
     SecretsProvider {
       store_name,
       block_id,

@@ -285,6 +285,13 @@ impl SecretProperties {
     SecretProperties(properties)
   }
 
+  pub fn has_non_empty(&self, name: &str) -> bool {
+    match self.0.get(name) {
+      Some(value) if value.len() > 0 => true,
+      _ => false,
+    }
+  }
+
   pub fn get(&self, name: &str) -> Option<&String> {
     self.0.get(name)
   }
