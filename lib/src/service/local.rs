@@ -5,7 +5,7 @@ use crate::clipboard::Clipboard;
 use crate::secrets_store::{open_secrets_store, SecretStoreResult, SecretsStore};
 use crate::service::config::{read_config, write_config, Config};
 use crate::service::error::{ServiceError, ServiceResult};
-#[cfg(unix)]
+#[cfg(any(unix, windows))]
 use crate::service::secrets_provider::SecretsProvider;
 use crate::service::{ClipboardControl, TrustlessService};
 use chrono::Utc;
@@ -212,7 +212,7 @@ impl TrustlessService for LocalTrustlessService {
     properties: &[&str],
     display_name: &str,
   ) -> ServiceResult<Arc<dyn ClipboardControl>> {
-    #[cfg(unix)]
+    #[cfg(any(unix, windows))]
     {
       let store = self.open_store(store_name)?;
       let secret_version = store.get_version(block_id)?;
@@ -233,7 +233,7 @@ impl TrustlessService for LocalTrustlessService {
 
       Ok(next_clipboard)
     }
-    #[cfg(not(unix))]
+    #[cfg(not(any(unix, windows)))]
     {
       Err(ServiceError::NotAvailable)
     }

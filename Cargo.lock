@@ -1848,6 +1848,7 @@ dependencies = [
  "t-rust-less-lib",
  "tempfile",
  "url",
+ "zeroize",
 ]
 
 [[package]]

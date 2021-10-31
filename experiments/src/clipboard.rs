@@ -5,6 +5,7 @@ use std::thread;
 use std::time::Duration;
 use t_rust_less_lib::api::{ClipboardProviding, EventData, EventHub};
 use t_rust_less_lib::clipboard::{Clipboard, SelectionProvider};
+use zeroize::Zeroizing;
 
 struct DummyProvider {
   counter: u32,
@@ -24,10 +25,10 @@ impl SelectionProvider for DummyProvider {
     }
   }
 
-  fn get_selection_value(&self) -> Option<String> {
+  fn get_selection_value(&self) -> Option<Zeroizing<String>> {
     if self.counter < 10 {
       info!("Providing {}", self.counter);
-      Some(format!("Something {}", self.counter))
+      Some(Zeroizing::new(format!("Something {}", self.counter)))
     } else {
       None
     }

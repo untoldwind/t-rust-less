@@ -3,6 +3,7 @@ use crate::clipboard::SelectionProvider;
 use crate::otp::OTPAuthUrl;
 use log::{error, info};
 use std::time::{SystemTime, UNIX_EPOCH};
+use zeroize::Zeroizing;
 
 pub struct SecretsProvider {
   store_name: String,
@@ -42,7 +43,7 @@ impl SelectionProvider for SecretsProvider {
       })
   }
 
-  fn get_selection_value(&self) -> Option<String> {
+  fn get_selection_value(&self) -> Option<Zeroizing<String>> {
     let property = self.properties_stack.last()?;
     let value = self.secret_version.properties.get(property)?;
 
@@ -51,7 +52,7 @@ impl SelectionProvider for SecretsProvider {
       match OTPAuthUrl::parse(value) {
         Ok(otpauth) => {
           let (token, _) = otpauth.generate(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs());
-          Some(token)
+          Some(Zeroizing::new(token))
         }
         Err(error) => {
           error!("Invalid OTPAuth url: {}", error);
@@ -60,7 +61,7 @@ impl SelectionProvider for SecretsProvider {
       }
     } else {
       info!("Providing {} of {}", property, self.secret_version.secret_id);
-      Some(value.clone())
+      Some(Zeroizing::new(value.clone()))
     }
   }
 
