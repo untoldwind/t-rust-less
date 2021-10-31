@@ -10,7 +10,7 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::SystemTime;
 use x11::xlib;
-use zeroize::Zeroize;
+use zeroize::{Zeroize, Zeroizing};
 
 #[derive(Debug)]
 struct Atoms {
@@ -24,11 +24,11 @@ struct Atoms {
 struct SelectionProviderHolder {
   provider: Box<dyn SelectionProvider>,
   last_moved: Option<SystemTime>,
-  last_content: Option<String>,
+  last_content: Option<Zeroizing<String>>,
 }
 
 impl SelectionProviderHolder {
-  fn get_value(&mut self) -> Option<String> {
+  fn get_value(&mut self) -> Option<Zeroizing<String>> {
     let now = SystemTime::now();
 
     if self
