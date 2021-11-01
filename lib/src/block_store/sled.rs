@@ -134,4 +134,12 @@ impl BlockStore for SledBlockStore {
     self.change_logs.flush()?;
     Ok(())
   }
+
+  fn update_change_log(&self, change_log: ChangeLog) -> StoreResult<()> {
+    let raw = rmp_serde::to_vec(&change_log.changes)?;
+    self.change_logs.insert(change_log.node.as_str(), raw)?;
+    self.change_logs.flush()?;
+
+    Ok(())
+  }
 }

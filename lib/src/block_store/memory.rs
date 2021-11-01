@@ -117,4 +117,12 @@ impl BlockStore for MemoryBlockStore {
     }
     Ok(())
   }
+
+  fn update_change_log(&self, change_log: ChangeLog) -> StoreResult<()> {
+    let mut stored_changes = self.changes.write()?;
+
+    stored_changes.insert(change_log.node, change_log.changes);
+
+    Ok(())
+  }
 }

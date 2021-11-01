@@ -12,6 +12,7 @@ mod memory;
 mod model;
 #[cfg(feature = "sled")]
 mod sled;
+mod sync;
 
 #[cfg(test)]
 mod tests;
@@ -106,6 +107,11 @@ pub trait BlockStore: Send + Sync {
   /// other clients will notice the new data blocks.
   ///
   fn commit(&self, changes: &[Change]) -> StoreResult<()>;
+
+  /// Update changelog of other nodes.
+  ///
+  /// This is intended for store synchronization only.
+  fn update_change_log(&self, change_log: ChangeLog) -> StoreResult<()>;
 }
 
 pub fn open_block_store(url: &str, node_id: &str) -> StoreResult<Arc<dyn BlockStore>> {

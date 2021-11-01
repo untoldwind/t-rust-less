@@ -1,4 +1,7 @@
-use std::{sync::mpsc, thread, time::Duration};
+use std::{
+  sync::Arc,
+  thread::{self, JoinHandle},
+};
 
 use dropbox_sdk::{
   default_client::NoauthDefaultClient,
@@ -30,14 +33,18 @@ pub struct DropboxInitializer {
   name: String,
   oauth2_flow: Oauth2Type,
   pub auth_url: Url,
-  auth_code_receiver: mpsc::Receiver<Result<String, String>>,
-  server_shutdown: mpsc::Sender<()>,
+  server: Arc<Server>,
+  join_handle: Option<JoinHandle<Result<String, String>>>,
 }
 
 impl DropboxInitializer {
-  pub fn wait_for_authentication(&self) -> StoreResult<String> {
-    match self.auth_code_receiver.recv()? {
-      Ok(authcode_url) => {
+  pub fn wait_for_authentication(&mut self) -> StoreResult<String> {
+    let join_handle = match self.join_handle.take() {
+      Some(join_handle) => join_handle,
+      None => return Err(StoreError::IO("Already waiting".to_string())),
+    };
+    match join_handle.join() {
+      Ok(Ok(authcode_url)) => {
         let auth_code = Url::parse(&authcode_url)?
           .query_pairs()
           .find_map(|(key, value)| if key == "code" { Some(value.to_string()) } else { None })
@@ -55,9 +62,13 @@ impl DropboxInitializer {
 
         Ok(format!("dropbox://{}@dropbox/{}", token, self.name))
       }
-      Err(err) => {
+      Ok(Err(err)) => {
         error!("Failed receiving dropbox authcode {}", err);
         Err(StoreError::IO(err))
+      }
+      Err(err) => {
+        error!("Failed receiving dropbox authcode {:?}", err);
+        Err(StoreError::IO(format!("{:?}", err)))
       }
     }
   }
@@ -65,7 +76,7 @@ impl DropboxInitializer {
 
 impl Drop for DropboxInitializer {
   fn drop(&mut self) {
-    self.server_shutdown.send(()).ok();
+    self.server.unblock();
   }
 }
 
@@ -74,55 +85,33 @@ pub fn initialize_store(name: &str) -> StoreResult<DropboxInitializer> {
   let auth_url = AuthorizeUrlBuilder::new(APP_KEY, &oauth2_flow)
     .redirect_uri(REDIRECT_URL)
     .build();
-  let (auth_code_receiver, server_shutdown) = start_authcode_server();
+  let (server, join_handle) = start_authcode_server()?;
 
   Ok(DropboxInitializer {
     name: name.to_string(),
     oauth2_flow,
     auth_url,
-    auth_code_receiver,
-    server_shutdown,
+    server,
+    join_handle: Some(join_handle),
   })
 }
 
-pub fn start_authcode_server() -> (mpsc::Receiver<Result<String, String>>, mpsc::Sender<()>) {
-  let (tx_shutdown, rx_shutdown) = mpsc::channel::<()>();
-  let (tx, rx) = mpsc::channel::<Result<String, String>>();
+pub fn start_authcode_server() -> StoreResult<(Arc<Server>, JoinHandle<Result<String, String>>)> {
+  let server = Arc::new(Server::http("127.0.0.1:9898").map_err(|e| StoreError::IO(format!("{}", e)))?);
+  let server_cloned = server.clone();
 
-  thread::spawn(move || {
-    let server = match Server::http("127.0.0.1:9898") {
-      Ok(server) => server,
-      Err(err) => {
-        tx.send(Err(format!("{}", err))).ok();
-        return;
-      }
-    };
-    let poll_duration = Duration::from_millis(100);
+  let join_handle = thread::spawn(move || {
+    let request = server_cloned.recv().map_err(|e| format!("{}", e))?;
+    let url = format!("{}{}", REDIRECT_URL, request.url());
+    request
+      .respond(
+        Response::from_data(AUTHCODE_RESPONSE_BODY)
+          .with_header(Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=UTF-8"[..]).unwrap()),
+      )
+      .ok();
 
-    loop {
-      if rx_shutdown.recv_timeout(poll_duration).is_ok() {
-        tx.send(Err("Shutdown requested".to_string())).ok();
-        return;
-      }
-      match server.try_recv() {
-        Ok(Some(request)) => {
-          tx.send(Ok(format!("{}{}", REDIRECT_URL, request.url()))).ok();
-          request
-            .respond(
-              Response::from_data(AUTHCODE_RESPONSE_BODY)
-                .with_header(Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=UTF-8"[..]).unwrap()),
-            )
-            .ok();
-          return;
-        }
-        Ok(None) => (),
-        Err(err) => {
-          tx.send(Err(format!("{}", err))).ok();
-          return;
-        }
-      }
-    }
+    Ok(url)
   });
 
-  (rx, tx_shutdown)
+  Ok((server, join_handle))
 }

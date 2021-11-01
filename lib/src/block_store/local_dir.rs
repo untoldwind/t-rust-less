@@ -233,4 +233,24 @@ impl BlockStore for LocalDirBlockStore {
 
     Ok(())
   }
+
+  fn update_change_log(&self, change_log: ChangeLog) -> StoreResult<()> {
+    let base_dir = self.base_dir.write()?;
+    let change_log_file_path = base_dir.join("logs").join(&change_log.node);
+    DirBuilder::new()
+      .recursive(true)
+      .create(change_log_file_path.parent().unwrap())?;
+    let mut change_log_file = File::create(change_log_file_path)?;
+
+    for change in change_log.changes {
+      match change.op {
+        Operation::Add => writeln!(change_log_file, "A {}", change.block)?,
+        Operation::Delete => writeln!(change_log_file, "D {}", change.block)?,
+      }
+    }
+    change_log_file.flush()?;
+    change_log_file.sync_all()?;
+
+    Ok(())
+  }
 }

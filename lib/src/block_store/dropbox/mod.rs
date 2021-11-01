@@ -164,6 +164,23 @@ impl BlockStore for DropboxBlockStore {
 
     Ok(())
   }
+
+  fn update_change_log(&self, change_log: ChangeLog) -> StoreResult<()> {
+    let mut buffer = Vec::with_capacity(8192);
+    for change in change_log.changes {
+      match change.op {
+        Operation::Add => writeln!(&mut buffer, "A {}", change.block)?,
+        Operation::Delete => writeln!(&mut buffer, "D {}", change.block)?,
+      }
+    }
+    files::upload(
+      &self.client,
+      &files::CommitInfo::new(format!("/{}/logs/{}", self.name, change_log.node)),
+      &buffer,
+    )??;
+
+    Ok(())
+  }
 }
 
 fn list_directory<T: UserAuthClient>(
