@@ -8,9 +8,8 @@ use log::error;
 use tiny_http::{Header, Response, Server};
 use url::Url;
 
-use crate::block_store::{StoreError, StoreResult};
+use crate::block_store::{dropbox::APP_KEY, StoreError, StoreResult};
 
-const APP_KEY: &str = "3q0sff542l6r3ly";
 const REDIRECT_URL: &str = "http://127.0.0.1:9898";
 
 const AUTHCODE_RESPONSE_BODY: &str = r#"
@@ -28,6 +27,7 @@ const AUTHCODE_RESPONSE_BODY: &str = r#"
 "#;
 
 pub struct DropboxInitializer {
+  name: String,
   oauth2_flow: Oauth2Type,
   pub auth_url: Url,
   auth_code_receiver: mpsc::Receiver<Result<String, String>>,
@@ -35,15 +35,13 @@ pub struct DropboxInitializer {
 }
 
 impl DropboxInitializer {
-  pub fn wait_for_authentication(&self) -> StoreResult<()> {
+  pub fn wait_for_authentication(&self) -> StoreResult<String> {
     match self.auth_code_receiver.recv()? {
       Ok(authcode_url) => {
-        println!("{}", authcode_url);
         let auth_code = Url::parse(&authcode_url)?
           .query_pairs()
           .find_map(|(key, value)| if key == "code" { Some(value.to_string()) } else { None })
           .ok_or_else(|| StoreError::IO("auth url does not contain code".to_string()))?;
-        println!("{}", auth_code);
         let mut authorization = Authorization::from_auth_code(
           APP_KEY.to_string(),
           self.oauth2_flow.clone(),
@@ -51,14 +49,17 @@ impl DropboxInitializer {
           Some(REDIRECT_URL.to_string()),
         );
         authorization.obtain_access_token(NoauthDefaultClient::default())?;
-        println!("{:?}", authorization.save());
+        let token = authorization
+          .save()
+          .ok_or_else(|| StoreError::IO("Failed to obtain dropbox token".to_string()))?;
+
+        Ok(format!("dropbox://{}@dropbox/{}", token, self.name))
       }
       Err(err) => {
         error!("Failed receiving dropbox authcode {}", err);
-        return Err(StoreError::IO(err));
+        Err(StoreError::IO(err))
       }
     }
-    Ok(())
   }
 }
 
@@ -68,7 +69,7 @@ impl Drop for DropboxInitializer {
   }
 }
 
-pub fn initialize_store() -> StoreResult<DropboxInitializer> {
+pub fn initialize_store(name: &str) -> StoreResult<DropboxInitializer> {
   let oauth2_flow = Oauth2Type::PKCE(PkceCode::new());
   let auth_url = AuthorizeUrlBuilder::new(APP_KEY, &oauth2_flow)
     .redirect_uri(REDIRECT_URL)
@@ -76,6 +77,7 @@ pub fn initialize_store() -> StoreResult<DropboxInitializer> {
   let (auth_code_receiver, server_shutdown) = start_authcode_server();
 
   Ok(DropboxInitializer {
+    name: name.to_string(),
     oauth2_flow,
     auth_url,
     auth_code_receiver,

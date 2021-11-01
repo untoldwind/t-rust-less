@@ -1,12 +1,10 @@
 use std::path::Path;
 
-use data_encoding::HEXLOWER;
-use sha2::{Digest, Sha256};
 use sled::transaction::ConflictableTransactionError;
 
 use crate::memguard::weak::ZeroingWords;
 
-use super::{BlockStore, Change, ChangeLog, StoreError, StoreResult};
+use super::{generate_block_id, BlockStore, Change, ChangeLog, StoreError, StoreResult};
 
 pub struct SledBlockStore {
   node_id: String,
@@ -33,14 +31,6 @@ impl SledBlockStore {
       blocks,
       change_logs,
     })
-  }
-
-  fn generate_id(data: &[u8]) -> String {
-    let mut hasher = Sha256::new();
-
-    hasher.update(data);
-
-    HEXLOWER.encode(&hasher.finalize())
   }
 }
 
@@ -106,7 +96,7 @@ impl BlockStore for SledBlockStore {
   }
 
   fn add_block(&self, raw: &[u8]) -> StoreResult<String> {
-    let block_id = Self::generate_id(raw);
+    let block_id = generate_block_id(raw);
     self.blocks.insert(&block_id, raw)?;
     self.blocks.flush()?;
     Ok(block_id)
@@ -141,6 +131,7 @@ impl BlockStore for SledBlockStore {
       tx.insert(self.node_id.as_str(), raw)?;
       Ok(())
     })?;
+    self.change_logs.flush()?;
     Ok(())
   }
 }

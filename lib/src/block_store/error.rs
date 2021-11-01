@@ -42,6 +42,12 @@ error_convert_from!(rmp_serde::decode::Error, StoreError, IO(display));
 error_convert_from!(std::sync::mpsc::RecvError, StoreError, IO(display));
 #[cfg(feature = "dropbox")]
 error_convert_from!(dropbox_sdk::Error, StoreError, IO(display));
+#[cfg(feature = "dropbox")]
+error_convert_from!(dropbox_sdk::files::ListFolderError, StoreError, IO(display));
+#[cfg(feature = "dropbox")]
+error_convert_from!(dropbox_sdk::files::ListFolderContinueError, StoreError, IO(display));
+#[cfg(feature = "dropbox")]
+error_convert_from!(dropbox_sdk::files::UploadError, StoreError, IO(display));
 
 impl<T> From<std::sync::PoisonError<T>> for StoreError {
   fn from(error: std::sync::PoisonError<T>) -> Self {

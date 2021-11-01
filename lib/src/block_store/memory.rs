@@ -1,10 +1,7 @@
 use std::collections::HashMap;
 use std::sync::RwLock;
 
-use data_encoding::HEXLOWER;
-use sha2::{Digest, Sha256};
-
-use super::{BlockStore, Change, ChangeLog, StoreError, StoreResult};
+use super::{generate_block_id, BlockStore, Change, ChangeLog, StoreError, StoreResult};
 use crate::memguard::weak::ZeroingWords;
 
 /// Memory based reference implementation of a block store.
@@ -29,14 +26,6 @@ impl MemoryBlockStore {
       blocks: RwLock::new(HashMap::new()),
       changes: RwLock::new(HashMap::new()),
     }
-  }
-
-  fn generate_id(data: &[u8]) -> String {
-    let mut hasher = Sha256::new();
-
-    hasher.update(data);
-
-    HEXLOWER.encode(&hasher.finalize())
   }
 }
 
@@ -96,7 +85,7 @@ impl BlockStore for MemoryBlockStore {
   }
 
   fn add_block(&self, raw: &[u8]) -> StoreResult<String> {
-    let block_id = Self::generate_id(raw);
+    let block_id = generate_block_id(raw);
     let mut blocks = self.blocks.write()?;
 
     blocks.insert(block_id.clone(), raw.into());

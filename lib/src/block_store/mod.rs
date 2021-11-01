@@ -1,4 +1,6 @@
 pub use self::model::*;
+use data_encoding::HEXLOWER;
+use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use url::Url;
 
@@ -120,6 +122,20 @@ pub fn open_block_store(url: &str, node_id: &str) -> StoreResult<Arc<dyn BlockSt
       store_url.to_file_path().unwrap(),
       node_id,
     )?)),
+    #[cfg(feature = "dropbox")]
+    "dropbox" => Ok(Arc::new(dropbox::DropboxBlockStore::new(
+      store_url.username(),
+      &store_url.path()[1..],
+      node_id,
+    )?)),
     _ => Err(StoreError::InvalidStoreUrl(url.to_string())),
   }
+}
+
+pub fn generate_block_id(data: &[u8]) -> String {
+  let mut hasher = Sha256::new();
+
+  hasher.update(data);
+
+  HEXLOWER.encode(&hasher.finalize())
 }

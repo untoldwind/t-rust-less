@@ -1,9 +1,7 @@
-use super::{BlockStore, Change, ChangeLog, Operation, StoreError, StoreResult};
+use super::{generate_block_id, BlockStore, Change, ChangeLog, Operation, StoreError, StoreResult};
 use crate::memguard::weak::ZeroingWords;
-use data_encoding::HEXLOWER;
 use log::warn;
 use log::{debug, info};
-use sha2::{Digest, Sha256};
 use std::fs::{metadata, read_dir, DirBuilder, File, OpenOptions};
 use std::io::prelude::*;
 use std::io::{self, BufReader, Seek, SeekFrom};
@@ -73,14 +71,6 @@ impl LocalDirBlockStore {
     }
 
     Ok(change_log)
-  }
-
-  fn generate_id(data: &[u8]) -> String {
-    let mut hasher = Sha256::new();
-
-    hasher.update(data);
-
-    HEXLOWER.encode(&hasher.finalize())
   }
 
   fn block_file(base_dir: &Path, block_id: &str) -> StoreResult<PathBuf> {
@@ -196,7 +186,7 @@ impl BlockStore for LocalDirBlockStore {
 
   fn add_block(&self, raw: &[u8]) -> StoreResult<String> {
     let base_dir = self.base_dir.write()?;
-    let block_id = Self::generate_id(raw);
+    let block_id = generate_block_id(raw);
     let block_file_path = Self::block_file(&base_dir, &block_id)?;
 
     DirBuilder::new()
