@@ -41,6 +41,9 @@ zeroize_derive  = "1"
 rsa = { version = "0.5", optional = true }
 aes-gcm = { version = "0", optional = true }
 rmp-serde = "0"
+dropbox-sdk = { version= "0", optional = true }
+sled = { version = "0", optional = true }
+tiny_http = { version = "0", optional = true }
 
 [dev-dependencies]
 tempfile = "3"
@@ -52,7 +55,8 @@ hex-literal = "0"
 [features]
 with_x11 = ["x11"]
 rust_crypto = ["rsa", "aes-gcm"]
-default = ["with_x11", "rust_crypto"]
+dropbox = [ "dropbox-sdk", "tiny_http" ]
+default = ["with_x11", "rust_crypto", "dropbox", "sled" ]
 
 [target.'cfg(unix)'.dependencies]
 x11 = { version = "2", features = ["xlib"], optional = true }

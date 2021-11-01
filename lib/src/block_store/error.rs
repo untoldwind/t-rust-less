@@ -32,9 +32,29 @@ pub type StoreResult<T> = Result<T, StoreError>;
 
 error_convert_from!(std::io::Error, StoreError, IO(display));
 error_convert_from!(url::ParseError, StoreError, InvalidStoreUrl(display));
+#[cfg(feature = "sled")]
+error_convert_from!(sled::Error, StoreError, IO(display));
+#[cfg(feature = "sled")]
+error_convert_from!(rmp_serde::encode::Error, StoreError, IO(display));
+#[cfg(feature = "sled")]
+error_convert_from!(rmp_serde::decode::Error, StoreError, IO(display));
+#[cfg(feature = "dropbox")]
+error_convert_from!(std::sync::mpsc::RecvError, StoreError, IO(display));
+#[cfg(feature = "dropbox")]
+error_convert_from!(dropbox_sdk::Error, StoreError, IO(display));
 
 impl<T> From<std::sync::PoisonError<T>> for StoreError {
   fn from(error: std::sync::PoisonError<T>) -> Self {
     StoreError::Mutex(format!("{}", error))
+  }
+}
+
+#[cfg(feature = "sled")]
+impl From<sled::transaction::TransactionError<StoreError>> for StoreError {
+  fn from(err: sled::transaction::TransactionError<StoreError>) -> Self {
+    match err {
+      sled::transaction::TransactionError::Abort(err) => err,
+      sled::transaction::TransactionError::Storage(err) => err.into(),
+    }
   }
 }

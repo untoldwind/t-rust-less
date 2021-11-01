@@ -199,3 +199,14 @@ fn test_memory_store() {
 
   common_store_tests(store);
 }
+
+#[cfg(feature = "sled")]
+#[test]
+fn test_sled_store() {
+  let tempdir = Builder::new().prefix("t-rust-less-test").tempdir().unwrap();
+  let url = format!("sled://{}", tempdir.path().to_string_lossy());
+
+  let store = open_block_store(&url, "node1").unwrap();
+
+  common_store_tests(store);
+}

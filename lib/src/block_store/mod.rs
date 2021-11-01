@@ -2,10 +2,14 @@ pub use self::model::*;
 use std::sync::Arc;
 use url::Url;
 
+#[cfg(feature = "dropbox")]
+pub mod dropbox;
 mod error;
 mod local_dir;
 mod memory;
 mod model;
+#[cfg(feature = "sled")]
+mod sled;
 
 #[cfg(test)]
 mod tests;
@@ -111,6 +115,11 @@ pub fn open_block_store(url: &str, node_id: &str) -> StoreResult<Arc<dyn BlockSt
       node_id,
     )?)),
     "memory" => Ok(Arc::new(memory::MemoryBlockStore::new(node_id))),
+    #[cfg(feature = "sled")]
+    "sled" => Ok(Arc::new(sled::SledBlockStore::new(
+      store_url.to_file_path().unwrap(),
+      node_id,
+    )?)),
     _ => Err(StoreError::InvalidStoreUrl(url.to_string())),
   }
 }
