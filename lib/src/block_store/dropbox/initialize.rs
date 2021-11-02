@@ -29,39 +29,24 @@ const AUTHCODE_RESPONSE_BODY: &str = r#"
 </html>
 "#;
 
-pub struct DropboxInitializer {
-  name: String,
-  oauth2_flow: Oauth2Type,
-  pub auth_url: Url,
+pub struct ServerHandle {
   server: Arc<Server>,
   join_handle: Option<JoinHandle<Result<String, String>>>,
 }
 
-impl DropboxInitializer {
-  pub fn wait_for_authentication(&mut self) -> StoreResult<String> {
+impl ServerHandle {
+  fn wait_for_auth_code(&mut self) -> StoreResult<String> {
     let join_handle = match self.join_handle.take() {
       Some(join_handle) => join_handle,
       None => return Err(StoreError::IO("Already waiting".to_string())),
     };
     match join_handle.join() {
-      Ok(Ok(authcode_url)) => {
-        let auth_code = Url::parse(&authcode_url)?
+      Ok(Ok(authcode_url)) => Ok(
+        Url::parse(&authcode_url)?
           .query_pairs()
           .find_map(|(key, value)| if key == "code" { Some(value.to_string()) } else { None })
-          .ok_or_else(|| StoreError::IO("auth url does not contain code".to_string()))?;
-        let mut authorization = Authorization::from_auth_code(
-          APP_KEY.to_string(),
-          self.oauth2_flow.clone(),
-          auth_code,
-          Some(REDIRECT_URL.to_string()),
-        );
-        authorization.obtain_access_token(NoauthDefaultClient::default())?;
-        let token = authorization
-          .save()
-          .ok_or_else(|| StoreError::IO("Failed to obtain dropbox token".to_string()))?;
-
-        Ok(format!("dropbox://{}@dropbox/{}", token, self.name))
-      }
+          .ok_or_else(|| StoreError::IO("auth url does not contain code".to_string()))?,
+      ),
       Ok(Err(err)) => {
         error!("Failed receiving dropbox authcode {}", err);
         Err(StoreError::IO(err))
@@ -74,9 +59,35 @@ impl DropboxInitializer {
   }
 }
 
-impl Drop for DropboxInitializer {
+impl Drop for ServerHandle {
   fn drop(&mut self) {
     self.server.unblock();
+  }
+}
+
+pub struct DropboxInitializer {
+  name: String,
+  oauth2_flow: Oauth2Type,
+  pub auth_url: Url,
+  server_handle: ServerHandle,
+}
+
+impl DropboxInitializer {
+  pub fn wait_for_authentication(mut self) -> StoreResult<String> {
+    let auth_code = self.server_handle.wait_for_auth_code()?;
+
+    let mut authorization = Authorization::from_auth_code(
+      APP_KEY.to_string(),
+      self.oauth2_flow.clone(),
+      auth_code,
+      Some(REDIRECT_URL.to_string()),
+    );
+    authorization.obtain_access_token(NoauthDefaultClient::default())?;
+    let token = authorization
+      .save()
+      .ok_or_else(|| StoreError::IO("Failed to obtain dropbox token".to_string()))?;
+
+    Ok(format!("dropbox://{}@{}", token, self.name))
   }
 }
 
@@ -85,18 +96,17 @@ pub fn initialize_store(name: &str) -> StoreResult<DropboxInitializer> {
   let auth_url = AuthorizeUrlBuilder::new(APP_KEY, &oauth2_flow)
     .redirect_uri(REDIRECT_URL)
     .build();
-  let (server, join_handle) = start_authcode_server()?;
+  let server_handle = start_authcode_server()?;
 
   Ok(DropboxInitializer {
     name: name.to_string(),
     oauth2_flow,
     auth_url,
-    server,
-    join_handle: Some(join_handle),
+    server_handle,
   })
 }
 
-pub fn start_authcode_server() -> StoreResult<(Arc<Server>, JoinHandle<Result<String, String>>)> {
+pub fn start_authcode_server() -> StoreResult<ServerHandle> {
   let server = Arc::new(Server::http("127.0.0.1:9898").map_err(|e| StoreError::IO(format!("{}", e)))?);
   let server_cloned = server.clone();
 
@@ -113,5 +123,8 @@ pub fn start_authcode_server() -> StoreResult<(Arc<Server>, JoinHandle<Result<St
     Ok(url)
   });
 
-  Ok((server, join_handle))
+  Ok(ServerHandle {
+    server,
+    join_handle: Some(join_handle),
+  })
 }
