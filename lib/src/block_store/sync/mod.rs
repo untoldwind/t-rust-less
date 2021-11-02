@@ -1,19 +1,71 @@
-use std::sync::Arc;
+use std::{
+  sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+  },
+  thread,
+  thread::JoinHandle,
+  time::Duration,
+};
+
+use log::{error, info};
 
 use crate::memguard::weak::ZeroingWords;
 
 use super::{BlockStore, ChangeLog, StoreError, StoreResult};
 
+mod synchronize;
+
 pub struct SyncBlockStore {
   local: Arc<dyn BlockStore>,
   remote: Arc<dyn BlockStore>,
-  //  worker: Option<(JoinHandle<()>, Arc<AtomicBool>)>,
+  sync_interval: Duration,
+  worker: Option<(JoinHandle<()>, Arc<AtomicBool>)>,
 }
 
 impl SyncBlockStore {
-  /*     pub fn synchronize(&self) -> StoreResult<()> {
-      Ok(())
-  }*/
+  pub fn new(local: Arc<dyn BlockStore>, remote: Arc<dyn BlockStore>, sync_interval: Duration) -> SyncBlockStore {
+    SyncBlockStore {
+      local,
+      remote,
+      sync_interval,
+      worker: None,
+    }
+  }
+
+  pub fn start_worker(&mut self) {
+    self.stop_worker();
+
+    let stop_flag = Arc::new(AtomicBool::new(false));
+    let stop_flag_cloned = stop_flag.clone();
+    let local = self.local.clone();
+    let remote = self.remote.clone();
+    let sync_interval = self.sync_interval;
+    let join_handle = thread::spawn(move || loop {
+      if stop_flag_cloned.load(Ordering::Relaxed) {
+        info!("Synchronization worker stopping");
+        return;
+      }
+      if let Err(err) = synchronize::synchronize_blocks(local.clone(), remote.clone()) {
+        error!("Store synchronization failed: {}", err);
+      }
+      thread::sleep(sync_interval)
+    });
+    self.worker = Some((join_handle, stop_flag));
+  }
+
+  fn stop_worker(&mut self) {
+    if let Some((join_handle, stop_flag)) = self.worker.take() {
+      stop_flag.store(true, Ordering::Relaxed);
+      join_handle.join().ok();
+    }
+  }
+}
+
+impl Drop for SyncBlockStore {
+  fn drop(&mut self) {
+    self.stop_worker();
+  }
 }
 
 impl BlockStore for SyncBlockStore {

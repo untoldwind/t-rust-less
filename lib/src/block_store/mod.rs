@@ -12,7 +12,7 @@ mod memory;
 mod model;
 #[cfg(feature = "sled")]
 mod sled;
-mod sync;
+pub mod sync;
 
 #[cfg(test)]
 mod tests;
