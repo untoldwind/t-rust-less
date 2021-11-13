@@ -1,7 +1,7 @@
 use std::{
   sync::{
     atomic::{AtomicBool, Ordering},
-    Arc,
+    Arc, Mutex,
   },
   thread,
   thread::JoinHandle,
@@ -16,10 +16,14 @@ use super::{BlockStore, ChangeLog, StoreError, StoreResult};
 
 mod synchronize;
 
+#[cfg(test)]
+mod synchronize_tests;
+
 pub struct SyncBlockStore {
   local: Arc<dyn BlockStore>,
   remote: Arc<dyn BlockStore>,
   sync_interval: Duration,
+  sync_lock: Arc<Mutex<()>>,
   worker: Option<(JoinHandle<()>, Arc<AtomicBool>)>,
 }
 
@@ -29,8 +33,15 @@ impl SyncBlockStore {
       local,
       remote,
       sync_interval,
+      sync_lock: Arc::new(Mutex::new(())),
       worker: None,
     }
+  }
+
+  pub fn synchronize(&self) -> StoreResult<()> {
+    let _guard = self.sync_lock.lock()?;
+
+    synchronize::synchronize_blocks(self.local.clone(), self.remote.clone())
   }
 
   pub fn start_worker(&mut self) {
@@ -40,15 +51,24 @@ impl SyncBlockStore {
     let stop_flag_cloned = stop_flag.clone();
     let local = self.local.clone();
     let remote = self.remote.clone();
+    let sync_lock = self.sync_lock.clone();
     let sync_interval = self.sync_interval;
     let join_handle = thread::spawn(move || loop {
       if stop_flag_cloned.load(Ordering::Relaxed) {
         info!("Synchronization worker stopping");
         return;
       }
-      if let Err(err) = synchronize::synchronize_blocks(local.clone(), remote.clone()) {
-        error!("Store synchronization failed: {}", err);
-      }
+      match sync_lock.lock() {
+        Ok(_guard) => {
+          if let Err(err) = synchronize::synchronize_blocks(local.clone(), remote.clone()) {
+            error!("Store synchronization failed: {}", err);
+          }
+        }
+        Err(err) => {
+          error!("Obtain synchronization lock failed: {}", err)
+        }
+      };
+
       thread::sleep(sync_interval)
     });
     self.worker = Some((join_handle, stop_flag));
