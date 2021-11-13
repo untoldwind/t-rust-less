@@ -1,10 +1,22 @@
 mod initialize;
 
-use std::{collections::VecDeque, io, io::BufRead, io::BufReader, io::Read, io::Write};
+use std::{
+  collections::{HashMap, VecDeque},
+  io,
+  io::BufRead,
+  io::BufReader,
+  io::Read,
+  io::Write,
+};
 
 pub use initialize::*;
 
-use dropbox_sdk::{default_client::UserAuthDefaultClient, files, oauth2::Authorization, UserAuthClient};
+use dropbox_sdk::{
+  default_client::UserAuthDefaultClient,
+  files::{self, ListFolderError},
+  oauth2::Authorization,
+  UserAuthClient,
+};
 
 use crate::{block_store::generate_block_id, memguard::weak::ZeroingWords};
 
@@ -39,29 +51,40 @@ impl DropboxBlockStore {
   }
 
   fn download_change_log(&self, node_id: &str) -> StoreResult<ChangeLog> {
-    let (_, content) = self.download_stream(format!("/{}/logs/{}", self.name, node_id))?;
-    Self::parse_change_log(node_id, content)
+    let (_, maybe_content) = self.download_stream(format!("/{}/logs/{}", self.name, node_id))?;
+    match maybe_content {
+      Some(content) => Self::parse_change_log(node_id, content),
+      _ => Ok(ChangeLog {
+        node: node_id.to_string(),
+        changes: vec![],
+      }),
+    }
   }
 
-  fn download_stream(&self, path: String) -> StoreResult<(Option<usize>, Box<dyn Read>)> {
-    let result = match files::download(&self.client, &files::DownloadArg::new(path.clone()), None, None)? {
-      Ok(result) => result,
-      Err(dropbox_sdk::files::DownloadError::Path(_)) => return Err(StoreError::InvalidBlock(path)),
-      Err(dropbox_sdk::files::DownloadError::UnsupportedFile) => return Err(StoreError::InvalidBlock(path)),
-      Err(err) => return Err(StoreError::IO(format!("{}", err))),
-    };
-    let content = result.body.ok_or_else(|| StoreError::IO("No body".to_string()))?;
+  fn download_stream(&self, path: String) -> StoreResult<(Option<usize>, Option<Box<dyn Read>>)> {
+    match files::download(&self.client, &files::DownloadArg::new(path.clone()), None, None)? {
+      Ok(result) => {
+        let content = result.body.ok_or_else(|| StoreError::IO("No body".to_string()))?;
 
-    Ok((result.content_length.map(|l| l as usize), content))
+        Ok((result.content_length.map(|l| l as usize), Some(content)))
+      }
+      Err(dropbox_sdk::files::DownloadError::Path(_)) => Ok((None, None)),
+      Err(dropbox_sdk::files::DownloadError::UnsupportedFile) => Ok((None, None)),
+      Err(err) => Err(StoreError::IO(format!("{}", err))),
+    }
   }
 
-  fn download(&self, path: String) -> StoreResult<ZeroingWords> {
-    let (content_len, mut content) = self.download_stream(path)?;
-    let mut buffer = Vec::with_capacity(content_len.unwrap_or(1024usize));
+  fn download(&self, path: String) -> StoreResult<Option<ZeroingWords>> {
+    let (content_len, maybe_content) = self.download_stream(path)?;
 
-    io::copy(&mut content, &mut buffer)?;
+    if let Some(mut content) = maybe_content {
+      let mut buffer = Vec::with_capacity(content_len.unwrap_or(1024usize));
+      io::copy(&mut content, &mut buffer)?;
 
-    Ok(ZeroingWords::from(buffer.as_ref()))
+      Ok(Some(ZeroingWords::from(buffer.as_ref())))
+    } else {
+      Ok(None)
+    }
   }
 
   fn parse_change_log<R: Read>(node_id: &str, content: R) -> StoreResult<ChangeLog> {
@@ -79,6 +102,32 @@ impl DropboxBlockStore {
 
     Ok(change_log)
   }
+
+  fn list_ring_files(&self) -> StoreResult<HashMap<String, (u64, String)>> {
+    let mut ring_files: HashMap<String, (u64, String)> = HashMap::new();
+
+    for metadata in list_directory(&self.client, format!("/{}/rings", self.name), false)? {
+      if let files::Metadata::File(file_metadata) = metadata? {
+        let mut parts = file_metadata.name.split('.');
+        let name = parts
+          .next()
+          .map(str::to_string)
+          .unwrap_or_else(|| file_metadata.name.clone());
+        let version = parts
+          .next()
+          .and_then(|version_str| version_str.parse::<u64>().ok())
+          .unwrap_or_default();
+
+        if let Some((current, _)) = ring_files.get(&name) {
+          if *current > version {
+            continue;
+          }
+        }
+        ring_files.insert(name, (version, file_metadata.id));
+      }
+    }
+    Ok(ring_files)
+  }
 }
 
 impl BlockStore for DropboxBlockStore {
@@ -87,29 +136,33 @@ impl BlockStore for DropboxBlockStore {
   }
 
   fn list_ring_ids(&self) -> StoreResult<Vec<RingId>> {
-    list_directory(&self.client, format!("/{}/rings", self.name), false)?
-      .filter_map(|metadata| match metadata {
-        Ok(files::Metadata::File(f)) => {
-          let mut parts = f.name.split('.');
-          let name = parts.next().map(str::to_string).unwrap_or_else(|| f.name.clone());
-          let version = parts
-            .next()
-            .and_then(|version_str| version_str.parse::<u64>().ok())
-            .unwrap_or_default();
-          Some(Ok((name, version)))
-        }
-        Err(err) => Some(Err(err)),
-        _ => None,
-      })
-      .collect()
+    Ok(
+      self
+        .list_ring_files()?
+        .into_iter()
+        .map(|(id, (version, _))| (id, version))
+        .collect(),
+    )
   }
 
   fn get_ring(&self, ring_id: &str) -> StoreResult<RingContent> {
-    Ok((0u64, self.download(format!("/{}/rings/{}", self.name, ring_id))?))
+    match self.list_ring_files()?.get(ring_id) {
+      Some((version, id)) => match self.download(id.clone())? {
+        Some(content) => Ok((*version, content)),
+        _ => Err(StoreError::InvalidBlock(ring_id.to_string())),
+      },
+      None => Err(StoreError::InvalidBlock(ring_id.to_string())),
+    }
   }
 
   fn store_ring(&self, ring_id: &str, version: u64, raw: &[u8]) -> StoreResult<()> {
     let path = format!("/{}/rings/{}.{}", self.name, ring_id, version);
+    if files::get_metadata(&self.client, &files::GetMetadataArg::new(path.clone()))?.is_ok() {
+      return Err(StoreError::Conflict(format!(
+        "Ring {} with version {} already exists",
+        ring_id, version
+      )));
+    }
     files::upload(&self.client, &files::CommitInfo::new(path), raw)??;
     Ok(())
   }
@@ -143,7 +196,10 @@ impl BlockStore for DropboxBlockStore {
   }
 
   fn get_block(&self, block: &str) -> StoreResult<ZeroingWords> {
-    self.download(self.block_path(block)?)
+    match self.download(self.block_path(block)?)? {
+      Some(content) => Ok(content),
+      _ => Err(StoreError::InvalidBlock(block.to_string())),
+    }
   }
 
   fn commit(&self, changes: &[Change]) -> StoreResult<()> {
@@ -196,12 +252,21 @@ fn list_directory<T: UserAuthClient>(
   path: String,
   recursive: bool,
 ) -> StoreResult<DirectoryIterator<'_, T>> {
-  assert!(path.starts_with('/'), "path needs to be absolute (start with a '/')");
   let requested_path = if path == "/" { String::new() } else { path };
-  let result = files::list_folder(
+  let result = match files::list_folder(
     client,
     &files::ListFolderArg::new(requested_path).with_recursive(recursive),
-  )??;
+  )? {
+    Ok(result) => result,
+    Err(ListFolderError::Path(_)) => {
+      return Ok(DirectoryIterator {
+        client,
+        cursor: None,
+        buffer: VecDeque::new(),
+      })
+    }
+    Err(err) => return Err(err.into()),
+  };
 
   let cursor = if result.has_more { Some(result.cursor) } else { None };
 

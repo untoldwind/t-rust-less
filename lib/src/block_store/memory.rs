@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap, btree_map};
+use std::collections::{btree_map, BTreeMap, HashMap};
 use std::sync::RwLock;
 
 use super::{generate_block_id, BlockStore, Change, ChangeLog, RingContent, RingId, StoreError, StoreResult};
