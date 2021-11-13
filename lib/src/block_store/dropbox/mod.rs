@@ -8,7 +8,7 @@ use dropbox_sdk::{default_client::UserAuthDefaultClient, files, oauth2::Authoriz
 
 use crate::{block_store::generate_block_id, memguard::weak::ZeroingWords};
 
-use super::{BlockStore, Change, ChangeLog, Operation, StoreError, StoreResult};
+use super::{BlockStore, Change, ChangeLog, Operation, RingContent, RingId, StoreError, StoreResult};
 
 pub const APP_KEY: &str = "3q0sff542l6r3ly";
 
@@ -86,22 +86,30 @@ impl BlockStore for DropboxBlockStore {
     &self.node_id
   }
 
-  fn list_ring_ids(&self) -> StoreResult<Vec<String>> {
+  fn list_ring_ids(&self) -> StoreResult<Vec<RingId>> {
     list_directory(&self.client, format!("/{}/rings", self.name), false)?
       .filter_map(|metadata| match metadata {
-        Ok(files::Metadata::File(f)) => Some(Ok(f.name)),
+        Ok(files::Metadata::File(f)) => {
+          let mut parts = f.name.split('.');
+          let name = parts.next().map(str::to_string).unwrap_or_else(|| f.name.clone());
+          let version = parts
+            .next()
+            .and_then(|version_str| version_str.parse::<u64>().ok())
+            .unwrap_or_default();
+          Some(Ok((name, version)))
+        }
         Err(err) => Some(Err(err)),
         _ => None,
       })
       .collect()
   }
 
-  fn get_ring(&self, ring_id: &str) -> StoreResult<ZeroingWords> {
-    self.download(format!("/{}/rings/{}", self.name, ring_id))
+  fn get_ring(&self, ring_id: &str) -> StoreResult<RingContent> {
+    Ok((0u64, self.download(format!("/{}/rings/{}", self.name, ring_id))?))
   }
 
-  fn store_ring(&self, ring_id: &str, raw: &[u8]) -> StoreResult<()> {
-    let path = format!("/{}/rings/{}", self.name, ring_id);
+  fn store_ring(&self, ring_id: &str, version: u64, raw: &[u8]) -> StoreResult<()> {
+    let path = format!("/{}/rings/{}.{}", self.name, ring_id, version);
     files::upload(&self.client, &files::CommitInfo::new(path), raw)??;
     Ok(())
   }

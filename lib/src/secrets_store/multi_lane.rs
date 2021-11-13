@@ -105,7 +105,7 @@ impl SecretsStore for MultiLaneSecretsStore {
         return Err(SecretStoreError::AlreadyUnlocked);
       }
 
-      let mut raw: &[u8] = &self.block_store.get_ring(identity_id)?;
+      let mut raw: &[u8] = &self.block_store.get_ring(identity_id)?.1;
       let reader = serialize::read_message_from_flat_slice(&mut raw, Default::default())?;
       let ring = reader.get_root::<ring::Reader>()?;
       let mut private_keys = Vec::with_capacity(self.ciphers.len());
@@ -164,8 +164,8 @@ impl SecretsStore for MultiLaneSecretsStore {
     let ring_ids = self.block_store.list_ring_ids()?;
     let mut identities = Vec::with_capacity(ring_ids.len());
 
-    for ring_id in ring_ids {
-      let mut raw: &[u8] = &self.block_store.get_ring(&ring_id)?;
+    for (ring_id, _) in ring_ids {
+      let mut raw: &[u8] = &self.block_store.get_ring(&ring_id)?.1;
       let reader = serialize::read_message_from_flat_slice(&mut raw, Default::default())?;
       let ring = reader.get_root::<ring::Reader>()?;
 
@@ -176,7 +176,12 @@ impl SecretsStore for MultiLaneSecretsStore {
   }
 
   fn add_identity(&self, identity: Identity, passphrase: SecretBytes) -> SecretStoreResult<()> {
-    if self.block_store.list_ring_ids()?.iter().any(|id| id == &identity.id) {
+    if self
+      .block_store
+      .list_ring_ids()?
+      .iter()
+      .any(|(id, _)| id == &identity.id)
+    {
       return Err(SecretStoreError::Conflict);
     }
     let mut ring_message = message::Builder::new(ZeroingHeapAllocator::default());
@@ -218,7 +223,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     }
     let new_ring_raw = serialize::write_message_to_words(&ring_message);
 
-    self.block_store.store_ring(&identity.id, &new_ring_raw)?;
+    self.block_store.store_ring(&identity.id, 0u64, &new_ring_raw)?;
     self.event_hub.send(EventData::IdentityAdded {
       store_name: self.name.clone(),
       identity,
@@ -272,7 +277,10 @@ impl SecretsStore for MultiLaneSecretsStore {
 
     let new_ring_raw = serialize::write_message_to_words(&ring_message);
 
-    self.block_store.store_ring(&unlocked_user.identity.id, &new_ring_raw)?;
+    let (last_version, _) = self.block_store.get_ring(&unlocked_user.identity.id)?;
+    self
+      .block_store
+      .store_ring(&unlocked_user.identity.id, last_version + 1, &new_ring_raw)?;
 
     Ok(())
   }
@@ -429,10 +437,14 @@ impl MultiLaneSecretsStore {
 
     for recipient in recipients {
       let identity_id = recipient.as_ref();
-      let mut raw: &[u8] = &self.block_store.get_ring(identity_id).map_err(|e| match e {
-        StoreError::InvalidBlock(_) => SecretStoreError::InvalidRecipient(identity_id.to_string()),
-        err => err.into(),
-      })?;
+      let mut raw: &[u8] = &self
+        .block_store
+        .get_ring(identity_id)
+        .map_err(|e| match e {
+          StoreError::InvalidBlock(_) => SecretStoreError::InvalidRecipient(identity_id.to_string()),
+          err => err.into(),
+        })?
+        .1;
       let reader = serialize::read_message_from_flat_slice(&mut raw, Default::default())?;
       let ring = reader.get_root::<ring::Reader>()?;
       let user_public_keys = ring.get_public_keys()?;

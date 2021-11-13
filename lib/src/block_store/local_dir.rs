@@ -1,7 +1,10 @@
-use super::{generate_block_id, BlockStore, Change, ChangeLog, Operation, StoreError, StoreResult};
+use super::{
+  generate_block_id, BlockStore, Change, ChangeLog, Operation, RingContent, RingId, StoreError, StoreResult,
+};
 use crate::memguard::weak::ZeroingWords;
 use log::warn;
 use log::{debug, info};
+use std::collections::HashMap;
 use std::fs::{metadata, read_dir, DirBuilder, File, OpenOptions};
 use std::io::prelude::*;
 use std::io::{self, BufReader, Seek, SeekFrom};
@@ -79,6 +82,44 @@ impl LocalDirBlockStore {
     }
     Ok(base_dir.join("blocks").join(&block_id[0..2]).join(block_id))
   }
+
+  fn list_ring_files(&self) -> StoreResult<HashMap<String, (u64, PathBuf)>> {
+    match read_dir(self.base_dir.read()?.join("rings")) {
+      Ok(ring_dir) => {
+        let mut ring_files: HashMap<String, (u64, PathBuf)> = HashMap::new();
+        for maybe_entry in ring_dir {
+          let entry = maybe_entry?;
+
+          if !entry.metadata()?.is_file() {
+            continue;
+          }
+          if let Some(file_name) = entry.path().file_name() {
+            let file_name = file_name.to_string_lossy();
+            let mut parts = file_name.split('.');
+            let name = parts
+              .next()
+              .map(str::to_string)
+              .unwrap_or_else(|| file_name.to_string());
+            let version = parts
+              .next()
+              .and_then(|version_str| version_str.parse::<u64>().ok())
+              .unwrap_or_default();
+
+            if let Some((current, _)) = ring_files.get(&name) {
+              if *current > version {
+                continue;
+              }
+            }
+            ring_files.insert(name, (version, entry.path().to_owned()));
+          }
+        }
+
+        Ok(ring_files)
+      }
+      Err(ref err) if err.kind() == io::ErrorKind::NotFound => Ok(HashMap::new()),
+      Err(err) => Err(err.into()),
+    }
+  }
 }
 
 impl BlockStore for LocalDirBlockStore {
@@ -86,52 +127,40 @@ impl BlockStore for LocalDirBlockStore {
     &self.node_id
   }
 
-  fn list_ring_ids(&self) -> StoreResult<Vec<String>> {
-    match read_dir(self.base_dir.write()?.join("rings")) {
-      Ok(ring_dir) => {
-        let mut ids = vec![];
-        for maybe_entry in ring_dir {
-          let entry = maybe_entry?;
+  fn list_ring_ids(&self) -> StoreResult<Vec<RingId>> {
+    Ok(
+      self
+        .list_ring_files()?
+        .into_iter()
+        .map(|(id, (version, _))| (id, version))
+        .collect(),
+    )
+  }
 
-          if !entry.metadata()?.is_file() {
-            continue;
-          }
-          let file_name = entry.path().file_name().unwrap().to_string_lossy().to_string();
-
-          if file_name.ends_with(".bak") {
-            continue;
-          }
-
-          ids.push(file_name);
-        }
-
-        Ok(ids)
-      }
-      Err(ref err) if err.kind() == io::ErrorKind::NotFound => Ok(vec![]),
-      Err(err) => Err(err.into()),
+  fn get_ring(&self, ring_id: &str) -> StoreResult<RingContent> {
+    match self.list_ring_files()?.get(ring_id) {
+      Some((version, ring_file)) => Ok((
+        *version,
+        Self::read_optional_file(ring_file)?.ok_or_else(|| StoreError::InvalidBlock(ring_id.to_string()))?,
+      )),
+      None => Err(StoreError::InvalidBlock(ring_id.to_string())),
     }
   }
 
-  fn get_ring(&self, ring_id: &str) -> StoreResult<ZeroingWords> {
-    let base_dir = self.base_dir.read()?;
-    Self::read_optional_file(base_dir.join("rings").join(ring_id))?
-      .ok_or_else(|| StoreError::InvalidBlock(ring_id.to_string()))
-  }
-
-  fn store_ring(&self, ring_id: &str, raw: &[u8]) -> StoreResult<()> {
-    let maybe_current = self.get_ring(ring_id);
+  fn store_ring(&self, ring_id: &str, version: u64, raw: &[u8]) -> StoreResult<()> {
     let ring_dir = self.base_dir.write()?.join("rings");
     DirBuilder::new().recursive(true).create(&ring_dir)?;
 
-    if let Ok(current) = maybe_current {
-      let mut backup_file = File::create(ring_dir.join(format!("{}.bak", ring_id)))?;
+    let file_name = ring_dir.join(format!("{}.{}", ring_id, version));
 
-      backup_file.write_all(&current)?;
-      backup_file.flush()?;
-      backup_file.sync_all()?;
+    if file_name.exists() {
+      return Err(StoreError::Conflict(format!(
+        "Ring {} with version {} already exists",
+        ring_id, version
+      )));
     }
 
-    let mut ring_file = File::create(ring_dir.join(ring_id))?;
+    let mut ring_file = File::create(file_name)?;
 
     ring_file.write_all(raw)?;
     ring_file.flush()?;

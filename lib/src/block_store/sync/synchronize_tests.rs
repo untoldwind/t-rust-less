@@ -2,9 +2,15 @@ use rand::{distributions, prelude::ThreadRng, thread_rng, Rng};
 use spectral::prelude::*;
 use std::{sync::Arc, time::Duration};
 
-use crate::block_store::{open_block_store, BlockStore, Change, ChangeLog, Operation};
+use crate::block_store::{open_block_store, BlockStore, Change, ChangeLog, Operation, RingId};
 
 use super::SyncBlockStore;
+
+fn sort_ring_ids(ring_ids: Vec<RingId>) -> Vec<String> {
+  let mut ids: Vec<String> = ring_ids.into_iter().map(|(ring_id, _)| ring_id).collect();
+  ids.sort();
+  ids
+}
 
 fn test_ring_sync(
   rng: &mut ThreadRng,
@@ -26,22 +32,16 @@ fn test_ring_sync(
     .take(300 * 8)
     .collect::<Vec<u8>>();
 
-  assert_that!(local_store.store_ring("ring1a", &ring1a)).is_ok();
-  assert_that!(local_store.store_ring("ring1b", &ring1b)).is_ok();
+  assert_that!(local_store.store_ring("ring1a", 0, &ring1a)).is_ok();
+  assert_that!(local_store.store_ring("ring1b", 0, &ring1b)).is_ok();
 
-  assert_that!(remote_store.store_ring("ring2a", &ring2a)).is_ok();
-  assert_that!(remote_store.store_ring("ring2b", &ring2b)).is_ok();
+  assert_that!(remote_store.store_ring("ring2a", 0, &ring2a)).is_ok();
+  assert_that!(remote_store.store_ring("ring2b", 0, &ring2b)).is_ok();
 
-  assert_that!(local_store.list_ring_ids().map(|mut ids| {
-    ids.sort();
-    ids
-  }))
-  .is_ok_containing(vec!["ring1a".to_string(), "ring1b".to_string()]);
-  assert_that!(remote_store.list_ring_ids().map(|mut ids| {
-    ids.sort();
-    ids
-  }))
-  .is_ok_containing(vec!["ring2a".to_string(), "ring2b".to_string()]);
+  assert_that!(local_store.list_ring_ids().map(sort_ring_ids))
+    .is_ok_containing(vec!["ring1a".to_string(), "ring1b".to_string()]);
+  assert_that!(remote_store.list_ring_ids().map(sort_ring_ids))
+    .is_ok_containing(vec!["ring2a".to_string(), "ring2b".to_string()]);
 
   assert_that!(sync_store.synchronize()).is_ok();
 

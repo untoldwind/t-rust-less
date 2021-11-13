@@ -20,6 +20,9 @@ mod tests;
 pub use self::error::{StoreError, StoreResult};
 use crate::memguard::weak::ZeroingWords;
 
+type RingId = (String, u64);
+type RingContent = (u64, ZeroingWords);
+
 /// Common interface of all block stores
 ///
 /// In terms of persistence t-rust-less thinks in collections of blocks. Whereas a
@@ -49,7 +52,7 @@ pub trait BlockStore: Send + Sync {
   ///
   /// A store may contain any number of secrets rings. Usually associated with identities/users
   /// that may access the store.
-  fn list_ring_ids(&self) -> StoreResult<Vec<String>>;
+  fn list_ring_ids(&self) -> StoreResult<Vec<RingId>>;
 
   /// Get/read the ring block by its id.
   ///
@@ -58,14 +61,14 @@ pub trait BlockStore: Send + Sync {
   ///
   /// Theses block should be protected by some sort of passphrase/key-derivation
   ///
-  fn get_ring(&self, ring_id: &str) -> StoreResult<ZeroingWords>;
+  fn get_ring(&self, ring_id: &str) -> StoreResult<RingContent>;
 
   /// Set/write a ring block.
   ///
   /// Implementors should ensure a sort of backup in case this operation fails, since
   /// loosing the (private) ring will render the entire store useless to a user
   ///
-  fn store_ring(&self, ring_id: &str, raw: &[u8]) -> StoreResult<()>;
+  fn store_ring(&self, ring_id: &str, version: u64, raw: &[u8]) -> StoreResult<()>;
 
   /// Get all the change logs of the store.
   ///

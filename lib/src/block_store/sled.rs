@@ -1,10 +1,10 @@
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 use sled::transaction::ConflictableTransactionError;
 
 use crate::memguard::weak::ZeroingWords;
 
-use super::{generate_block_id, BlockStore, Change, ChangeLog, StoreError, StoreResult};
+use super::{generate_block_id, BlockStore, Change, ChangeLog, RingContent, RingId, StoreError, StoreResult};
 
 pub struct SledBlockStore {
   node_id: String,
@@ -32,6 +32,28 @@ impl SledBlockStore {
       change_logs,
     })
   }
+
+  fn list_ring_versions(&self) -> StoreResult<HashMap<String, (u64, String)>> {
+    let mut ring_versions: HashMap<String, (u64, String)> = HashMap::new();
+
+    for key in self.rings.iter().keys() {
+      let key = String::from_utf8_lossy(key?.as_ref()).to_string();
+      let mut parts = key.split('.');
+      let name = parts.next().map(str::to_string).unwrap_or_else(|| key.clone());
+      let version = parts
+        .next()
+        .and_then(|version_str| version_str.parse::<u64>().ok())
+        .unwrap_or_default();
+
+      if let Some((current, _)) = ring_versions.get(&name) {
+        if *current > version {
+          continue;
+        }
+      }
+      ring_versions.insert(name, (version, key));
+    }
+    Ok(ring_versions)
+  }
 }
 
 impl Drop for SledBlockStore {
@@ -46,25 +68,38 @@ impl BlockStore for SledBlockStore {
     &self.node_id
   }
 
-  fn list_ring_ids(&self) -> StoreResult<Vec<String>> {
-    self
-      .rings
-      .iter()
-      .keys()
-      .map(|k| Ok(String::from_utf8_lossy(k?.as_ref()).to_string()))
-      .collect()
+  fn list_ring_ids(&self) -> StoreResult<Vec<RingId>> {
+    Ok(
+      self
+        .list_ring_versions()?
+        .into_iter()
+        .map(|(id, (version, _))| (id, version))
+        .collect(),
+    )
   }
 
-  fn get_ring(&self, ring_id: &str) -> StoreResult<ZeroingWords> {
-    self
-      .rings
-      .get(ring_id)?
-      .map(|ring| ring.as_ref().into())
-      .ok_or_else(|| StoreError::InvalidBlock(ring_id.to_string()))
+  fn get_ring(&self, ring_id: &str) -> StoreResult<RingContent> {
+    match self.list_ring_versions()?.get(ring_id) {
+      Some((version, key)) => self
+        .rings
+        .get(&key)?
+        .map(|ring| (*version, ring.as_ref().into()))
+        .ok_or_else(|| StoreError::InvalidBlock(ring_id.to_string())),
+      None => Err(StoreError::InvalidBlock(ring_id.to_string())),
+    }
   }
 
-  fn store_ring(&self, ring_id: &str, raw: &[u8]) -> StoreResult<()> {
-    self.rings.insert(ring_id, raw)?;
+  fn store_ring(&self, ring_id: &str, version: u64, raw: &[u8]) -> StoreResult<()> {
+    if self
+      .rings
+      .compare_and_swap::<String, &[u8], &[u8]>(format!("{}.{}", ring_id, version), None, Some(raw))?
+      .is_err()
+    {
+      return Err(StoreError::Conflict(format!(
+        "Ring {} with version {} already exists",
+        ring_id, version
+      )));
+    }
     self.rings.flush()?;
     Ok(())
   }

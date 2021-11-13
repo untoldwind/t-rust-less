@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap, btree_map};
 use std::sync::RwLock;
 
-use super::{generate_block_id, BlockStore, Change, ChangeLog, StoreError, StoreResult};
+use super::{generate_block_id, BlockStore, Change, ChangeLog, RingContent, RingId, StoreError, StoreResult};
 use crate::memguard::weak::ZeroingWords;
 
 /// Memory based reference implementation of a block store.
@@ -11,7 +11,7 @@ use crate::memguard::weak::ZeroingWords;
 ///
 pub struct MemoryBlockStore {
   node_id: String,
-  rings: RwLock<HashMap<String, ZeroingWords>>,
+  rings: RwLock<HashMap<String, BTreeMap<u64, ZeroingWords>>>,
   indexes: RwLock<HashMap<String, ZeroingWords>>,
   blocks: RwLock<HashMap<String, ZeroingWords>>,
   changes: RwLock<HashMap<String, Vec<Change>>>,
@@ -34,27 +34,40 @@ impl BlockStore for MemoryBlockStore {
     &self.node_id
   }
 
-  fn list_ring_ids(&self) -> StoreResult<Vec<String>> {
+  fn list_ring_ids(&self) -> StoreResult<Vec<RingId>> {
     let rings = self.rings.read()?;
 
-    Ok(rings.keys().cloned().collect())
+    Ok(
+      rings
+        .iter()
+        .flat_map(|(id, versions)| versions.keys().last().map(move |version| (id.clone(), *version)))
+        .collect(),
+    )
   }
 
-  fn get_ring(&self, ring_id: &str) -> StoreResult<ZeroingWords> {
+  fn get_ring(&self, ring_id: &str) -> StoreResult<RingContent> {
     let rings = self.rings.read()?;
 
     rings
       .get(ring_id)
-      .cloned()
+      .and_then(|versions| versions.iter().last())
+      .map(|(version, content)| (*version, content.clone()))
       .ok_or_else(|| StoreError::InvalidBlock(ring_id.to_string()))
   }
 
-  fn store_ring(&self, ring_id: &str, raw: &[u8]) -> StoreResult<()> {
+  fn store_ring(&self, ring_id: &str, version: u64, raw: &[u8]) -> StoreResult<()> {
     let mut rings = self.rings.write()?;
 
-    rings.insert(ring_id.to_string(), raw.into());
-
-    Ok(())
+    let versions = rings.entry(ring_id.to_string()).or_insert_with(BTreeMap::new);
+    if let btree_map::Entry::Vacant(e) = versions.entry(version) {
+      e.insert(raw.into());
+      Ok(())
+    } else {
+      Err(StoreError::Conflict(format!(
+        "Ring {} with version {} already exists",
+        ring_id, version
+      )))
+    }
   }
 
   fn change_logs(&self) -> StoreResult<Vec<ChangeLog>> {

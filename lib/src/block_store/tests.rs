@@ -1,4 +1,4 @@
-use super::{open_block_store, BlockStore, StoreError};
+use super::{open_block_store, BlockStore, RingId, StoreError};
 use crate::block_store::model::Operation;
 use crate::block_store::{Change, ChangeLog};
 use crate::memguard::weak::ZeroingWords;
@@ -13,6 +13,15 @@ fn common_store_tests(store: Arc<dyn BlockStore>) {
   common_test_ring(store.as_ref(), &mut rng);
   common_test_index(store.as_ref(), &mut rng);
   common_test_blocks_commits(store.as_ref(), &mut rng);
+}
+
+fn sort_ring_ids(ring_ids: Vec<RingId>) -> Vec<String> {
+  let mut ids: Vec<String> = ring_ids
+    .into_iter()
+    .map(|(id, version)| format!("{}.{}", id, version))
+    .collect();
+  ids.sort();
+  ids
 }
 
 fn common_test_ring(store: &dyn BlockStore, rng: &mut ThreadRng) {
@@ -31,27 +40,30 @@ fn common_test_ring(store: &dyn BlockStore, rng: &mut ThreadRng) {
     .collect::<Vec<u8>>();
 
   assert_that!(store.list_ring_ids()).is_ok_containing(vec![]);
-  assert_that!(store.store_ring("ring1", &ring1a)).is_ok();
-  assert_that!(store.get_ring("ring1")).is_ok_containing(ZeroingWords::from(ring1a.as_ref()));
-  assert_that!(store.store_ring("ring1", &ring1b)).is_ok();
-  assert_that!(store.get_ring("ring1")).is_ok_containing(ZeroingWords::from(ring1b.as_ref()));
+  assert_that!(store.store_ring("ring1", 0, &ring1a)).is_ok();
+  assert_that!(store.get_ring("ring1")).is_ok_containing((0u64, ZeroingWords::from(ring1a.as_ref())));
+  assert_that!(store.list_ring_ids().map(sort_ring_ids)).is_ok_containing(vec!["ring1.0".to_string()]);
 
-  assert_that!(store.list_ring_ids().map(|mut ids| {
-    ids.sort();
-    ids
-  }))
-  .is_ok_containing(vec!["ring1".to_string()]);
+  assert_that!(store.store_ring("ring1", 0, &ring1b)).is_err_containing(StoreError::Conflict(
+    "Ring ring1 with version 0 already exists".to_string(),
+  ));
+  assert_that!(store.store_ring("ring1", 1, &ring1b)).is_ok();
+  assert_that!(store.get_ring("ring1")).is_ok_containing((1u64, ZeroingWords::from(ring1b.as_ref())));
 
-  assert_that!(store.store_ring("ring2", &ring2a)).is_ok();
-  assert_that!(store.get_ring("ring2")).is_ok_containing(ZeroingWords::from(ring2a.as_ref()));
-  assert_that!(store.store_ring("ring2", &ring2b)).is_ok();
-  assert_that!(store.get_ring("ring2")).is_ok_containing(ZeroingWords::from(ring2b.as_ref()));
+  assert_that!(store.list_ring_ids().map(sort_ring_ids)).is_ok_containing(vec!["ring1.1".to_string()]);
 
-  assert_that!(store.list_ring_ids().map(|mut ids| {
-    ids.sort();
-    ids
-  }))
-  .is_ok_containing(vec!["ring1".to_string(), "ring2".to_string()]);
+  assert_that!(store.store_ring("ring2", 0, &ring2a)).is_ok();
+  assert_that!(store.get_ring("ring2")).is_ok_containing((0u64, ZeroingWords::from(ring2a.as_ref())));
+  assert_that!(store.list_ring_ids().map(sort_ring_ids))
+    .is_ok_containing(vec!["ring1.1".to_string(), "ring2.0".to_string()]);
+  assert_that!(store.store_ring("ring2", 0, &ring2b)).is_err_containing(StoreError::Conflict(
+    "Ring ring2 with version 0 already exists".to_string(),
+  ));
+  assert_that!(store.store_ring("ring2", 123, &ring2b)).is_ok();
+  assert_that!(store.get_ring("ring2")).is_ok_containing((123u64, ZeroingWords::from(ring2b.as_ref())));
+
+  assert_that!(store.list_ring_ids().map(sort_ring_ids))
+    .is_ok_containing(vec!["ring1.1".to_string(), "ring2.123".to_string()]);
 }
 
 fn common_test_index(store: &dyn BlockStore, rng: &mut ThreadRng) {
