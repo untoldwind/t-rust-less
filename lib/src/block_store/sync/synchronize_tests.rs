@@ -2,12 +2,18 @@ use rand::{distributions, prelude::ThreadRng, thread_rng, Rng};
 use spectral::prelude::*;
 use std::{sync::Arc, time::Duration};
 
-use crate::block_store::{open_block_store, BlockStore, Change, ChangeLog, Operation, RingId};
+use crate::{
+  block_store::{open_block_store, BlockStore, Change, ChangeLog, Operation, RingId},
+  memguard::weak::ZeroingWords,
+};
 
 use super::SyncBlockStore;
 
 fn sort_ring_ids(ring_ids: Vec<RingId>) -> Vec<String> {
-  let mut ids: Vec<String> = ring_ids.into_iter().map(|(ring_id, _)| ring_id).collect();
+  let mut ids: Vec<String> = ring_ids
+    .into_iter()
+    .map(|(id, version)| format!("{}.{}", id, version))
+    .collect();
   ids.sort();
   ids
 }
@@ -39,13 +45,81 @@ fn test_ring_sync(
   assert_that!(remote_store.store_ring("ring2b", 0, &ring2b)).is_ok();
 
   assert_that!(local_store.list_ring_ids().map(sort_ring_ids))
-    .is_ok_containing(vec!["ring1a".to_string(), "ring1b".to_string()]);
+    .is_ok_containing(vec!["ring1a.0".to_string(), "ring1b.0".to_string()]);
   assert_that!(remote_store.list_ring_ids().map(sort_ring_ids))
-    .is_ok_containing(vec!["ring2a".to_string(), "ring2b".to_string()]);
+    .is_ok_containing(vec!["ring2a.0".to_string(), "ring2b.0".to_string()]);
 
   assert_that!(sync_store.synchronize()).is_ok();
 
-  // Todo: Add assertions
+  assert_that!(local_store.list_ring_ids().map(sort_ring_ids)).is_ok_containing(vec![
+    "ring1a.0".to_string(),
+    "ring1b.0".to_string(),
+    "ring2a.0".to_string(),
+    "ring2b.0".to_string(),
+  ]);
+  assert_that!(remote_store.list_ring_ids().map(sort_ring_ids)).is_ok_containing(vec![
+    "ring1a.0".to_string(),
+    "ring1b.0".to_string(),
+    "ring2a.0".to_string(),
+    "ring2b.0".to_string(),
+  ]);
+
+  assert_that!(local_store.get_ring("ring1a")).is_ok_containing((0u64, ZeroingWords::from(ring1a.as_ref())));
+  assert_that!(local_store.get_ring("ring1b")).is_ok_containing((0u64, ZeroingWords::from(ring1b.as_ref())));
+  assert_that!(local_store.get_ring("ring2a")).is_ok_containing((0u64, ZeroingWords::from(ring2a.as_ref())));
+  assert_that!(local_store.get_ring("ring2b")).is_ok_containing((0u64, ZeroingWords::from(ring2b.as_ref())));
+  assert_that!(remote_store.get_ring("ring1a")).is_ok_containing((0u64, ZeroingWords::from(ring1a.as_ref())));
+  assert_that!(remote_store.get_ring("ring1b")).is_ok_containing((0u64, ZeroingWords::from(ring1b.as_ref())));
+  assert_that!(remote_store.get_ring("ring2a")).is_ok_containing((0u64, ZeroingWords::from(ring2a.as_ref())));
+  assert_that!(remote_store.get_ring("ring2b")).is_ok_containing((0u64, ZeroingWords::from(ring2b.as_ref())));
+
+  assert_that!(sync_store.synchronize()).is_ok();
+
+  let ring1b1 = rng.sample_iter(distributions::Standard).take(200).collect::<Vec<u8>>();
+  let ring2b1 = rng
+    .sample_iter(distributions::Standard)
+    .take(300 * 8)
+    .collect::<Vec<u8>>();
+
+  assert_that!(local_store.store_ring("ring1b", 1, &ring1b1)).is_ok();
+  assert_that!(remote_store.store_ring("ring2b", 123, &ring2b1)).is_ok();
+
+  assert_that!(local_store.list_ring_ids().map(sort_ring_ids)).is_ok_containing(vec![
+    "ring1a.0".to_string(),
+    "ring1b.1".to_string(),
+    "ring2a.0".to_string(),
+    "ring2b.0".to_string(),
+  ]);
+  assert_that!(remote_store.list_ring_ids().map(sort_ring_ids)).is_ok_containing(vec![
+    "ring1a.0".to_string(),
+    "ring1b.0".to_string(),
+    "ring2a.0".to_string(),
+    "ring2b.123".to_string(),
+  ]);
+
+  assert_that!(sync_store.synchronize()).is_ok();
+
+  assert_that!(local_store.list_ring_ids().map(sort_ring_ids)).is_ok_containing(vec![
+    "ring1a.0".to_string(),
+    "ring1b.1".to_string(),
+    "ring2a.0".to_string(),
+    "ring2b.123".to_string(),
+  ]);
+  assert_that!(remote_store.list_ring_ids().map(sort_ring_ids)).is_ok_containing(vec![
+    "ring1a.0".to_string(),
+    "ring1b.1".to_string(),
+    "ring2a.0".to_string(),
+    "ring2b.123".to_string(),
+  ]);
+
+  assert_that!(local_store.get_ring("ring1a")).is_ok_containing((0u64, ZeroingWords::from(ring1a.as_ref())));
+  assert_that!(local_store.get_ring("ring1b")).is_ok_containing((1u64, ZeroingWords::from(ring1b1.as_ref())));
+  assert_that!(local_store.get_ring("ring2a")).is_ok_containing((0u64, ZeroingWords::from(ring2a.as_ref())));
+  assert_that!(local_store.get_ring("ring2b")).is_ok_containing((123u64, ZeroingWords::from(ring2b1.as_ref())));
+  assert_that!(remote_store.get_ring("ring1a")).is_ok_containing((0u64, ZeroingWords::from(ring1a.as_ref())));
+  assert_that!(remote_store.get_ring("ring1b")).is_ok_containing((1u64, ZeroingWords::from(ring1b1.as_ref())));
+  assert_that!(remote_store.get_ring("ring2a")).is_ok_containing((0u64, ZeroingWords::from(ring2a.as_ref())));
+  assert_that!(remote_store.get_ring("ring2b")).is_ok_containing((123u64, ZeroingWords::from(ring2b1.as_ref())));
 }
 
 fn test_block_sync(
@@ -131,7 +205,7 @@ fn test_block_sync(
 }
 
 #[test]
-fn test_memory_store() {
+fn test_sync_memory() {
   let mut rng = thread_rng();
   let local_store = open_block_store("memory://", "local").unwrap();
   let remote_store = open_block_store("memory://", "remote").unwrap();

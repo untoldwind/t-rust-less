@@ -41,6 +41,7 @@ impl SyncBlockStore {
   pub fn synchronize(&self) -> StoreResult<()> {
     let _guard = self.sync_lock.lock()?;
 
+    synchronize::synchronize_rings(self.local.clone(), self.remote.clone())?;
     synchronize::synchronize_blocks(self.local.clone(), self.remote.clone())
   }
 
@@ -60,6 +61,10 @@ impl SyncBlockStore {
       }
       match sync_lock.lock() {
         Ok(_guard) => {
+          if let Err(err) = synchronize::synchronize_rings(local.clone(), remote.clone()) {
+            error!("Store synchronization failed: {}", err);
+            continue;
+          }
           if let Err(err) = synchronize::synchronize_blocks(local.clone(), remote.clone()) {
             error!("Store synchronization failed: {}", err);
           }

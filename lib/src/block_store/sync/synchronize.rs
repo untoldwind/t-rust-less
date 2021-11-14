@@ -1,8 +1,38 @@
-use std::{collections::HashSet, sync::Arc};
+use std::{
+  collections::{HashMap, HashSet},
+  sync::Arc,
+};
 
 use log::info;
 
 use crate::block_store::{BlockStore, ChangeLog, Operation, StoreResult};
+
+pub fn synchronize_rings(local: Arc<dyn BlockStore>, remote: Arc<dyn BlockStore>) -> StoreResult<()> {
+  let local_ring_ids: HashMap<String, u64> = local.list_ring_ids()?.into_iter().collect();
+  let remote_ring_ids: HashMap<String, u64> = remote.list_ring_ids()?.into_iter().collect();
+
+  for (remote_ring_id, remote_version) in remote_ring_ids.iter() {
+    if let Some(local_version) = local_ring_ids.get(remote_ring_id) {
+      if *remote_version <= *local_version {
+        continue;
+      }
+    }
+    let (remote_version, ring) = remote.get_ring(remote_ring_id)?;
+    local.store_ring(remote_ring_id, remote_version, &ring)?
+  }
+
+  for (local_ring_id, local_version) in local_ring_ids.iter() {
+    if let Some(remote_version) = remote_ring_ids.get(local_ring_id) {
+      if *local_version <= *remote_version {
+        continue;
+      }
+    }
+    let (local_version, ring) = local.get_ring(local_ring_id)?;
+    remote.store_ring(local_ring_id, local_version, &ring)?
+  }
+
+  Ok(())
+}
 
 pub fn synchronize_blocks(local: Arc<dyn BlockStore>, remote: Arc<dyn BlockStore>) -> StoreResult<()> {
   let local_change_log = local
