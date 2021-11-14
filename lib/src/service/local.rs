@@ -9,7 +9,7 @@ use crate::service::error::{ServiceError, ServiceResult};
 #[cfg(any(unix, windows))]
 use crate::service::secrets_provider::SecretsProvider;
 use crate::service::{ClipboardControl, TrustlessService};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use log::{error, info};
 use rand::{distributions, thread_rng, Rng};
 use std::collections::{HashMap, VecDeque};
@@ -186,10 +186,11 @@ impl TrustlessService for LocalTrustlessService {
     )?;
 
     if let Some(sync_block_store) = maybe_sync_block_store {
-      self
-        .synchronizers
-        .lock()?
-        .push(Synchronizer::new(store.clone(), sync_block_store));
+      self.synchronizers.lock()?.push(Synchronizer::new(
+        store.clone(),
+        sync_block_store,
+        chrono::Duration::seconds(store_config.sync_interval_sec as i64),
+      ));
     }
 
     opened_stores.insert(name.to_string(), store.clone());
@@ -302,13 +303,21 @@ impl TrustlessService for LocalTrustlessService {
     }
   }
 
-  fn synchronize(&self) -> ServiceResult<()> {
-    for synchronizer in self.synchronizers.lock()?.iter() {
+  fn synchronize(&self) -> ServiceResult<Option<DateTime<Utc>>> {
+    let mut result = None;
+    for synchronizer in self.synchronizers.lock()?.iter_mut() {
       if let Err(err) = synchronizer.synchronize() {
         error!("Synchronization failed: {}", err);
+      } else {
+        let next = synchronizer.next_run();
+        result = match result {
+          Some(prev) if prev > next => Some(next),
+          Some(prev) => Some(prev),
+          None => Some(next),
+        };
       }
     }
-    Ok(())
+    Ok(result)
   }
 }
 

@@ -1,3 +1,5 @@
+use chrono::{DateTime, Utc};
+
 use crate::api::{ClipboardProviding, Event, PasswordGeneratorParam, StoreConfig};
 use std::sync::Arc;
 
@@ -66,7 +68,7 @@ pub trait TrustlessService: std::fmt::Debug + Send + Sync {
 
   fn check_autolock(&self);
 
-  fn synchronize(&self) -> ServiceResult<()>;
+  fn synchronize(&self) -> ServiceResult<Option<DateTime<Utc>>>;
 }
 
 pub fn create_service() -> ServiceResult<Arc<dyn TrustlessService>> {

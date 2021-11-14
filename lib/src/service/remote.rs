@@ -7,6 +7,7 @@ use crate::memguard::{SecretBytes, ZeroizeBytesBuffer};
 use crate::secrets_store::{SecretStoreError, SecretStoreResult, SecretsStore};
 use crate::service::{ClipboardControl, ServiceError, ServiceResult, TrustlessService};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use chrono::{DateTime, Utc};
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::io::{Read, Write};
@@ -135,9 +136,9 @@ where
     // This should be done by the remote sever itself
   }
 
-  fn synchronize(&self) -> ServiceResult<()> {
+  fn synchronize(&self) -> ServiceResult<Option<DateTime<Utc>>> {
     // This should be done by the remote sever itself
-    Ok(())
+    Ok(None)
   }
 }
 

@@ -37,6 +37,7 @@ pub trait SecretsStore: std::fmt::Debug + Send + Sync {
   fn get_version(&self, block_id: &str) -> SecretStoreResult<SecretVersion>;
 }
 
+#[allow(clippy::type_complexity)]
 pub fn open_secrets_store(
   name: &str,
   url: &str,
