@@ -61,8 +61,9 @@ impl DropboxBlockStore {
     }
   }
 
+  #[allow(clippy::type_complexity)]
   fn download_stream(&self, path: String) -> StoreResult<(Option<usize>, Option<Box<dyn Read>>)> {
-    match files::download(&self.client, &files::DownloadArg::new(path.clone()), None, None)? {
+    match files::download(&self.client, &files::DownloadArg::new(path), None, None)? {
       Ok(result) => {
         let content = result.body.ok_or_else(|| StoreError::IO("No body".to_string()))?;
 

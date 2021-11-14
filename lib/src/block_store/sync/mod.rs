@@ -1,14 +1,4 @@
-use std::{
-  sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc, Mutex,
-  },
-  thread,
-  thread::JoinHandle,
-  time::Duration,
-};
-
-use log::{error, info};
+use std::sync::{Arc, Mutex};
 
 use crate::memguard::weak::ZeroingWords;
 
@@ -22,19 +12,15 @@ mod synchronize_tests;
 pub struct SyncBlockStore {
   local: Arc<dyn BlockStore>,
   remote: Arc<dyn BlockStore>,
-  sync_interval: Duration,
   sync_lock: Arc<Mutex<()>>,
-  worker: Option<(JoinHandle<()>, Arc<AtomicBool>)>,
 }
 
 impl SyncBlockStore {
-  pub fn new(local: Arc<dyn BlockStore>, remote: Arc<dyn BlockStore>, sync_interval: Duration) -> SyncBlockStore {
+  pub fn new(local: Arc<dyn BlockStore>, remote: Arc<dyn BlockStore>) -> SyncBlockStore {
     SyncBlockStore {
       local,
       remote,
-      sync_interval,
       sync_lock: Arc::new(Mutex::new(())),
-      worker: None,
     }
   }
 
@@ -43,53 +29,6 @@ impl SyncBlockStore {
 
     synchronize::synchronize_rings(self.local.clone(), self.remote.clone())?;
     synchronize::synchronize_blocks(self.local.clone(), self.remote.clone())
-  }
-
-  pub fn start_worker(&mut self) {
-    self.stop_worker();
-
-    let stop_flag = Arc::new(AtomicBool::new(false));
-    let stop_flag_cloned = stop_flag.clone();
-    let local = self.local.clone();
-    let remote = self.remote.clone();
-    let sync_lock = self.sync_lock.clone();
-    let sync_interval = self.sync_interval;
-    let join_handle = thread::spawn(move || loop {
-      if stop_flag_cloned.load(Ordering::Relaxed) {
-        info!("Synchronization worker stopping");
-        return;
-      }
-      match sync_lock.lock() {
-        Ok(_guard) => {
-          if let Err(err) = synchronize::synchronize_rings(local.clone(), remote.clone()) {
-            error!("Store synchronization failed: {}", err);
-            continue;
-          }
-          if let Err(err) = synchronize::synchronize_blocks(local.clone(), remote.clone()) {
-            error!("Store synchronization failed: {}", err);
-          }
-        }
-        Err(err) => {
-          error!("Obtain synchronization lock failed: {}", err)
-        }
-      };
-
-      thread::sleep(sync_interval)
-    });
-    self.worker = Some((join_handle, stop_flag));
-  }
-
-  fn stop_worker(&mut self) {
-    if let Some((join_handle, stop_flag)) = self.worker.take() {
-      stop_flag.store(true, Ordering::Relaxed);
-      join_handle.join().ok();
-    }
-  }
-}
-
-impl Drop for SyncBlockStore {
-  fn drop(&mut self) {
-    self.stop_worker();
   }
 }
 

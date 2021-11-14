@@ -1,6 +1,6 @@
 use rand::{distributions, prelude::ThreadRng, thread_rng, Rng};
 use spectral::prelude::*;
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use crate::{
   block_store::{open_block_store, BlockStore, Change, ChangeLog, Operation, RingId},
@@ -209,11 +209,7 @@ fn test_sync_memory() {
   let mut rng = thread_rng();
   let local_store = open_block_store("memory://", "local").unwrap();
   let remote_store = open_block_store("memory://", "remote").unwrap();
-  let sync_store = Arc::new(SyncBlockStore::new(
-    local_store.clone(),
-    remote_store.clone(),
-    Duration::from_secs(30),
-  ));
+  let sync_store = Arc::new(SyncBlockStore::new(local_store.clone(), remote_store.clone()));
 
   test_ring_sync(&mut rng, local_store.clone(), remote_store.clone(), sync_store.clone());
   test_block_sync(&mut rng, local_store, remote_store, sync_store);
