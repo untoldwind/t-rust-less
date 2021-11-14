@@ -7,6 +7,7 @@ pub mod local;
 pub mod pw_generator;
 mod remote;
 pub mod secrets_provider;
+mod synchronizer;
 
 #[cfg(unix)]
 pub mod unix;
@@ -64,6 +65,8 @@ pub trait TrustlessService: std::fmt::Debug + Send + Sync {
   fn generate_password(&self, param: PasswordGeneratorParam) -> ServiceResult<String>;
 
   fn check_autolock(&self);
+
+  fn synchronize(&self) -> ServiceResult<()>;
 }
 
 pub fn create_service() -> ServiceResult<Arc<dyn TrustlessService>> {

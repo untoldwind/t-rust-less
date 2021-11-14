@@ -1,4 +1,5 @@
 use super::pw_generator::{generate_chars, generate_words};
+use super::synchronizer::Synchronizer;
 use crate::api::{ClipboardProviding, Event, EventData, EventHub, PasswordGeneratorParam, StoreConfig};
 use crate::block_store::StoreError;
 use crate::clipboard::Clipboard;
@@ -12,7 +13,7 @@ use chrono::Utc;
 use log::{error, info};
 use rand::{distributions, thread_rng, Rng};
 use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 use std::time::Duration;
 
 enum ClipboardHolder {
@@ -113,6 +114,7 @@ impl EventHub for LocalEventHub {
 pub struct LocalTrustlessService {
   config: RwLock<Config>,
   opened_stores: RwLock<HashMap<String, Arc<dyn SecretsStore>>>,
+  synchronizers: Mutex<Vec<Synchronizer>>,
   clipboard: RwLock<Arc<ClipboardHolder>>,
   event_hub: Arc<LocalEventHub>,
 }
@@ -124,6 +126,7 @@ impl LocalTrustlessService {
     Ok(LocalTrustlessService {
       config: RwLock::new(config),
       opened_stores: RwLock::new(HashMap::new()),
+      synchronizers: Mutex::new(vec![]),
       clipboard: RwLock::new(Arc::new(ClipboardHolder::Empty)),
       event_hub: Arc::new(LocalEventHub::new(100)),
     })
@@ -173,13 +176,21 @@ impl TrustlessService for LocalTrustlessService {
       .stores
       .get(name)
       .ok_or_else(|| StoreError::StoreNotFound(name.to_string()))?;
-    let store = open_secrets_store(
+    let (store, maybe_sync_block_store) = open_secrets_store(
       name,
       &store_config.store_url,
+      store_config.remote_url.as_deref(),
       &store_config.client_id,
       Duration::from_secs(store_config.autolock_timeout_secs),
       self.event_hub.clone(),
     )?;
+
+    if let Some(sync_block_store) = maybe_sync_block_store {
+      self
+        .synchronizers
+        .lock()?
+        .push(Synchronizer::new(store.clone(), sync_block_store));
+    }
 
     opened_stores.insert(name.to_string(), store.clone());
 
@@ -289,6 +300,15 @@ impl TrustlessService for LocalTrustlessService {
         }
       }
     }
+  }
+
+  fn synchronize(&self) -> ServiceResult<()> {
+    for synchronizer in self.synchronizers.lock()?.iter() {
+      if let Err(err) = synchronizer.synchronize() {
+        error!("Synchronization failed: {}", err);
+      }
+    }
+    Ok(())
   }
 }
 

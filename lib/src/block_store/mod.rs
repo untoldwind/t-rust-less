@@ -41,7 +41,7 @@ type RingContent = (u64, ZeroingWords);
 /// All implementation are supposed to be thread-safe. Any kind of internal state has to be
 /// protected accordingly.
 ///
-pub trait BlockStore: Send + Sync {
+pub trait BlockStore: std::fmt::Debug + Send + Sync {
   /// Get the current node id.
   ///
   /// Each accessor to a distributed store should have a unique id.

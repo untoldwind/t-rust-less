@@ -6,6 +6,7 @@ use crate::memguard::weak::ZeroingWords;
 
 use super::{generate_block_id, BlockStore, Change, ChangeLog, RingContent, RingId, StoreError, StoreResult};
 
+#[derive(Debug)]
 pub struct SledBlockStore {
   node_id: String,
   db: sled::Db,

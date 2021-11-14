@@ -1,5 +1,5 @@
-use crate::clipboard::ClipboardError;
 use crate::secrets_store::SecretStoreError;
+use crate::{block_store::StoreError, clipboard::ClipboardError};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use zeroize::Zeroize;
@@ -8,6 +8,7 @@ use zeroize::Zeroize;
 #[zeroize(drop)]
 pub enum ServiceError {
   SecretsStore(SecretStoreError),
+  StoreError(StoreError),
   IO(String),
   Mutex(String),
   StoreNotFound(String),
@@ -21,6 +22,7 @@ impl fmt::Display for ServiceError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
       ServiceError::SecretsStore(error) => write!(f, "SecretsStoreError: {}", error)?,
+      ServiceError::StoreError(error) => write!(f, "StoreError: {}", error)?,
       ServiceError::IO(error) => write!(f, "IO: {}", error)?,
       ServiceError::Mutex(error) => write!(f, "Mutex: {}", error)?,
       ServiceError::StoreNotFound(name) => write!(f, "Store with name {} not found", name)?,
@@ -36,6 +38,7 @@ pub type ServiceResult<T> = Result<T, ServiceError>;
 error_convert_from!(std::io::Error, ServiceError, IO(display));
 error_convert_from!(toml::de::Error, ServiceError, IO(display));
 error_convert_from!(SecretStoreError, ServiceError, SecretsStore(direct));
+error_convert_from!(StoreError, ServiceError, StoreError(direct));
 error_convert_from!(ClipboardError, ServiceError, IO(display));
 error_convert_from!(futures::task::SpawnError, ServiceError, IO(display));
 error_convert_from!(serde_json::Error, ServiceError, IO(display));

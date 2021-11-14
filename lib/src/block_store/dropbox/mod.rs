@@ -131,6 +131,15 @@ impl DropboxBlockStore {
   }
 }
 
+impl std::fmt::Debug for DropboxBlockStore {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.debug_struct("DropboxBlockStore")
+      .field("node_id", &self.node_id)
+      .field("name", &self.name)
+      .finish()
+  }
+}
+
 impl BlockStore for DropboxBlockStore {
   fn node_id(&self) -> &str {
     &self.node_id

@@ -134,6 +134,11 @@ where
   fn check_autolock(&self) {
     // This should be done by the remote sever itself
   }
+
+  fn synchronize(&self) -> ServiceResult<()> {
+    // This should be done by the remote sever itself
+    Ok(())
+  }
 }
 
 #[derive(Debug)]

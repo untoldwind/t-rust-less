@@ -130,6 +130,8 @@ fn store_config(s: &mut Cursive) {
     name: store_name.to_string(),
     client_id,
     store_url: secrets_store_url,
+    remote_url: None,
+    sync_interval_sec: 0,
     autolock_timeout_secs,
     default_identity_id: None,
   };

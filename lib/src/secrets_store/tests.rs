@@ -137,9 +137,10 @@ impl EventHub for TestEventHub {
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn test_multi_lane_secrets_store() {
-  let secrets_store = open_secrets_store(
+  let (secrets_store, _) = open_secrets_store(
     "test",
     "multilane+memory://",
+    None,
     "node1",
     Duration::from_secs(300),
     Arc::new(TestEventHub),

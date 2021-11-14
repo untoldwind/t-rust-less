@@ -181,6 +181,8 @@ impl Arbitrary for StoreConfig {
     StoreConfig {
       name: String::arbitrary(g),
       store_url: String::arbitrary(g),
+      remote_url: Option::arbitrary(g),
+      sync_interval_sec: u32::arbitrary(g),
       client_id: String::arbitrary(g),
       autolock_timeout_secs: u64::arbitrary(g),
       default_identity_id: Option::arbitrary(g),

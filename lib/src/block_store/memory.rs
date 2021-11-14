@@ -9,6 +9,7 @@ use crate::memguard::weak::ZeroingWords;
 /// This is mostly useful for unit-testing, but might have some other usa-cases in
 /// the future.
 ///
+#[derive(Debug)]
 pub struct MemoryBlockStore {
   node_id: String,
   rings: RwLock<HashMap<String, BTreeMap<u64, ZeroingWords>>>,

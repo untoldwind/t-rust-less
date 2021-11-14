@@ -9,6 +9,7 @@ mod synchronize;
 #[cfg(test)]
 mod synchronize_tests;
 
+#[derive(Debug)]
 pub struct SyncBlockStore {
   local: Arc<dyn BlockStore>,
   remote: Arc<dyn BlockStore>,
