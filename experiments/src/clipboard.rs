@@ -4,9 +4,10 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 use t_rust_less_lib::api::{ClipboardProviding, EventData, EventHub};
-use t_rust_less_lib::clipboard::{Clipboard, SelectionProvider};
+use t_rust_less_lib::clipboard::{Clipboard, ClipboardCommon, SelectionProvider};
 use zeroize::Zeroizing;
 
+#[derive(Clone)]
 struct DummyProvider {
   counter: u32,
 }

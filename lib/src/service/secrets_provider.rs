@@ -3,8 +3,10 @@ use crate::clipboard::SelectionProvider;
 use crate::otp::OTPAuthUrl;
 use log::{error, info};
 use std::time::{SystemTime, UNIX_EPOCH};
-use zeroize::Zeroizing;
+use zeroize::{Zeroize, Zeroizing};
 
+#[derive(Clone, Zeroize)]
+#[zeroize(drop)]
 pub struct SecretsProvider {
   store_name: String,
   block_id: String,

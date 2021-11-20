@@ -54,12 +54,15 @@ hex-literal = "0"
 
 [features]
 with_x11 = ["x11"]
+with_wayland = ["wayland-client", "wayland-protocols"]
 rust_crypto = ["rsa", "aes-gcm"]
 dropbox = [ "dropbox-sdk", "tiny_http" ]
-default = ["with_x11", "rust_crypto", "dropbox", "sled" ]
+default = ["with_x11", "with_wayland", "rust_crypto", "dropbox", "sled" ]
 
 [target.'cfg(unix)'.dependencies]
 x11 = { version = "2", features = ["xlib"], optional = true }
+wayland-client = { version = "0", optional = true }
+wayland-protocols = { version = "0", features = ["client", "unstable_protocols"], optional = true }
 libc = "0"
 
 [target.'cfg(windows)'.dependencies]

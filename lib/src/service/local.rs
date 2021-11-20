@@ -2,7 +2,7 @@ use super::pw_generator::{generate_chars, generate_words};
 use super::synchronizer::Synchronizer;
 use crate::api::{ClipboardProviding, Event, EventData, EventHub, PasswordGeneratorParam, StoreConfig};
 use crate::block_store::StoreError;
-use crate::clipboard::Clipboard;
+use crate::clipboard::{Clipboard, ClipboardCommon};
 use crate::secrets_store::{open_secrets_store, SecretStoreResult, SecretsStore};
 use crate::service::config::{read_config, write_config, Config};
 use crate::service::error::{ServiceError, ServiceResult};

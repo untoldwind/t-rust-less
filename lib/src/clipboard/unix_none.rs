@@ -1,30 +1,30 @@
-use super::{ClipboardResult, SelectionProvider};
+use super::{ClipboardCommon, ClipboardError, ClipboardResult, SelectionProvider};
 use crate::api::{ClipboardProviding, EventHub};
 use std::sync::Arc;
 
 pub struct Clipboard {}
 
-impl Clipboard {
-  pub fn new<T>(
-    _display_name: &str,
-    _selection_provider: T,
-    _event_hub: Arc<dyn EventHub>,
-  ) -> ClipboardResult<Clipboard>
+impl ClipboardCommon for Clipboard {
+  fn new<T>(_display_name: &str, _selection_provider: T, _event_hub: Arc<dyn EventHub>) -> ClipboardResult<Self>
   where
     T: SelectionProvider + 'static,
   {
-    Ok(Clipboard {})
+    Err(ClipboardError::Unavailable)
   }
 
-  pub fn is_open(&self) -> bool {
+  fn is_open(&self) -> bool {
     false
   }
 
-  pub fn currently_providing(&self) -> Option<ClipboardProviding> {
+  fn currently_providing(&self) -> Option<ClipboardProviding> {
     None
   }
 
-  pub fn provide_next(&self) {}
+  fn provide_next(&self) {}
 
-  pub fn destroy(&self) {}
+  fn destroy(&self) {}
+
+  fn wait(&self) -> ClipboardResult<()> {
+    Ok(())
+  }
 }

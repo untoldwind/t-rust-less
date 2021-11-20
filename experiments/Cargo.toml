@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 log = "0"
 env_logger = "0"
-t-rust-less-lib = { path = "../lib", features = ["with_x11", "rust_crypto", "dropbox"], default-features = false }
+t-rust-less-lib = { path = "../lib", features = ["with_x11", "with_wayland", "rust_crypto", "dropbox"], default-features = false }
 serde = { version = "1", features = ["derive"] }
 rand = "0.8"
 dirs = "1"

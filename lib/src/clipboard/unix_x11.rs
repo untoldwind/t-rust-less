@@ -1,16 +1,16 @@
-#![cfg(all(unix, feature = "with_x11"))]
-
 use crate::api::{ClipboardProviding, EventData, EventHub};
+use crate::clipboard::selection_provider_holder::SelectionProviderHolder;
 use crate::clipboard::{ClipboardError, ClipboardResult, SelectionProvider};
 use log::{debug, error};
 use std::ffi::CString;
 use std::mem::MaybeUninit;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
-use std::time::SystemTime;
 use x11::xlib;
-use zeroize::{Zeroize, Zeroizing};
+use zeroize::Zeroize;
+
+use super::ClipboardCommon;
 
 #[derive(Debug)]
 struct Atoms {
@@ -19,37 +19,6 @@ struct Atoms {
   pub targets: xlib::Atom,
   pub string: xlib::Atom,
   pub utf8_string: xlib::Atom,
-}
-
-struct SelectionProviderHolder {
-  provider: Box<dyn SelectionProvider>,
-  last_moved: Option<SystemTime>,
-  last_content: Option<Zeroizing<String>>,
-}
-
-impl SelectionProviderHolder {
-  fn get_value(&mut self) -> Option<Zeroizing<String>> {
-    let now = SystemTime::now();
-
-    if self
-      .last_moved
-      .and_then(|last| now.duration_since(last).ok())
-      .filter(|elapsed| elapsed.as_millis() < 200)
-      .is_none()
-    {
-      self.last_content = self.provider.get_selection_value();
-      self.last_moved.replace(now);
-      self.provider.next_selection();
-    }
-
-    self.last_content.clone()
-  }
-}
-
-impl Drop for SelectionProviderHolder {
-  fn drop(&mut self) {
-    self.last_content.zeroize()
-  }
 }
 
 struct Context {
@@ -71,7 +40,7 @@ impl Context {
       let display = xlib::XOpenDisplay(c_display_name.as_ptr());
 
       if display.is_null() {
-        return Err(ClipboardError("Cannot open display".to_string()));
+        return Err(ClipboardError::Other("Cannot open display".to_string()));
       }
       let root = xlib::XDefaultRootWindow(display);
       let black = xlib::XBlackPixel(display, xlib::XDefaultScreen(display));
@@ -108,11 +77,7 @@ impl Context {
         window,
         atoms,
         open: AtomicBool::new(true),
-        provider_holder: RwLock::new(SelectionProviderHolder {
-          provider: Box::new(provider),
-          last_moved: None,
-          last_content: None,
-        }),
+        provider_holder: RwLock::new(SelectionProviderHolder::new(provider)),
         event_hub,
       })
     }
@@ -162,7 +127,7 @@ impl Context {
   }
 
   fn currently_providing(&self) -> Option<ClipboardProviding> {
-    self.provider_holder.read().ok()?.provider.current_selection()
+    self.provider_holder.read().ok()?.current_selection()
   }
 
   fn provide_next(&self) {
@@ -186,17 +151,17 @@ unsafe impl Sync for Context {}
 
 pub struct Clipboard {
   context: Arc<Context>,
-  handle: RwLock<Option<thread::JoinHandle<()>>>,
+  handle: Mutex<Option<thread::JoinHandle<()>>>,
 }
 
-impl Clipboard {
-  pub fn new<T>(display_name: &str, selection_provider: T, event_hub: Arc<dyn EventHub>) -> ClipboardResult<Clipboard>
+impl ClipboardCommon for Clipboard {
+  fn new<T>(display_name: &str, selection_provider: T, event_hub: Arc<dyn EventHub>) -> ClipboardResult<Self>
   where
-    T: SelectionProvider + 'static,
+    T: SelectionProvider + Clone + 'static,
   {
     match selection_provider.current_selection() {
       Some(providing) => event_hub.send(EventData::ClipboardProviding(providing)),
-      None => return Err(ClipboardError("Empty provider".to_string())),
+      None => return Err(ClipboardError::Other("Empty provider".to_string())),
     };
 
     let context = Arc::new(Context::new(display_name, event_hub, selection_provider)?);
@@ -208,30 +173,32 @@ impl Clipboard {
 
     Ok(Clipboard {
       context,
-      handle: RwLock::new(Some(handle)),
+      handle: Mutex::new(Some(handle)),
     })
   }
 
-  pub fn destroy(&self) {
+  fn destroy(&self) {
     self.context.destroy()
   }
 
-  pub fn is_open(&self) -> bool {
+  fn is_open(&self) -> bool {
     self.context.is_open()
   }
 
-  pub fn currently_providing(&self) -> Option<ClipboardProviding> {
+  fn currently_providing(&self) -> Option<ClipboardProviding> {
     self.context.currently_providing()
   }
 
-  pub fn provide_next(&self) {
+  fn provide_next(&self) {
     self.context.provide_next()
   }
 
-  pub fn wait(&self) -> ClipboardResult<()> {
-    let mut maybe_handle = self.handle.write().unwrap();
+  fn wait(&self) -> ClipboardResult<()> {
+    let mut maybe_handle = self.handle.lock()?;
     if let Some(handle) = maybe_handle.take() {
-      handle.join().map_err(|_| ClipboardError("wait timeout".to_string()))?;
+      handle
+        .join()
+        .map_err(|_| ClipboardError::Other("wait timeout".to_string()))?;
     }
     Ok(())
   }
