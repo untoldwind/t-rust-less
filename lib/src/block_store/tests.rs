@@ -198,7 +198,10 @@ fn common_test_blocks_commits(store: &dyn BlockStore, rng: &mut ThreadRng) {
 #[test]
 fn test_local_dir_store() {
   let tempdir = Builder::new().prefix("t-rust-less-test").tempdir().unwrap();
+  #[cfg(not(windows))]
   let url = format!("file://{}", tempdir.path().to_string_lossy());
+  #[cfg(windows)]
+  let url = format!("file:///{}", tempdir.path().to_string_lossy().replace('\\', "/"));
 
   let store = open_block_store(&url, "node1").unwrap();
 
@@ -216,9 +219,12 @@ fn test_memory_store() {
 #[test]
 fn test_sled_store() {
   let tempdir = Builder::new().prefix("t-rust-less-test").tempdir().unwrap();
+  #[cfg(not(windows))]
   let url = format!("sled://{}", tempdir.path().to_string_lossy());
+  #[cfg(windows)]
+  let url = format!("sled:///{}", tempdir.path().to_string_lossy().replace('\\', "/"));
 
-  let store = open_block_store(&url, "node1").unwrap();
+  let store = open_block_store(url.as_str(), "node1").unwrap();
 
   common_store_tests(store);
 }
