@@ -64,5 +64,16 @@ pub fn experimental_clipboard() {
     }
   });
 
-  clipboard.wait().unwrap();
+  loop {
+    let mut buffer = String::new();
+    std::io::stdin().read_line(&mut buffer).unwrap();
+
+    clipboard.provide_next();
+
+    if buffer.trim() == "c" {
+      break;
+    }
+  }
+  clipboard.destroy();
+  //  clipboard.wait().unwrap();
 }

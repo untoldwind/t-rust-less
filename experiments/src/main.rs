@@ -9,6 +9,6 @@ fn main() {
     .target(env_logger::Target::Stderr)
     .init();
 
-  fixtures::generate_fixtures();
-  //  clipboard::experimental_clipboard();
+  //fixtures::generate_fixtures();
+  clipboard::experimental_clipboard();
 }

@@ -1,3 +1,4 @@
+use clipboard_win::formats::RawData;
 use log::error;
 
 use super::{ClipboardResult, SelectionProvider};
@@ -42,7 +43,7 @@ impl Clipboard {
   }
 
   pub fn destroy(&self) {
-    clipboard_win::set_clipboard_string("").ok();
+    clipboard_win::set_clipboard(RawData(0), b" ").ok();
   }
 
   pub fn wait(&self) -> ClipboardResult<()> {
