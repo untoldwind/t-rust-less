@@ -1960,7 +1960,7 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less"
-version = "0.2.8"
+version = "0.2.9"
 dependencies = [
  "atty",
  "chrono",
@@ -1984,7 +1984,7 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less-daemon"
-version = "0.2.8"
+version = "0.2.9"
 dependencies = [
  "clap",
  "env_logger 0.9.0",
@@ -2019,7 +2019,7 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less-lib"
-version = "0.2.8"
+version = "0.2.9"
 dependencies = [
  "aes-gcm",
  "byteorder",
@@ -2073,7 +2073,7 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less-native"
-version = "0.2.8"
+version = "0.2.9"
 dependencies = [
  "byteorder",
  "env_logger 0.9.0",
