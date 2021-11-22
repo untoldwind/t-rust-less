@@ -162,7 +162,9 @@ fn secret_to_clipboard(properties: &'static [&'static str]) -> impl Fn(&mut Curs
           &state.store_name,
           &secret.current_block_id,
           properties,
-          &env::var("DISPLAY").unwrap_or_else(|_| ":0".to_string()),
+          &env::var("WAYLAND_DISPLAY")
+            .or_else(|_| env::var("DISPLAY"))
+            .unwrap_or_else(|_| ":0".to_string()),
         )
         .ok_or_exit("Copy to clipboard");
     }

@@ -49,7 +49,9 @@ impl EventHub for TestEventHub {
 pub fn experimental_clipboard() {
   let clipboard = Arc::new(
     Clipboard::new(
-      &env::var("DISPLAY").unwrap_or_else(|_| ":0".to_string()),
+      &env::var("WAYLAND_DISPLAY")
+        .or_else(|_| env::var("DISPLAY"))
+        .unwrap_or_else(|_| ":0".to_string()),
       DummyProvider { counter: 0 },
       Arc::new(TestEventHub),
     )
