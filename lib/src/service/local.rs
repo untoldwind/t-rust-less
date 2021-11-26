@@ -303,6 +303,17 @@ impl TrustlessService for LocalTrustlessService {
     }
   }
 
+  fn needs_synchronization(&self) -> bool {
+    if let Ok(config) = self.config.read() {
+      config
+        .stores
+        .iter()
+        .any(|(_, store_config)| store_config.remote_url.is_some())
+    } else {
+      false
+    }
+  }
+
   fn synchronize(&self) -> Option<DateTime<Utc>> {
     match self.synchronizers.lock() {
       Ok(mut synchronizers) => {

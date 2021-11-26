@@ -68,6 +68,8 @@ pub trait TrustlessService: std::fmt::Debug + Send + Sync {
 
   fn check_autolock(&self);
 
+  fn needs_synchronization(&self) -> bool;
+
   fn synchronize(&self) -> Option<DateTime<Utc>>;
 }
 

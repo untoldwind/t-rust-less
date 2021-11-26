@@ -136,6 +136,10 @@ where
     // This should be done by the remote sever itself
   }
 
+  fn needs_synchronization(&self) -> bool {
+    false
+  }
+
   fn synchronize(&self) -> Option<DateTime<Utc>> {
     // This should be done by the remote sever itself
     None
