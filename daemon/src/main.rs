@@ -1,7 +1,9 @@
 mod cli;
 
+mod autolock;
 mod error;
 mod processor;
+mod sync_trigger;
 
 #[cfg(unix)]
 mod unix;
@@ -12,10 +14,8 @@ mod windows;
 #[cfg(windows)]
 use windows::run_server;
 
-use std::{error::Error, sync::Arc, time::Duration};
+use std::{error::Error, sync::Arc};
 use t_rust_less_lib::service::local::LocalTrustlessService;
-use t_rust_less_lib::service::TrustlessService;
-use tokio::time::interval;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -32,15 +32,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
   log_builder.init();
 
   let service = Arc::new(LocalTrustlessService::new()?);
-
-  let mut interval = interval(Duration::from_secs(1));
-  let service_cloned = service.clone();
-  tokio::spawn(async move {
-    loop {
-      interval.tick().await;
-      service_cloned.check_autolock();
-    }
-  });
+  sync_trigger::start_sync_loop(service.clone());
+  autolock::start_autolock_loop(service.clone());
 
   run_server(service).await
 }
