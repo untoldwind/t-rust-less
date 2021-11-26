@@ -1,6 +1,6 @@
 [package]
 name = "t-rust-less-daemon"
-version = "0.2.9"
+version = "0.2.10"
 authors = ["Untoldwind <landru@untoldwind.net>"]
 build = "build.rs"
 edition = "2018"
@@ -14,6 +14,7 @@ futures = "0.3"
 tokio = { version = "1", features = ["full"] }
 zeroize = "1"
 rmp-serde = "0"
+chrono = "0"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0"

@@ -136,9 +136,9 @@ where
     // This should be done by the remote sever itself
   }
 
-  fn synchronize(&self) -> ServiceResult<Option<DateTime<Utc>>> {
+  fn synchronize(&self) -> Option<DateTime<Utc>> {
     // This should be done by the remote sever itself
-    Ok(None)
+    None
   }
 }
 

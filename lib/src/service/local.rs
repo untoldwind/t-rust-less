@@ -303,21 +303,28 @@ impl TrustlessService for LocalTrustlessService {
     }
   }
 
-  fn synchronize(&self) -> ServiceResult<Option<DateTime<Utc>>> {
-    let mut result = None;
-    for synchronizer in self.synchronizers.lock()?.iter_mut() {
-      if let Err(err) = synchronizer.synchronize() {
-        error!("Synchronization failed: {}", err);
-      } else {
-        let next = synchronizer.next_run();
-        result = match result {
-          Some(prev) if prev > next => Some(next),
-          Some(prev) => Some(prev),
-          None => Some(next),
-        };
+  fn synchronize(&self) -> Option<DateTime<Utc>> {
+    match self.synchronizers.lock() {
+      Ok(mut synchronizers) => {
+        let mut result = None;
+        for synchronizer in synchronizers.iter_mut() {
+          if let Err(err) = synchronizer.synchronize() {
+            error!("Synchronization failed: {}", err);
+          }
+          let next = synchronizer.next_run();
+          result = match result {
+            Some(prev) if prev > next => Some(next),
+            Some(prev) => Some(prev),
+            None => Some(next),
+          };
+        }
+        result
+      }
+      Err(err) => {
+        error!("Synchronization lock failed: {}", err);
+        None
       }
     }
-    Ok(result)
   }
 }
 
