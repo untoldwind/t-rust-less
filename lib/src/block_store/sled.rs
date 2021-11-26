@@ -112,7 +112,7 @@ impl BlockStore for SledBlockStore {
       .map(|kv| {
         let (k, v) = kv?;
 
-        let changes: Vec<Change> = rmp_serde::decode::from_read(v.as_ref())?;
+        let changes: Vec<Change> = rmp_serde::from_read(v.as_ref())?;
         Ok(ChangeLog {
           node: String::from_utf8_lossy(&k).to_string(),
           changes,
@@ -163,7 +163,7 @@ impl BlockStore for SledBlockStore {
         None => changes.to_vec(),
       };
       let raw =
-        rmp_serde::to_vec(&new_changes).map_err(|e| ConflictableTransactionError::Abort(StoreError::from(e)))?;
+        rmp_serde::to_vec_named(&new_changes).map_err(|e| ConflictableTransactionError::Abort(StoreError::from(e)))?;
       tx.insert(self.node_id.as_str(), raw)?;
       Ok(())
     })?;
@@ -172,7 +172,7 @@ impl BlockStore for SledBlockStore {
   }
 
   fn update_change_log(&self, change_log: ChangeLog) -> StoreResult<()> {
-    let raw = rmp_serde::to_vec(&change_log.changes)?;
+    let raw = rmp_serde::to_vec_named(&change_log.changes)?;
     self.change_logs.insert(change_log.node.as_str(), raw)?;
     self.change_logs.flush()?;
 

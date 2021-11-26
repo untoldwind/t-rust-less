@@ -203,7 +203,7 @@ where
   W: AsyncWrite + Unpin,
 {
   let mut buf = ZeroizeBytesBuffer::with_capacity(1024);
-  rmp_serde::encode::write(&mut buf, &result.into())?;
+  rmp_serde::encode::write_named(&mut buf, &result.into())?;
 
   wr.write_u32_le(buf.len() as u32).await?;
   wr.write_all(&buf).await?;

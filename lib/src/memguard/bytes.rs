@@ -654,7 +654,7 @@ mod tests {
     let random = SecretBytes::random(&mut rng, 32);
     let mut buffer = ZeroizeBytesBuffer::with_capacity(1024);
 
-    rmp_serde::encode::write(&mut buffer, &random).unwrap();
+    rmp_serde::encode::write_named(&mut buffer, &random).unwrap();
 
     let deserialized: SecretBytes = rmp_serde::from_read_ref(&buffer).unwrap();
 
