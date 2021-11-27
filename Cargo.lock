@@ -417,6 +417,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ctor"
+version = "0.1.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ccc0a48a9b826acdf4028595adc9db92caea352f7af011a3034acd172a52a0aa"
+dependencies = [
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "ctr"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -695,11 +705,8 @@ version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a19187fea3ac7e84da7dacf48de0c45d63c6a76f9490dae389aead16c243fce3"
 dependencies = [
- "atty",
- "humantime",
  "log",
  "regex",
- "termcolor",
 ]
 
 [[package]]
@@ -1036,6 +1043,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c7d73b3f436185384286bd8098d17ec07c9a7d2388a6599f824d8502b529702a"
 
 [[package]]
+name = "libsystemd"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6f4f0b5b062ba67aa075e331de778082c09e66b5ef32970ea5a1e9c37c9555d1"
+dependencies = [
+ "hmac",
+ "libc",
+ "log",
+ "nix 0.23.0",
+ "once_cell",
+ "serde",
+ "sha2",
+ "thiserror",
+ "uuid",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1051,6 +1075,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
 dependencies = [
  "cfg-if",
+ "value-bag",
 ]
 
 [[package]]
@@ -1116,6 +1141,19 @@ name = "nix"
 version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf1e25ee6b412c2a1e3fcb6a4499a5c1bfe7f43e014bdce9a6b6666e5aa2d187"
+dependencies = [
+ "bitflags",
+ "cc",
+ "cfg-if",
+ "libc",
+ "memoffset",
+]
+
+[[package]]
+name = "nix"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f305c2c2e4c39a82f7bf0bf65fb557f9070ce06781d4f2454295cc34b1c43188"
 dependencies = [
  "bitflags",
  "cc",
@@ -1962,6 +2000,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "systemd-journal-logger"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac40fb7f897d40dc7b9d94a9acdd907c4965c8d641b298379acf700d75252bd5"
+dependencies = [
+ "libsystemd",
+ "log",
+]
+
+[[package]]
 name = "t-rust-less"
 version = "0.2.10"
 dependencies = [
@@ -1971,7 +2019,7 @@ dependencies = [
  "crossterm_style",
  "cursive",
  "dirs 4.0.0",
- "env_logger 0.8.4",
+ "env_logger 0.9.0",
  "log",
  "rand 0.8.4",
  "serde",
@@ -1991,11 +2039,12 @@ version = "0.2.10"
 dependencies = [
  "chrono",
  "clap",
- "env_logger 0.8.4",
+ "env_logger 0.9.0",
  "futures",
  "libc",
  "log",
  "rmp-serde",
+ "systemd-journal-logger",
  "t-rust-less-lib",
  "tokio",
  "zeroize",
@@ -2080,7 +2129,7 @@ name = "t-rust-less-native"
 version = "0.2.10"
 dependencies = [
  "byteorder",
- "env_logger 0.8.4",
+ "env_logger 0.9.0",
  "log",
  "serde",
  "serde_json",
@@ -2331,6 +2380,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "uuid"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "value-bag"
+version = "1.0.0-alpha.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "79923f7731dc61ebfba3633098bf3ac533bbd35ccd8c57e7088d9a5eebe0263f"
+dependencies = [
+ "ctor",
+ "version_check",
+]
+
+[[package]]
 name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2439,7 +2507,7 @@ dependencies = [
  "bitflags",
  "downcast-rs",
  "libc",
- "nix",
+ "nix 0.22.0",
  "wayland-commons",
  "wayland-scanner",
  "wayland-sys",
@@ -2451,7 +2519,7 @@ version = "0.29.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "265ef51b3b3e5c9ef098f10425c39624663f459c3821dcaacc4748be975f1beb"
 dependencies = [
- "nix",
+ "nix 0.22.0",
  "once_cell",
  "smallvec",
  "wayland-sys",

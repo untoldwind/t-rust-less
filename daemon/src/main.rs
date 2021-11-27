@@ -21,15 +21,14 @@ use t_rust_less_lib::service::{local::LocalTrustlessService, TrustlessService};
 async fn main() -> Result<(), Box<dyn Error>> {
   let matches = cli::app().get_matches();
 
-  let mut log_builder = env_logger::Builder::from_default_env();
-
-  if matches.is_present("debug") {
-    log_builder.filter(None, log::LevelFilter::Debug);
+  #[cfg(not(unix))]
+  init_console_logger(matches.is_present("debug"));
+  #[cfg(unix)]
+  if matches.is_present("journal") {
+    init_systemd_logger(matches.is_present("debug"));
   } else {
-    log_builder.filter(None, log::LevelFilter::Info);
+    init_console_logger(matches.is_present("debug"));
   }
-  log_builder.target(env_logger::Target::Stderr);
-  log_builder.init();
 
   let service = Arc::new(LocalTrustlessService::new()?);
   if service.needs_synchronization() {
@@ -38,4 +37,27 @@ async fn main() -> Result<(), Box<dyn Error>> {
   autolock::start_autolock_loop(service.clone());
 
   run_server(service).await
+}
+
+fn init_console_logger(debug: bool) {
+  let mut log_builder = env_logger::Builder::from_default_env();
+
+  if debug {
+    log_builder.filter(None, log::LevelFilter::Debug);
+  } else {
+    log_builder.filter(None, log::LevelFilter::Info);
+  }
+  log_builder.target(env_logger::Target::Stderr);
+  log_builder.init();
+}
+
+#[cfg(unix)]
+fn init_systemd_logger(debug: bool) {
+  systemd_journal_logger::init().unwrap();
+
+  if debug {
+    log::set_max_level(log::LevelFilter::Debug);
+  } else {
+    log::set_max_level(log::LevelFilter::Info);
+  }
 }
