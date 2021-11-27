@@ -57,7 +57,6 @@ pub trait TrustlessService: std::fmt::Debug + Send + Sync {
     store_name: &str,
     block_id: &str,
     properties: &[&str],
-    display_name: &str,
   ) -> ServiceResult<Arc<dyn ClipboardControl>>;
 
   fn poll_events(&self, last_id: u64) -> ServiceResult<Vec<Event>>;

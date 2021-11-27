@@ -274,7 +274,6 @@ impl Arbitrary for Command {
         store_name: String::arbitrary(g),
         block_id: String::arbitrary(g),
         properties: Vec::arbitrary(g),
-        display_name: String::arbitrary(g),
       },
       20 => Command::ClipboardIsDone,
       21 => Command::ClipboardCurrentlyProviding,

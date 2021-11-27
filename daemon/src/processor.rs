@@ -156,7 +156,6 @@ impl Processor {
         store_name,
         block_id,
         properties,
-        display_name,
       } => {
         write_result(
           wr,
@@ -164,7 +163,6 @@ impl Processor {
             store_name,
             block_id,
             &properties.iter().map(String::as_str).collect::<Vec<&str>>(),
-            display_name,
           ) {
             Ok(clipboard) => {
               self.current_clipboard.replace(clipboard);

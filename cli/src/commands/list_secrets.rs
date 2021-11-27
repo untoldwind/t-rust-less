@@ -10,7 +10,6 @@ use cursive::traits::{Boxable, Identifiable, Scrollable};
 use cursive::utils::markup::StyledString;
 use cursive::views::{EditView, LinearLayout, ResizedView, SelectView, TextContent};
 use cursive::{Cursive, CursiveRunnable};
-use std::env;
 use std::sync::Arc;
 use t_rust_less_lib::api::{
   SecretEntry, SecretEntryMatch, SecretListFilter, Status, PROPERTY_PASSWORD, PROPERTY_TOTP_URL, PROPERTY_USERNAME,
@@ -158,14 +157,7 @@ fn secret_to_clipboard(properties: &'static [&'static str]) -> impl Fn(&mut Curs
     if let Some(secret) = maybe_secret {
       state
         .service
-        .secret_to_clipboard(
-          &state.store_name,
-          &secret.current_block_id,
-          properties,
-          &env::var("WAYLAND_DISPLAY")
-            .or_else(|_| env::var("DISPLAY"))
-            .unwrap_or_else(|_| ":0".to_string()),
-        )
+        .secret_to_clipboard(&state.store_name, &secret.current_block_id, properties)
         .ok_or_exit("Copy to clipboard");
     }
   }

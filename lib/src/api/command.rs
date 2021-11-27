@@ -61,7 +61,6 @@ pub enum Command {
     store_name: String,
     block_id: String,
     properties: Vec<String>,
-    display_name: String,
   },
   ClipboardIsDone,
   ClipboardCurrentlyProviding,

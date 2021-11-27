@@ -106,7 +106,6 @@ where
     store_name: &str,
     block_id: &str,
     properties: &[&str],
-    display_name: &str,
   ) -> ServiceResult<Arc<dyn ClipboardControl>> {
     send_recv::<_, ServiceError>(
       &self.stream,
@@ -114,7 +113,6 @@ where
         store_name: store_name.to_string(),
         block_id: block_id.to_string(),
         properties: properties.iter().map(ToString::to_string).collect(),
-        display_name: display_name.to_string(),
       },
     )?;
     Ok(Arc::new(RemoteClipboardControl::new(&self.stream)))

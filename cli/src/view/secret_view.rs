@@ -3,7 +3,6 @@ use crate::view::{SecretCopyView, SecretNodeView, SecretSimpleView, SecretTOTPVi
 use cursive::view::ViewWrapper;
 use cursive::views::{DummyView, LinearLayout};
 use cursive::Cursive;
-use std::env;
 use std::sync::Arc;
 use t_rust_less_lib::api::{Secret, PROPERTY_NOTES, PROPERTY_PASSWORD, PROPERTY_TOTP_URL};
 use t_rust_less_lib::secrets_store::SecretsStore;
@@ -98,14 +97,7 @@ impl SecretView {
     let owned_property = property.to_string();
     move |_: &mut Cursive| {
       service
-        .secret_to_clipboard(
-          &store_name,
-          &owned_secret_id,
-          &[&owned_property],
-          &env::var("WAYLAND_DISPLAY")
-            .or_else(|_| env::var("DISPLAY"))
-            .unwrap_or_else(|_| ":0".to_string()),
-        )
+        .secret_to_clipboard(&store_name, &owned_secret_id, &[&owned_property])
         .ok_or_exit("Copy to clipboard");
     }
   }

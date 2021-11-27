@@ -77,11 +77,11 @@ pub struct Clipboard {
 }
 
 impl ClipboardCommon for Clipboard {
-  fn new<T>(display_name: &str, selection_provider: T, event_hub: Arc<dyn EventHub>) -> ClipboardResult<Self>
+  fn new<T>(selection_provider: T, event_hub: Arc<dyn EventHub>) -> ClipboardResult<Self>
   where
     T: SelectionProvider + Clone + 'static,
   {
-    let display = Display::connect_to_name(display_name)?;
+    let display = Display::connect_to_env()?;
     match selection_provider.current_selection() {
       Some(providing) => event_hub.send(EventData::ClipboardProviding(providing)),
       None => return Err(ClipboardError::Other("Empty provider".to_string())),

@@ -6,7 +6,7 @@ use std::ffi::CString;
 use std::mem::MaybeUninit;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
-use std::thread;
+use std::{env, thread};
 use x11::xlib;
 use zeroize::Zeroize;
 
@@ -31,11 +31,12 @@ struct Context {
 }
 
 impl Context {
-  fn new<T>(display_name: &str, event_hub: Arc<dyn EventHub>, provider: T) -> ClipboardResult<Self>
+  fn new<T>(event_hub: Arc<dyn EventHub>, provider: T) -> ClipboardResult<Self>
   where
     T: SelectionProvider + 'static,
   {
     unsafe {
+      let display_name = env::var("DISPLAY")?;
       let c_display_name = CString::new(display_name)?;
       let display = xlib::XOpenDisplay(c_display_name.as_ptr());
 
@@ -155,7 +156,7 @@ pub struct Clipboard {
 }
 
 impl ClipboardCommon for Clipboard {
-  fn new<T>(display_name: &str, selection_provider: T, event_hub: Arc<dyn EventHub>) -> ClipboardResult<Self>
+  fn new<T>(selection_provider: T, event_hub: Arc<dyn EventHub>) -> ClipboardResult<Self>
   where
     T: SelectionProvider + Clone + 'static,
   {
@@ -164,7 +165,7 @@ impl ClipboardCommon for Clipboard {
       None => return Err(ClipboardError::Other("Empty provider".to_string())),
     };
 
-    let context = Arc::new(Context::new(display_name, event_hub, selection_provider)?);
+    let context = Arc::new(Context::new(event_hub, selection_provider)?);
 
     let handle = thread::spawn({
       let cloned = context.clone();

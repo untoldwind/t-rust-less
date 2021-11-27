@@ -32,7 +32,7 @@ impl Clipboard {
 }
 
 impl ClipboardCommon for Clipboard {
-  fn new<T>(_display_name: &str, selection_provider: T, event_hub: Arc<dyn EventHub>) -> ClipboardResult<Clipboard>
+  fn new<T>(selection_provider: T, event_hub: Arc<dyn EventHub>) -> ClipboardResult<Clipboard>
   where
     T: SelectionProvider + 'static,
   {

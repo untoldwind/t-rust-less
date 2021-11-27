@@ -61,12 +61,10 @@ where
         store_name,
         block_id,
         properties,
-        display_name,
       } => match self.service.secret_to_clipboard(
         &store_name,
         &block_id,
         &properties.iter().map(String::as_str).collect::<Vec<&str>>(),
-        &display_name,
       ) {
         Ok(clipboard) => {
           self.current_clipboard.replace(clipboard);

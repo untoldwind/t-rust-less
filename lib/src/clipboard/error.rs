@@ -26,6 +26,13 @@ impl From<std::ffi::NulError> for ClipboardError {
   }
 }
 
+#[cfg(all(unix, feature = "with_x11"))]
+impl From<std::env::VarError> for ClipboardError {
+  fn from(error: std::env::VarError) -> Self {
+    ClipboardError::Other(format!("{}", error))
+  }
+}
+
 #[cfg(all(unix, feature = "with_wayland"))]
 impl From<wayland_client::ConnectError> for ClipboardError {
   fn from(error: wayland_client::ConnectError) -> Self {

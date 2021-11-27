@@ -40,7 +40,7 @@ pub trait SelectionProvider: Send + Sync {
 }
 
 pub trait ClipboardCommon: Sized {
-  fn new<T>(display_name: &str, selection_provider: T, event_hub: Arc<dyn EventHub>) -> ClipboardResult<Self>
+  fn new<T>(selection_provider: T, event_hub: Arc<dyn EventHub>) -> ClipboardResult<Self>
   where
     T: SelectionProvider + Clone + 'static;
 

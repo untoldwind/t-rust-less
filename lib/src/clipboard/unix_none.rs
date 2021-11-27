@@ -5,7 +5,7 @@ use std::sync::Arc;
 pub struct Clipboard {}
 
 impl ClipboardCommon for Clipboard {
-  fn new<T>(_display_name: &str, _selection_provider: T, _event_hub: Arc<dyn EventHub>) -> ClipboardResult<Self>
+  fn new<T>(_selection_provider: T, _event_hub: Arc<dyn EventHub>) -> ClipboardResult<Self>
   where
     T: SelectionProvider + 'static,
   {

@@ -1,5 +1,4 @@
 use log::info;
-use std::env;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
@@ -47,16 +46,7 @@ impl EventHub for TestEventHub {
 }
 
 pub fn experimental_clipboard() {
-  let clipboard = Arc::new(
-    Clipboard::new(
-      &env::var("WAYLAND_DISPLAY")
-        .or_else(|_| env::var("DISPLAY"))
-        .unwrap_or_else(|_| ":0".to_string()),
-      DummyProvider { counter: 0 },
-      Arc::new(TestEventHub),
-    )
-    .unwrap(),
-  );
+  let clipboard = Arc::new(Clipboard::new(DummyProvider { counter: 0 }, Arc::new(TestEventHub)).unwrap());
 
   thread::spawn({
     let cloned = clipboard.clone();

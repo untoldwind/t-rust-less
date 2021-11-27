@@ -222,7 +222,6 @@ impl TrustlessService for LocalTrustlessService {
     store_name: &str,
     block_id: &str,
     properties: &[&str],
-    display_name: &str,
   ) -> ServiceResult<Arc<dyn ClipboardControl>> {
     #[cfg(any(unix, windows))]
     {
@@ -237,7 +236,6 @@ impl TrustlessService for LocalTrustlessService {
       info!("Providing {} for {} in {}", properties.join(","), block_id, store_name);
 
       let next_clipboard = Arc::new(ClipboardHolder::Providing(Clipboard::new(
-        display_name,
         secret_provider,
         self.event_hub.clone(),
       )?));
