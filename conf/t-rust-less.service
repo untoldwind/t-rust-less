@@ -1,10 +1,10 @@
 [Unit]
-Description=T-Rust-Less service
+Description=T-Rust-Less daemon
 
 [Service]
 Type=simple
-ExecStart=%h/.cargo/bin/t-rust-less-daemon
+ExecStart=/home/bjunglas/.cargo/bin/t-rust-less-daemon
 
 [Install]
-WantedBy=default.target
+WantedBy=i3-session.target
 
