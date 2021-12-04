@@ -7,4 +7,5 @@ ExecStart=/home/bjunglas/.cargo/bin/t-rust-less-daemon
 
 [Install]
 WantedBy=i3-session.target
+WantedBy=sway-session.target
 

@@ -5,9 +5,10 @@ use std::{
 
 use log::info;
 
-use crate::block_store::{BlockStore, ChangeLog, Operation, StoreResult};
+use crate::block_store::{BlockStore, Operation, StoreResult};
 
-pub fn synchronize_rings(local: Arc<dyn BlockStore>, remote: Arc<dyn BlockStore>) -> StoreResult<()> {
+pub fn synchronize_rings(local: Arc<dyn BlockStore>, remote: Arc<dyn BlockStore>) -> StoreResult<bool> {
+  let mut local_changes = false;
   let local_ring_ids: HashMap<String, u64> = local.list_ring_ids()?.into_iter().collect();
   let remote_ring_ids: HashMap<String, u64> = remote.list_ring_ids()?.into_iter().collect();
 
@@ -17,8 +18,10 @@ pub fn synchronize_rings(local: Arc<dyn BlockStore>, remote: Arc<dyn BlockStore>
         continue;
       }
     }
+    info!("Downloading ring: {}", remote_ring_id);
     let (remote_version, ring) = remote.get_ring(remote_ring_id)?;
-    local.store_ring(remote_ring_id, remote_version, &ring)?
+    local.store_ring(remote_ring_id, remote_version, &ring)?;
+    local_changes = true
   }
 
   for (local_ring_id, local_version) in local_ring_ids.iter() {
@@ -27,30 +30,24 @@ pub fn synchronize_rings(local: Arc<dyn BlockStore>, remote: Arc<dyn BlockStore>
         continue;
       }
     }
+    info!("Uploading ring: {}", local_ring_id);
     let (local_version, ring) = local.get_ring(local_ring_id)?;
-    remote.store_ring(local_ring_id, local_version, &ring)?
+    remote.store_ring(local_ring_id, local_version, &ring)?;
   }
 
-  Ok(())
+  Ok(local_changes)
 }
 
-pub fn synchronize_blocks(local: Arc<dyn BlockStore>, remote: Arc<dyn BlockStore>) -> StoreResult<()> {
-  let local_change_log = local
-    .change_logs()?
-    .into_iter()
-    .find(|change_log| change_log.node == local.node_id())
-    .unwrap_or_else(|| ChangeLog::new(local.node_id()));
-  let local_added: HashSet<&String> = local_change_log
-    .changes
-    .iter()
+pub fn synchronize_blocks(local: Arc<dyn BlockStore>, remote: Arc<dyn BlockStore>) -> StoreResult<bool> {
+  let mut local_changes = false;
+  let local_change_logs = local.change_logs()?;
+  let local_added: HashSet<&String> = local_change_logs.iter().flat_map(|change_log| change_log.changes.iter())
     .filter_map(|change| match change.op {
       Operation::Add => Some(&change.block),
       _ => None,
     })
     .collect();
-  let local_removed: HashSet<&String> = local_change_log
-    .changes
-    .iter()
+  let local_removed: HashSet<&String> = local_change_logs.iter().flat_map(|change_log| change_log.changes.iter())
     .filter_map(|change| match change.op {
       Operation::Delete => Some(&change.block),
       _ => None,
@@ -83,6 +80,7 @@ pub fn synchronize_blocks(local: Arc<dyn BlockStore>, remote: Arc<dyn BlockStore
     info!("Downloading block: {}", local_missing);
     let block = remote.get_block(local_missing)?;
     local.add_block(&block)?;
+    local_changes = true;
   }
 
   for remote_missing in local_existing.difference(&remote_existing).copied() {
@@ -100,7 +98,9 @@ pub fn synchronize_blocks(local: Arc<dyn BlockStore>, remote: Arc<dyn BlockStore
     }
   }
 
-  remote.update_change_log(local_change_log)?;
+  if let Some(local_change_log) = local_change_logs.into_iter().find(|change_log| change_log.node == local.node_id()) {
+    remote.update_change_log(local_change_log)?;
+  }
 
-  Ok(())
+  Ok(local_changes)
 }

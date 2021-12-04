@@ -25,11 +25,13 @@ impl SyncBlockStore {
     }
   }
 
-  pub fn synchronize(&self) -> StoreResult<()> {
+  pub fn synchronize(&self) -> StoreResult<bool> {
     let _guard = self.sync_lock.lock()?;
 
-    synchronize::synchronize_rings(self.local.clone(), self.remote.clone())?;
-    synchronize::synchronize_blocks(self.local.clone(), self.remote.clone())
+    let mut local_changes = synchronize::synchronize_rings(self.local.clone(), self.remote.clone())?;
+    local_changes |= synchronize::synchronize_blocks(self.local.clone(), self.remote.clone())?;
+
+    Ok(local_changes)
   }
 }
 

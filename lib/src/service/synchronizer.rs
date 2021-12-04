@@ -1,4 +1,5 @@
 use chrono::{DateTime, Duration, Utc};
+use log::info;
 use std::sync::Arc;
 
 use crate::{block_store::sync::SyncBlockStore, secrets_store::SecretsStore};
@@ -29,15 +30,16 @@ impl Synchronizer {
 
   pub fn synchronize(&mut self) -> ServiceResult<()> {
     if let Some(last_run) = self.last_run {
-      if last_run + self.sync_interval < Utc::now() {
+      if last_run + self.sync_interval > Utc::now() {
         return Ok(());
       }
     }
+    info!("Start store synchronization");
     self.last_run = Some(Utc::now());
 
-    self.sync_block_store.synchronize()?;
+    let local_changes = self.sync_block_store.synchronize()?;
 
-    if !self.secret_store.status()?.locked {
+    if local_changes && !self.secret_store.status()?.locked {
       self.secret_store.update_index()?;
     }
 

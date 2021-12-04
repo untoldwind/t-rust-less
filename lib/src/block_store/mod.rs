@@ -134,7 +134,7 @@ pub fn open_block_store(url: &str, node_id: &str) -> StoreResult<Arc<dyn BlockSt
     #[cfg(feature = "dropbox")]
     "dropbox" => Ok(Arc::new(dropbox::DropboxBlockStore::new(
       store_url.username(),
-      &store_url.path()[1..],
+      store_url.host_str().unwrap(),
       node_id,
     )?)),
     _ => Err(StoreError::InvalidStoreUrl(url.to_string())),
