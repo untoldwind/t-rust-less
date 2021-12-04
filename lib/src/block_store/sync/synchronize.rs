@@ -41,13 +41,17 @@ pub fn synchronize_rings(local: Arc<dyn BlockStore>, remote: Arc<dyn BlockStore>
 pub fn synchronize_blocks(local: Arc<dyn BlockStore>, remote: Arc<dyn BlockStore>) -> StoreResult<bool> {
   let mut local_changes = false;
   let local_change_logs = local.change_logs()?;
-  let local_added: HashSet<&String> = local_change_logs.iter().flat_map(|change_log| change_log.changes.iter())
+  let local_added: HashSet<&String> = local_change_logs
+    .iter()
+    .flat_map(|change_log| change_log.changes.iter())
     .filter_map(|change| match change.op {
       Operation::Add => Some(&change.block),
       _ => None,
     })
     .collect();
-  let local_removed: HashSet<&String> = local_change_logs.iter().flat_map(|change_log| change_log.changes.iter())
+  let local_removed: HashSet<&String> = local_change_logs
+    .iter()
+    .flat_map(|change_log| change_log.changes.iter())
     .filter_map(|change| match change.op {
       Operation::Delete => Some(&change.block),
       _ => None,
@@ -98,7 +102,10 @@ pub fn synchronize_blocks(local: Arc<dyn BlockStore>, remote: Arc<dyn BlockStore
     }
   }
 
-  if let Some(local_change_log) = local_change_logs.into_iter().find(|change_log| change_log.node == local.node_id()) {
+  if let Some(local_change_log) = local_change_logs
+    .into_iter()
+    .find(|change_log| change_log.node == local.node_id())
+  {
     remote.update_change_log(local_change_log)?;
   }
 
