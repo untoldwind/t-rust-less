@@ -63,7 +63,7 @@ impl FromStr for OTPSecret {
   type Err = OTPError;
 
   fn from_str(s: &str) -> OTPResult<Self> {
-    match data_encoding::BASE32_NOPAD.decode(s.as_bytes()) {
+    match data_encoding::BASE32_NOPAD.decode(s.to_uppercase().as_bytes()) {
       Ok(bytes) => Ok(OTPSecret(bytes)),
       Err(_) => Err(OTPError::InvalidSecret),
     }
@@ -130,7 +130,7 @@ impl OTPAuthUrl {
   }
 
   pub fn to_url(&self) -> String {
-    let mut result = format!("{}://{}/", OTP_URL_SCHEME, self.otp_type.to_string());
+    let mut result = format!("{}://{}/", OTP_URL_SCHEME, self.otp_type);
 
     if let Some(issuer) = &self.issuer {
       result.extend(form_urlencoded::byte_serialize(issuer.as_bytes()));

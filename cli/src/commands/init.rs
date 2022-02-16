@@ -125,7 +125,7 @@ fn store_config(s: &mut Cursive) {
   try_with_dialog!(fs::create_dir_all(&store_path), s, "Failed creating directory:\n{}");
 
   let store_url = Url::from_directory_path(store_path).unwrap();
-  let secrets_store_url = format!("multilane+{}", store_url.to_string());
+  let secrets_store_url = format!("multilane+{}", store_url);
   let config = StoreConfig {
     name: store_name.to_string(),
     client_id,
