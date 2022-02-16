@@ -6,7 +6,7 @@ use atty::Stream;
 use chrono::{DateTime, Utc};
 use cursive::event::{Event, Key};
 use cursive::theme::Effect;
-use cursive::traits::{Boxable, Identifiable, Scrollable};
+use cursive::traits::{Nameable, Resizable, Scrollable};
 use cursive::utils::markup::StyledString;
 use cursive::views::{EditView, LinearLayout, ResizedView, SelectView, TextContent};
 use cursive::{Cursive, CursiveRunnable};

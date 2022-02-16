@@ -1,7 +1,7 @@
 use std::process;
 
 use atty::Stream;
-use cursive::traits::{Boxable, Identifiable};
+use cursive::traits::{Nameable, Resizable};
 use cursive::views::{Dialog, DummyView, EditView, LinearLayout, TextView};
 use cursive::Cursive;
 use t_rust_less_lib::api::StoreConfig;

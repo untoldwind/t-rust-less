@@ -1,4 +1,4 @@
-use cursive::traits::{Boxable, Identifiable};
+use cursive::traits::{Nameable, Resizable};
 use cursive::view::{Finder, ViewWrapper};
 use cursive::views::{Button, LinearLayout, ProgressBar, TextView};
 use cursive::Cursive;

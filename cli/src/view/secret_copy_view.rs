@@ -1,4 +1,4 @@
-use cursive::traits::Boxable;
+use cursive::traits::Resizable;
 use cursive::view::ViewWrapper;
 use cursive::views::{Button, LinearLayout, TextView};
 use cursive::Cursive;

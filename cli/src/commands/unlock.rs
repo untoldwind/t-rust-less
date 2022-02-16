@@ -3,7 +3,7 @@ use crate::error::ExtResult;
 use crate::view::PasswordView;
 use atty::Stream;
 use cursive::event::Key;
-use cursive::traits::{Boxable, Identifiable};
+use cursive::traits::{Nameable, Resizable};
 use cursive::views::{Dialog, DummyView, LinearLayout, SelectView, TextView};
 use cursive::{Cursive, CursiveRunnable};
 use std::process;

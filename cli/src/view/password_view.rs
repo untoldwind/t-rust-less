@@ -1,7 +1,7 @@
 use cursive::direction::Direction;
 use cursive::event::{Event, EventResult, Key};
 use cursive::theme::{ColorStyle, Effect};
-use cursive::view::View;
+use cursive::view::{CannotFocus, View};
 use cursive::{Cursive, Printer, Rect, Vec2, With};
 use std::rc::Rc;
 use t_rust_less_lib::memguard::SecretBytes;
@@ -161,8 +161,12 @@ impl View for PasswordView {
     self.last_length = size.x;
   }
 
-  fn take_focus(&mut self, _: Direction) -> bool {
-    self.enabled
+  fn take_focus(&mut self, _: Direction) -> Result<EventResult, CannotFocus> {
+    if self.enabled {
+      Ok(EventResult::Consumed(None))
+    } else {
+      Err(CannotFocus)
+    }
   }
 
   fn on_event(&mut self, event: Event) -> EventResult {
