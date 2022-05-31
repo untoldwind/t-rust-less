@@ -749,8 +749,11 @@ version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a19187fea3ac7e84da7dacf48de0c45d63c6a76f9490dae389aead16c243fce3"
 dependencies = [
+ "atty",
+ "humantime",
  "log",
  "regex",
+ "termcolor",
 ]
 
 [[package]]
@@ -2112,7 +2115,7 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less"
-version = "0.2.12"
+version = "0.2.13"
 dependencies = [
  "atty",
  "chrono",
@@ -2120,7 +2123,7 @@ dependencies = [
  "crossterm_style",
  "cursive",
  "dirs 4.0.0",
- "env_logger 0.9.0",
+ "env_logger 0.8.4",
  "log",
  "rand 0.8.5",
  "serde",
@@ -2136,11 +2139,11 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less-daemon"
-version = "0.2.12"
+version = "0.2.13"
 dependencies = [
  "chrono",
  "clap",
- "env_logger 0.9.0",
+ "env_logger 0.8.4",
  "futures",
  "libc",
  "log",
@@ -2173,7 +2176,7 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less-lib"
-version = "0.2.12"
+version = "0.2.13"
 dependencies = [
  "aes-gcm",
  "byteorder",
@@ -2227,10 +2230,10 @@ dependencies = [
 
 [[package]]
 name = "t-rust-less-native"
-version = "0.2.12"
+version = "0.2.13"
 dependencies = [
  "byteorder",
- "env_logger 0.9.0",
+ "env_logger 0.8.4",
  "log",
  "serde",
  "serde_json",
