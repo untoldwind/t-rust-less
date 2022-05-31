@@ -216,7 +216,7 @@ impl Index {
     F: Fn(&str) -> SecretStoreResult<Option<SecretVersion>>,
   {
     let mut new_heads = HashMap::with_capacity(change_logs.len());
-    let mut added_versions = HashMap::new();
+    let mut added_versions = HashMap::<String, HashMap<String, SecretVersion>>::new();
     let mut deleted_blocks = HashSet::new();
 
     for change_log in change_logs {
@@ -227,7 +227,7 @@ impl Index {
           Operation::Add => {
             if let Some(secret_version) = version_accessor(&change.block)? {
               let secret_id = secret_version.secret_id.clone();
-              let mut by_blocks = added_versions.remove(&secret_id).unwrap_or_else(HashMap::new);
+              let mut by_blocks = added_versions.remove(&secret_id).unwrap_or_default();
               by_blocks.insert(change.block.clone(), secret_version);
               added_versions.insert(secret_id, by_blocks);
             }

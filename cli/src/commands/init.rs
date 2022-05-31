@@ -168,7 +168,7 @@ fn collapse_path(path: String) -> String {
 
 fn expand_path(path: &str) -> String {
   match dirs::home_dir() {
-    Some(home_dir) => path.replace("~", &home_dir.to_string_lossy()),
+    Some(home_dir) => path.replace('~', &home_dir.to_string_lossy()),
     None => path.to_string(),
   }
 }
