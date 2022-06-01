@@ -140,8 +140,12 @@ impl TrustlessService for LocalTrustlessService {
     Ok(config.stores.values().cloned().collect())
   }
 
-  fn upsert_store_config(&self, store_config: StoreConfig) -> ServiceResult<()> {
+  fn upsert_store_config(&self, mut store_config: StoreConfig) -> ServiceResult<()> {
     let mut config = self.config.write()?;
+
+    if store_config.client_id.is_empty() {
+      store_config.client_id = self.generate_id()?;
+    }
 
     if config.default_store.is_none() {
       config.default_store = Some(store_config.name.to_string());
