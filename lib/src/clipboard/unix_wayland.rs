@@ -15,7 +15,7 @@ use std::{
 use log::{debug, error};
 use wayland_client::{global_filter, protocol::wl_seat::WlSeat, Display, GlobalManager, Main};
 use wayland_protocols::wlr::unstable::data_control::v1::client::{
-  zwlr_data_control_manager_v1::ZwlrDataControlManagerV1, zwlr_data_control_source_v1::Event,
+  zwlr_data_control_manager_v1::ZwlrDataControlManagerV1, zwlr_data_control_source_v1::Event, 
 };
 use zeroize::Zeroize;
 
@@ -82,6 +82,9 @@ impl ClipboardCommon for Clipboard {
     T: SelectionProvider + Clone + 'static,
   {
     let display = Display::connect_to_env()?;
+
+    debug!("Got display: {}", display.id());
+
     match selection_provider.current_selection() {
       Some(providing) => event_hub.send(EventData::ClipboardProviding(providing)),
       None => return Err(ClipboardError::Other("Empty provider".to_string())),
@@ -132,7 +135,7 @@ impl ClipboardCommon for Clipboard {
   }
 }
 
-fn try_run(context: Arc<Context>) -> Result<(), Box<dyn Error>> {
+fn try_run(context: Arc<Context>) -> Result<(), Box<dyn Error>> {  
   let mut queue = context.display.create_event_queue();
   let display = context.display.attach(queue.token());
   let seats = Rc::new(RefCell::new(vec![]));
@@ -149,13 +152,17 @@ fn try_run(context: Arc<Context>) -> Result<(), Box<dyn Error>> {
 
   queue.sync_roundtrip(&mut (), |_, _, _| {})?;
 
-  let clipboard_manager: Main<ZwlrDataControlManagerV1> = manager.instantiate_exact(1).unwrap();
+  debug!("Seats: {:?}", seats.borrow());
+  debug!("Globals: {:?}", manager.list());
+
+  let clipboard_manager: Main<ZwlrDataControlManagerV1> = manager.instantiate_exact(1)?;
 
   let data_source = clipboard_manager.create_data_source();
   let context_cloned = context.clone();
 
   data_source.quick_assign(move |_, event, _| match event {
     Event::Send { mime_type, fd } if TEXT_MIMES.contains(&mime_type.as_str()) => {
+      debug!("Event send: {} {}", mime_type, fd);
       match context_cloned.provider_holder.write() {
         Ok(mut selection_provider) => {
           if let Some(mut content) = selection_provider.get_value() {
@@ -174,7 +181,7 @@ fn try_run(context: Arc<Context>) -> Result<(), Box<dyn Error>> {
       }
     }
     Event::Cancelled => {
-      debug!("Lost ownership");
+      debug!("Event cancel: Lost ownership");
       context_cloned.cancel.store(true, Ordering::Relaxed)
     }
     _ => (),
