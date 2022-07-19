@@ -237,6 +237,7 @@ fn run(context: Arc<Context>) {
           selection.target = event.selection_request.target;
           selection.property = event.selection_request.property;
 
+          debug!("Selection requestor: {}", selection.requestor);
           debug!("Selection target: {}", selection.target);
 
           if selection.target == context.atoms.targets {

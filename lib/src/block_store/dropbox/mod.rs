@@ -173,7 +173,7 @@ impl BlockStore for DropboxBlockStore {
         ring_id, version
       )));
     }
-    files::upload(&self.client, &files::CommitInfo::new(path), raw)??;
+    files::upload(&self.client, &files::UploadArg::new(path), raw)??;
     Ok(())
   }
 
@@ -200,7 +200,7 @@ impl BlockStore for DropboxBlockStore {
   fn add_block(&self, raw: &[u8]) -> StoreResult<String> {
     let block_id = generate_block_id(raw);
     let path = self.block_path(&block_id)?;
-    files::upload(&self.client, &files::CommitInfo::new(path), raw)??;
+    files::upload(&self.client, &files::UploadArg::new(path), raw)??;
 
     Ok(block_id)
   }
@@ -232,7 +232,7 @@ impl BlockStore for DropboxBlockStore {
     }
     files::upload(
       &self.client,
-      &files::CommitInfo::new(format!("/{}/logs/{}", self.name, self.node_id)),
+      &files::UploadArg::new(format!("/{}/logs/{}", self.name, self.node_id)),
       &buffer,
     )??;
 
@@ -249,7 +249,7 @@ impl BlockStore for DropboxBlockStore {
     }
     files::upload(
       &self.client,
-      &files::CommitInfo::new(format!("/{}/logs/{}", self.name, change_log.node)),
+      &files::UploadArg::new(format!("/{}/logs/{}", self.name, change_log.node)),
       &buffer,
     )??;
 

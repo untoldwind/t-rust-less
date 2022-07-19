@@ -4,6 +4,7 @@ use zeroize::{Zeroize, Zeroizing};
 
 pub struct SelectionProviderHolder {
   provider: Box<dyn SelectionProvider>,
+  initialized: SystemTime,
   last_moved: Option<SystemTime>,
   last_content: Option<Zeroizing<String>>,
 }
@@ -15,6 +16,7 @@ impl SelectionProviderHolder {
   {
     SelectionProviderHolder {
       provider: Box::new(provider),
+      initialized: SystemTime::now(),
       last_moved: None,
       last_content: None,
     }
@@ -22,6 +24,10 @@ impl SelectionProviderHolder {
 
   pub fn get_value(&mut self) -> Option<Zeroizing<String>> {
     let now = SystemTime::now();
+
+    if now.duration_since(self.initialized).ok().filter(|elapsed| elapsed.as_millis() < 200).is_some() {
+      return Some("".to_string().into())
+    }
 
     if self
       .last_moved
