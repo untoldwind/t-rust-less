@@ -25,8 +25,13 @@ impl SelectionProviderHolder {
   pub fn get_value(&mut self) -> Option<Zeroizing<String>> {
     let now = SystemTime::now();
 
-    if now.duration_since(self.initialized).ok().filter(|elapsed| elapsed.as_millis() < 200).is_some() {
-      return Some("".to_string().into())
+    if now
+      .duration_since(self.initialized)
+      .ok()
+      .filter(|elapsed| elapsed.as_millis() < 200)
+      .is_some()
+    {
+      return Some("".to_string().into());
     }
 
     if self

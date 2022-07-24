@@ -15,7 +15,7 @@ use std::{
 use log::{debug, error};
 use wayland_client::{global_filter, protocol::wl_seat::WlSeat, Display, GlobalManager, Main};
 use wayland_protocols::wlr::unstable::data_control::v1::client::{
-  zwlr_data_control_manager_v1::ZwlrDataControlManagerV1, zwlr_data_control_source_v1::Event, 
+  zwlr_data_control_manager_v1::ZwlrDataControlManagerV1, zwlr_data_control_source_v1::Event,
 };
 use zeroize::Zeroize;
 
@@ -135,7 +135,7 @@ impl ClipboardCommon for Clipboard {
   }
 }
 
-fn try_run(context: Arc<Context>) -> Result<(), Box<dyn Error>> {  
+fn try_run(context: Arc<Context>) -> Result<(), Box<dyn Error>> {
   let mut queue = context.display.create_event_queue();
   let display = context.display.attach(queue.token());
   let seats = Rc::new(RefCell::new(vec![]));
