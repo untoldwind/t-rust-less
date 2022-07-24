@@ -139,20 +139,29 @@ impl OTPAuthUrl {
     result.extend(form_urlencoded::byte_serialize(self.account_name.as_bytes()));
     result += "?secret=";
     result += &self.secret.to_string();
+
     match self.otp_type {
-      OTPType::Totp { period } if period != 30 => result += &format!("&period={}", period),
+      OTPType::Totp { period } if period != 30 => {
+        result += "&period=";
+        result += &period.to_string();
+      }
       OTPType::Totp { .. } => (),
-      OTPType::Hotp { counter } => result += &format!("&counter={}", counter),
+      OTPType::Hotp { counter } => {
+        result += "&counter=";
+        result += &counter.to_string();
+      }
     }
     if self.digits != 6 {
-      result += &format!("&digits={}", self.digits);
+      result += "&digits=";
+      result += &self.digits.to_string();
     }
     if let Some(issuer) = &self.issuer {
       result += "&issuer=";
       result.extend(form_urlencoded::byte_serialize(issuer.as_bytes()));
     }
     if self.algorithm != OTPAlgorithm::SHA1 {
-      result += &format!("&algorithm={}", self.algorithm);
+      result += "&algorithm=";
+      result += &self.algorithm.to_string();
     }
 
     result
