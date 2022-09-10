@@ -1,8 +1,8 @@
 [package]
 name = "t-rust-less-native"
-version = "0.2.14"
+version = "0.2.15"
 authors = ["Untoldwind <landru@untoldwind.net>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 log = "0"
