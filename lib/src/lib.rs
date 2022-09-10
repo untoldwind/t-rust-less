@@ -18,7 +18,6 @@ pub mod service;
   clippy::wrong_self_convention,
   clippy::redundant_closure,
   clippy::redundant_field_names,
-  clippy::match_single_binding,
-  clippy::derive_partial_eq_without_eq
+  clippy::match_single_binding
 )]
 pub mod secrets_store_capnp;

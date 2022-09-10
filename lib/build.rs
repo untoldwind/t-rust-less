@@ -14,10 +14,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   if rebuild_secrets_store {
     print!("Building store");
-    capnpc::CompilerCommand::new()
+    if let Err(err) = capnpc::CompilerCommand::new()
       .file("src/secrets_store.capnp")
       .output_path(".")
-      .run()?;
+      .run()
+    {
+      return Err(format!("{}", err).into());
+    }
   }
 
   Ok(())

@@ -3,7 +3,7 @@
 // source: src/secrets_store.capnp
 
 #[repr(u16)]
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KeyDerivationType {
   Argon2 = 0,
 }
@@ -30,7 +30,7 @@ impl ::capnp::traits::HasTypeId for KeyDerivationType {
 }
 
 #[repr(u16)]
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KeyType {
   RsaAesGcm = 0,
   Ed25519Chacha20Poly1305 = 1,
@@ -128,6 +128,7 @@ pub mod ring {
         ::core::option::Option::None,
       )
     }
+    #[inline]
     pub fn has_id(&self) -> bool {
       !self.reader.get_pointer_field(0).is_null()
     }
@@ -138,6 +139,7 @@ pub mod ring {
         ::core::option::Option::None,
       )
     }
+    #[inline]
     pub fn has_name(&self) -> bool {
       !self.reader.get_pointer_field(1).is_null()
     }
@@ -148,6 +150,7 @@ pub mod ring {
         ::core::option::Option::None,
       )
     }
+    #[inline]
     pub fn has_email(&self) -> bool {
       !self.reader.get_pointer_field(2).is_null()
     }
@@ -160,6 +163,7 @@ pub mod ring {
         ::core::option::Option::None,
       )
     }
+    #[inline]
     pub fn has_public_keys(&self) -> bool {
       !self.reader.get_pointer_field(3).is_null()
     }
@@ -172,6 +176,7 @@ pub mod ring {
         ::core::option::Option::None,
       )
     }
+    #[inline]
     pub fn has_private_keys(&self) -> bool {
       !self.reader.get_pointer_field(4).is_null()
     }
@@ -263,6 +268,7 @@ pub mod ring {
     pub fn init_id(self, size: u32) -> ::capnp::text::Builder<'a> {
       self.builder.get_pointer_field(0).init_text(size)
     }
+    #[inline]
     pub fn has_id(&self) -> bool {
       !self.builder.get_pointer_field(0).is_null()
     }
@@ -281,6 +287,7 @@ pub mod ring {
     pub fn init_name(self, size: u32) -> ::capnp::text::Builder<'a> {
       self.builder.get_pointer_field(1).init_text(size)
     }
+    #[inline]
     pub fn has_name(&self) -> bool {
       !self.builder.get_pointer_field(1).is_null()
     }
@@ -299,6 +306,7 @@ pub mod ring {
     pub fn init_email(self, size: u32) -> ::capnp::text::Builder<'a> {
       self.builder.get_pointer_field(2).init_text(size)
     }
+    #[inline]
     pub fn has_email(&self) -> bool {
       !self.builder.get_pointer_field(2).is_null()
     }
@@ -325,6 +333,7 @@ pub mod ring {
     ) -> ::capnp::struct_list::Builder<'a, crate::secrets_store_capnp::ring::public_key::Owned> {
       ::capnp::traits::FromPointerBuilder::init_pointer(self.builder.get_pointer_field(3), size)
     }
+    #[inline]
     pub fn has_public_keys(&self) -> bool {
       !self.builder.get_pointer_field(3).is_null()
     }
@@ -351,6 +360,7 @@ pub mod ring {
     ) -> ::capnp::struct_list::Builder<'a, crate::secrets_store_capnp::ring::private_key::Owned> {
       ::capnp::traits::FromPointerBuilder::init_pointer(self.builder.get_pointer_field(4), size)
     }
+    #[inline]
     pub fn has_private_keys(&self) -> bool {
       !self.builder.get_pointer_field(4).is_null()
     }
@@ -453,6 +463,7 @@ pub mod ring {
           ::core::option::Option::None,
         )
       }
+      #[inline]
       pub fn has_key(&self) -> bool {
         !self.reader.get_pointer_field(0).is_null()
       }
@@ -548,6 +559,7 @@ pub mod ring {
       pub fn init_key(self, size: u32) -> ::capnp::data::Builder<'a> {
         self.builder.get_pointer_field(0).init_data(size)
       }
+      #[inline]
       pub fn has_key(&self) -> bool {
         !self.builder.get_pointer_field(0).is_null()
       }
@@ -653,6 +665,7 @@ pub mod ring {
           ::core::option::Option::None,
         )
       }
+      #[inline]
       pub fn has_nonce(&self) -> bool {
         !self.reader.get_pointer_field(0).is_null()
       }
@@ -663,6 +676,7 @@ pub mod ring {
           ::core::option::Option::None,
         )
       }
+      #[inline]
       pub fn has_crypted_key(&self) -> bool {
         !self.reader.get_pointer_field(1).is_null()
       }
@@ -776,6 +790,7 @@ pub mod ring {
       pub fn init_nonce(self, size: u32) -> ::capnp::data::Builder<'a> {
         self.builder.get_pointer_field(0).init_data(size)
       }
+      #[inline]
       pub fn has_nonce(&self) -> bool {
         !self.builder.get_pointer_field(0).is_null()
       }
@@ -794,6 +809,7 @@ pub mod ring {
       pub fn init_crypted_key(self, size: u32) -> ::capnp::data::Builder<'a> {
         self.builder.get_pointer_field(1).init_data(size)
       }
+      #[inline]
       pub fn has_crypted_key(&self) -> bool {
         !self.builder.get_pointer_field(1).is_null()
       }
@@ -888,6 +904,7 @@ pub mod block {
         ::core::option::Option::None,
       )
     }
+    #[inline]
     pub fn has_headers(&self) -> bool {
       !self.reader.get_pointer_field(0).is_null()
     }
@@ -898,6 +915,7 @@ pub mod block {
         ::core::option::Option::None,
       )
     }
+    #[inline]
     pub fn has_content(&self) -> bool {
       !self.reader.get_pointer_field(1).is_null()
     }
@@ -993,6 +1011,7 @@ pub mod block {
     ) -> ::capnp::struct_list::Builder<'a, crate::secrets_store_capnp::block::header::Owned> {
       ::capnp::traits::FromPointerBuilder::init_pointer(self.builder.get_pointer_field(0), size)
     }
+    #[inline]
     pub fn has_headers(&self) -> bool {
       !self.builder.get_pointer_field(0).is_null()
     }
@@ -1011,6 +1030,7 @@ pub mod block {
     pub fn init_content(self, size: u32) -> ::capnp::data::Builder<'a> {
       self.builder.get_pointer_field(1).init_data(size)
     }
+    #[inline]
     pub fn has_content(&self) -> bool {
       !self.builder.get_pointer_field(1).is_null()
     }
@@ -1105,6 +1125,7 @@ pub mod block {
           ::core::option::Option::None,
         )
       }
+      #[inline]
       pub fn has_common_key(&self) -> bool {
         !self.reader.get_pointer_field(0).is_null()
       }
@@ -1118,6 +1139,7 @@ pub mod block {
           ::core::option::Option::None,
         )
       }
+      #[inline]
       pub fn has_recipients(&self) -> bool {
         !self.reader.get_pointer_field(1).is_null()
       }
@@ -1213,6 +1235,7 @@ pub mod block {
       pub fn init_common_key(self, size: u32) -> ::capnp::data::Builder<'a> {
         self.builder.get_pointer_field(0).init_data(size)
       }
+      #[inline]
       pub fn has_common_key(&self) -> bool {
         !self.builder.get_pointer_field(0).is_null()
       }
@@ -1240,6 +1263,7 @@ pub mod block {
       ) -> ::capnp::struct_list::Builder<'a, crate::secrets_store_capnp::block::recipient_key::Owned> {
         ::capnp::traits::FromPointerBuilder::init_pointer(self.builder.get_pointer_field(1), size)
       }
+      #[inline]
       pub fn has_recipients(&self) -> bool {
         !self.builder.get_pointer_field(1).is_null()
       }
@@ -1331,6 +1355,7 @@ pub mod block {
           ::core::option::Option::None,
         )
       }
+      #[inline]
       pub fn has_id(&self) -> bool {
         !self.reader.get_pointer_field(0).is_null()
       }
@@ -1341,6 +1366,7 @@ pub mod block {
           ::core::option::Option::None,
         )
       }
+      #[inline]
       pub fn has_crypted_key(&self) -> bool {
         !self.reader.get_pointer_field(1).is_null()
       }
@@ -1428,6 +1454,7 @@ pub mod block {
       pub fn init_id(self, size: u32) -> ::capnp::text::Builder<'a> {
         self.builder.get_pointer_field(0).init_text(size)
       }
+      #[inline]
       pub fn has_id(&self) -> bool {
         !self.builder.get_pointer_field(0).is_null()
       }
@@ -1446,6 +1473,7 @@ pub mod block {
       pub fn init_crypted_key(self, size: u32) -> ::capnp::data::Builder<'a> {
         self.builder.get_pointer_field(1).init_data(size)
       }
+      #[inline]
       pub fn has_crypted_key(&self) -> bool {
         !self.builder.get_pointer_field(1).is_null()
       }
@@ -1540,6 +1568,7 @@ pub mod index {
         ::core::option::Option::None,
       )
     }
+    #[inline]
     pub fn has_heads(&self) -> bool {
       !self.reader.get_pointer_field(0).is_null()
     }
@@ -1552,6 +1581,7 @@ pub mod index {
         ::core::option::Option::None,
       )
     }
+    #[inline]
     pub fn has_entries(&self) -> bool {
       !self.reader.get_pointer_field(1).is_null()
     }
@@ -1647,6 +1677,7 @@ pub mod index {
     ) -> ::capnp::struct_list::Builder<'a, crate::secrets_store_capnp::index::head::Owned> {
       ::capnp::traits::FromPointerBuilder::init_pointer(self.builder.get_pointer_field(0), size)
     }
+    #[inline]
     pub fn has_heads(&self) -> bool {
       !self.builder.get_pointer_field(0).is_null()
     }
@@ -1673,6 +1704,7 @@ pub mod index {
     ) -> ::capnp::struct_list::Builder<'a, crate::secrets_store_capnp::index::entry::Owned> {
       ::capnp::traits::FromPointerBuilder::init_pointer(self.builder.get_pointer_field(1), size)
     }
+    #[inline]
     pub fn has_entries(&self) -> bool {
       !self.builder.get_pointer_field(1).is_null()
     }
@@ -1694,7 +1726,7 @@ pub mod index {
   }
 
   #[repr(u16)]
-  #[derive(Clone, Copy, Debug, PartialEq)]
+  #[derive(Clone, Copy, Debug, PartialEq, Eq)]
   pub enum HeadOperation {
     Add = 0,
     Delete = 1,
@@ -1792,6 +1824,7 @@ pub mod index {
           ::core::option::Option::None,
         )
       }
+      #[inline]
       pub fn has_node_id(&self) -> bool {
         !self.reader.get_pointer_field(0).is_null()
       }
@@ -1808,6 +1841,7 @@ pub mod index {
           ::core::option::Option::None,
         )
       }
+      #[inline]
       pub fn has_block_id(&self) -> bool {
         !self.reader.get_pointer_field(1).is_null()
       }
@@ -1895,6 +1929,7 @@ pub mod index {
       pub fn init_node_id(self, size: u32) -> ::capnp::text::Builder<'a> {
         self.builder.get_pointer_field(0).init_text(size)
       }
+      #[inline]
       pub fn has_node_id(&self) -> bool {
         !self.builder.get_pointer_field(0).is_null()
       }
@@ -1923,6 +1958,7 @@ pub mod index {
       pub fn init_block_id(self, size: u32) -> ::capnp::text::Builder<'a> {
         self.builder.get_pointer_field(1).init_text(size)
       }
+      #[inline]
       pub fn has_block_id(&self) -> bool {
         !self.builder.get_pointer_field(1).is_null()
       }
@@ -2014,6 +2050,7 @@ pub mod index {
           ::core::option::Option::None,
         )
       }
+      #[inline]
       pub fn has_entry(&self) -> bool {
         !self.reader.get_pointer_field(0).is_null()
       }
@@ -2027,6 +2064,7 @@ pub mod index {
           ::core::option::Option::None,
         )
       }
+      #[inline]
       pub fn has_version_refs(&self) -> bool {
         !self.reader.get_pointer_field(1).is_null()
       }
@@ -2114,6 +2152,7 @@ pub mod index {
       pub fn init_entry(self) -> crate::secrets_store_capnp::secret_entry::Builder<'a> {
         ::capnp::traits::FromPointerBuilder::init_pointer(self.builder.get_pointer_field(0), 0)
       }
+      #[inline]
       pub fn has_entry(&self) -> bool {
         !self.builder.get_pointer_field(0).is_null()
       }
@@ -2141,6 +2180,7 @@ pub mod index {
       ) -> ::capnp::struct_list::Builder<'a, crate::secrets_store_capnp::secret_version_ref::Owned> {
         ::capnp::traits::FromPointerBuilder::init_pointer(self.builder.get_pointer_field(1), size)
       }
+      #[inline]
       pub fn has_version_refs(&self) -> bool {
         !self.builder.get_pointer_field(1).is_null()
       }
@@ -2168,7 +2208,7 @@ pub mod index {
 }
 
 #[repr(u16)]
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SecretType {
   Login = 0,
   Note = 1,
@@ -2274,6 +2314,7 @@ pub mod secret_entry {
         ::core::option::Option::None,
       )
     }
+    #[inline]
     pub fn has_id(&self) -> bool {
       !self.reader.get_pointer_field(0).is_null()
     }
@@ -2288,6 +2329,7 @@ pub mod secret_entry {
         ::core::option::Option::None,
       )
     }
+    #[inline]
     pub fn has_name(&self) -> bool {
       !self.reader.get_pointer_field(1).is_null()
     }
@@ -2302,6 +2344,7 @@ pub mod secret_entry {
         ::core::option::Option::None,
       )
     }
+    #[inline]
     pub fn has_tags(&self) -> bool {
       !self.reader.get_pointer_field(2).is_null()
     }
@@ -2312,6 +2355,7 @@ pub mod secret_entry {
         ::core::option::Option::None,
       )
     }
+    #[inline]
     pub fn has_urls(&self) -> bool {
       !self.reader.get_pointer_field(3).is_null()
     }
@@ -2403,6 +2447,7 @@ pub mod secret_entry {
     pub fn init_id(self, size: u32) -> ::capnp::text::Builder<'a> {
       self.builder.get_pointer_field(0).init_text(size)
     }
+    #[inline]
     pub fn has_id(&self) -> bool {
       !self.builder.get_pointer_field(0).is_null()
     }
@@ -2429,6 +2474,7 @@ pub mod secret_entry {
     pub fn init_name(self, size: u32) -> ::capnp::text::Builder<'a> {
       self.builder.get_pointer_field(1).init_text(size)
     }
+    #[inline]
     pub fn has_name(&self) -> bool {
       !self.builder.get_pointer_field(1).is_null()
     }
@@ -2455,6 +2501,7 @@ pub mod secret_entry {
     pub fn init_tags(self, size: u32) -> ::capnp::text_list::Builder<'a> {
       ::capnp::traits::FromPointerBuilder::init_pointer(self.builder.get_pointer_field(2), size)
     }
+    #[inline]
     pub fn has_tags(&self) -> bool {
       !self.builder.get_pointer_field(2).is_null()
     }
@@ -2473,6 +2520,7 @@ pub mod secret_entry {
     pub fn init_urls(self, size: u32) -> ::capnp::text_list::Builder<'a> {
       ::capnp::traits::FromPointerBuilder::init_pointer(self.builder.get_pointer_field(3), size)
     }
+    #[inline]
     pub fn has_urls(&self) -> bool {
       !self.builder.get_pointer_field(3).is_null()
     }
@@ -2572,6 +2620,7 @@ pub mod secret_version_ref {
         ::core::option::Option::None,
       )
     }
+    #[inline]
     pub fn has_block_id(&self) -> bool {
       !self.reader.get_pointer_field(0).is_null()
     }
@@ -2663,6 +2712,7 @@ pub mod secret_version_ref {
     pub fn init_block_id(self, size: u32) -> ::capnp::text::Builder<'a> {
       self.builder.get_pointer_field(0).init_text(size)
     }
+    #[inline]
     pub fn has_block_id(&self) -> bool {
       !self.builder.get_pointer_field(0).is_null()
     }
