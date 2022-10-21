@@ -52,3 +52,20 @@ fn test_totp_long() {
     "otpauth://totp/someone%40somewhere.com?secret=LPD4D5FLWUBYFEB66SKYQGJBDS5HWYNT&period=60&digits=8".to_string(),
   );
 }
+
+#[test]
+fn test_totp_lowercase() {
+  let totp_url = "otpauth://totp/Test:someone?algorithm=SHA1&digits=6&issuer=Github&period=30&secret=pd7gryuk4ow2lj7lzq7sa5bndhvnuci4";
+  let otpauth = OTPAuthUrl::parse(totp_url).unwrap();
+
+  assert_that(&otpauth.algorithm).is_equal_to(OTPAlgorithm::SHA1);
+  assert_that(&otpauth.digits).is_equal_to(6);
+  assert_that(&otpauth.issuer).is_equal_to(Some("Test".to_string()));
+  assert_that(&otpauth.account_name).is_equal_to("someone".to_string());
+
+  assert_that(&otpauth.generate(1_556_733_830)).is_equal_to(("349728".to_string(), 1_556_733_840));
+  assert_that(&otpauth.generate(1_556_733_904)).is_equal_to(("141680".to_string(), 1_556_733_930));
+
+  assert_that(&otpauth.to_url())
+    .is_equal_to("otpauth://totp/Test:someone?secret=PD7GRYUK4OW2LJ7LZQ7SA5BNDHVNUCI4&issuer=Test".to_string());
+}
