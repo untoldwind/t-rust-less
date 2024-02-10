@@ -19,9 +19,9 @@ chrono = { version = "0", features = ["serde"] }
 url = "2"
 num-derive = "0"
 num-traits = "0"
-sha-1 = "0.9"
-sha2 = "0.9"
-hmac = "0.11"
+sha-1 = "0.10"
+sha2 = "0.10"
+hmac = "0.12"
 x25519-dalek-ng = "1"
 chacha20-poly1305-aead = "0"
 capnp = "0.14"
@@ -38,12 +38,13 @@ tokio = { version = "1", features = ["net", "rt" ] }
 tokio-util = { version = "0.7", features = ["compat"] }
 zeroize = "1"
 zeroize_derive  = "1"
-rsa = { version = "0.5", optional = true }
+rsa = { version = "0.9", optional = true }
 aes-gcm = { version = "0", optional = true }
 rmp-serde = "0"
 dropbox-sdk = { version= "0", optional = true }
 sled = { version = "0", optional = true }
 tiny_http = { version = "0", optional = true }
+typenum = "1"
 
 [dev-dependencies]
 tempfile = "3"

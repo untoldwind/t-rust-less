@@ -1,10 +1,14 @@
 use super::OTPAlgorithm;
+use aes_gcm::aes::cipher::BlockSizeUser;
 use byteorder::{BigEndian, ByteOrder};
-use hmac::digest::generic_array::ArrayLength;
-use hmac::digest::{BlockInput, FixedOutput, Reset, Update};
-use hmac::{Hmac, Mac, NewMac};
+use hmac::digest::block_buffer::Eager;
+use hmac::digest::core_api::{BufferKindUser, CoreProxy, FixedOutputCore, UpdateCore};
+use hmac::digest::typenum::{IsLess, Le, NonZero};
+use hmac::digest::HashMarker;
+use hmac::{Hmac, Mac};
 use sha1::Sha1;
 use sha2::{Sha256, Sha512};
+use typenum::consts::U256;
 
 #[derive(Debug)]
 pub struct HOTPGenerator<'a> {
@@ -17,9 +21,10 @@ pub struct HOTPGenerator<'a> {
 impl<'a> HOTPGenerator<'a> {
   fn calculate<D>(&mut self) -> String
   where
-    D: Update + BlockInput + FixedOutput + Reset + Default + Clone,
-    D::BlockSize: ArrayLength<u8> + Clone,
-    D::OutputSize: ArrayLength<u8>,
+    D: CoreProxy,
+    D::Core: HashMarker + UpdateCore + FixedOutputCore + BufferKindUser<BufferKind = Eager> + Default + Clone,
+    <D::Core as BlockSizeUser>::BlockSize: IsLess<U256>,
+    Le<<D::Core as BlockSizeUser>::BlockSize, U256>: NonZero,
   {
     let mut mac = Hmac::<D>::new_from_slice(self.secret).unwrap();
     mac.update(&self.counter.to_be_bytes());

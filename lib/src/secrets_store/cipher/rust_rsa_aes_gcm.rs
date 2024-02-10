@@ -9,9 +9,9 @@ use aes_gcm::aead::Aead;
 use aes_gcm::{Aes256Gcm, KeyInit};
 use core::convert::TryFrom;
 use rand::{thread_rng, RngCore};
-use rsa::pkcs1::{FromRsaPrivateKey, ToRsaPrivateKey};
-use rsa::pkcs8::{FromPublicKey, SubjectPublicKeyInfo, ToPublicKey};
-use rsa::{PaddingScheme, PublicKey as RSAPublicKeyTrait, RsaPrivateKey, RsaPublicKey};
+use rsa::pkcs1::{DecodeRsaPrivateKey, EncodeRsaPrivateKey};
+use rsa::pkcs8::{EncodePublicKey, SubjectPublicKeyInfo};
+use rsa::{oaep::Oaep, RsaPrivateKey, RsaPublicKey};
 
 const RSA_KEY_BITS: usize = 4096;
 
@@ -32,7 +32,7 @@ impl Cipher for RustRsaAesGcmCipher {
   fn generate_key_pair(&self) -> SecretStoreResult<(PublicKey, PrivateKey)> {
     let mut rng = thread_rng();
     let private = RsaPrivateKey::new(&mut rng, RSA_KEY_BITS)?;
-    let private_der = SecretBytes::from_secured(private.to_pkcs1_der()?.as_der());
+    let private_der = SecretBytes::from_secured(private.to_pkcs1_der()?.as_bytes());
     let public_der = private.to_public_key().to_public_key_der()?.as_ref().to_vec();
 
     Ok((public_der, private_der))
@@ -93,13 +93,9 @@ impl Cipher for RustRsaAesGcmCipher {
       if s.algorithm.parameters.is_none() {
         s.algorithm.parameters = Some(rsa::pkcs1::der::asn1::Null.into());
       }
-      let public_key = RsaPublicKey::from_spki(s)?;
+      let public_key = RsaPublicKey::try_from(s)?;
 
-      let crypled_key_buffer = public_key.encrypt(
-        &mut rng,
-        PaddingScheme::new_oaep::<sha1::Sha1>(),
-        seal_key.borrow().as_bytes(),
-      )?;
+      let crypled_key_buffer = public_key.encrypt(&mut rng, Oaep::new::<sha1::Sha1>(), seal_key.borrow().as_bytes())?;
 
       let mut recipient_key = recipient_keys.reborrow().get(idx as u32);
 
@@ -133,7 +129,7 @@ impl Cipher for RustRsaAesGcmCipher {
       }
       let crypted_key = recipient.get_crypted_key()?;
       let private_key = RsaPrivateKey::from_pkcs1_der(&user.1.borrow())?;
-      let seal_key = SecretBytes::from(private_key.decrypt(PaddingScheme::new_oaep::<sha1::Sha1>(), crypted_key)?);
+      let seal_key = SecretBytes::from(private_key.decrypt(Oaep::new::<sha1::Sha1>(), crypted_key)?);
 
       let cipher = Aes256Gcm::new(GenericArray::from_slice(&seal_key.borrow()));
       let decrypted = cipher.decrypt(GenericArray::from_slice(&nonce[0..12]), crypted)?;
