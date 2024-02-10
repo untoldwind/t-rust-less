@@ -2,7 +2,7 @@ use super::{KeyDerivation, SealKey};
 use crate::memguard::SecretBytes;
 use crate::secrets_store::{SecretStoreError, SecretStoreResult};
 use crate::secrets_store_capnp::KeyDerivationType;
-use argon2::{self, Config, ThreadMode, Variant, Version};
+use argon2::{self, Config, Variant, Version};
 
 pub static RUST_ARGON2_ID: RustArgon2id = RustArgon2id();
 
@@ -53,7 +53,6 @@ impl KeyDerivation for RustArgon2id {
       lanes: p.lanes,
       mem_cost: p.mem_cost,
       secret: &[],
-      thread_mode: ThreadMode::default(),
       time_cost: p.time_cost,
       version: p.version,
       variant: p.variant,
