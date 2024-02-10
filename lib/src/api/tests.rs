@@ -25,7 +25,7 @@ impl Arbitrary for Identity {
 
 impl Arbitrary for ZeroizeDateTime {
   fn arbitrary(g: &mut Gen) -> Self {
-    ZeroizeDateTime::from(Utc.timestamp_millis(u32::arbitrary(g) as i64))
+    ZeroizeDateTime::from(Utc.timestamp_millis_opt(u32::arbitrary(g) as i64).unwrap())
   }
 }
 

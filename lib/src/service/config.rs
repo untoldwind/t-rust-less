@@ -22,13 +22,13 @@ pub fn config_file() -> PathBuf {
 
 pub fn read_config() -> ServiceResult<Option<Config>> {
   let config_file = config_file();
-  match File::open(&config_file) {
+  match File::open(config_file) {
     Ok(mut index_file) => {
-      let mut content = vec![];
+      let mut content = String::new();
 
-      index_file.read_to_end(&mut content)?;
+      index_file.read_to_string(&mut content)?;
 
-      Ok(Some(toml::from_slice::<Config>(&content)?))
+      Ok(Some(toml::from_str::<Config>(&content)?))
     }
     Err(ref err) if err.kind() == io::ErrorKind::NotFound => Ok(None),
     Err(err) => Err(err.into()),
@@ -39,7 +39,7 @@ pub fn write_config(config: &Config) -> io::Result<()> {
   let content = toml::to_string_pretty(config).unwrap();
   let config_file = config_file();
 
-  fs::create_dir_all(&config_file.parent().unwrap())?;
+  fs::create_dir_all(config_file.parent().unwrap())?;
 
   let mut file = File::create(&config_file)?;
 

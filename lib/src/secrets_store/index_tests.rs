@@ -36,7 +36,7 @@ impl TestStore {
     SecretVersion {
       secret_id: secret_id.to_string(),
       secret_type: SecretType::Login,
-      timestamp: Utc.timestamp(1000 + 1000 * version_id, 0).into(),
+      timestamp: Utc.timestamp_opt(1000 + 1000 * version_id, 0).unwrap().into(),
       name: format!("{}_{}", secret_id, version_id),
       properties: Default::default(),
       tags: vec![],

@@ -61,7 +61,7 @@ impl From<&[u8]> for ZeroingWords {
     let len = bytes.len() / 8;
     let mut target = ZeroingWords::allocate_zeroed_vec(len);
     unsafe {
-      std::ptr::copy_nonoverlapping(bytes.as_ptr(), target.as_mut_ptr() as *mut u8, len * 8);
+      std::ptr::copy_nonoverlapping(bytes.as_ptr(), target.as_mut_ptr(), len * 8);
     }
 
     target
@@ -101,7 +101,7 @@ unsafe impl Allocator for ZeroingHeapAllocator {
   fn allocate_segment(&mut self, minimum_size: u32) -> (*mut u8, u32) {
     let size = ::std::cmp::max(minimum_size, self.next_size);
     let mut new_words = ZeroingWords::allocate_zeroed_vec(size as usize);
-    let ptr = new_words.as_mut_ptr() as *mut u8;
+    let ptr = new_words.as_mut_ptr();
     self.owned_memory.push(new_words);
 
     if let AllocationStrategy::GrowHeuristically = self.allocation_strategy {

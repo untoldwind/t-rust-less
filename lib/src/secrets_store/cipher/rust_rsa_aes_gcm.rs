@@ -90,7 +90,7 @@ impl Cipher for RustRsaAesGcmCipher {
     for (idx, (recipient_id, recipient_public_key)) in recipients.iter().enumerate() {
       // Note: Parameter check in PKCS8 is slightly too strict and incompatible with previous versions, so this patch becomes necessary
       let mut s = SubjectPublicKeyInfo::try_from(recipient_public_key.as_ref())?;
-      if s.algorithm.parameters == None {
+      if s.algorithm.parameters.is_none() {
         s.algorithm.parameters = Some(rsa::pkcs1::der::asn1::Null.into());
       }
       let public_key = RsaPublicKey::from_spki(s)?;

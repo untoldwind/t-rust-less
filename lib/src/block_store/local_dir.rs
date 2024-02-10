@@ -234,7 +234,7 @@ impl BlockStore for LocalDirBlockStore {
     let base_dir = self.base_dir.read()?;
     let block_file_path = Self::block_file(&base_dir, block)?;
 
-    Self::read_optional_file(&block_file_path)?.ok_or_else(|| StoreError::InvalidBlock(block.to_string()))
+    Self::read_optional_file(block_file_path)?.ok_or_else(|| StoreError::InvalidBlock(block.to_string()))
   }
 
   fn commit(&self, changes: &[Change]) -> StoreResult<()> {

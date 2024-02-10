@@ -83,7 +83,7 @@ impl BlockStore for SledBlockStore {
     match self.list_ring_versions()?.get(ring_id) {
       Some((version, key)) => self
         .rings
-        .get(&key)?
+        .get(key)?
         .map(|ring| (*version, ring.as_ref().into()))
         .ok_or_else(|| StoreError::InvalidBlock(ring_id.to_string())),
       None => Err(StoreError::InvalidBlock(ring_id.to_string())),

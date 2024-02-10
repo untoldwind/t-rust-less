@@ -171,7 +171,7 @@ impl SecretEntry {
   pub fn from_reader(reader: secret_entry::Reader) -> capnp::Result<Self> {
     Ok(SecretEntry {
       id: reader.get_id()?.to_string(),
-      timestamp: Utc.timestamp_millis(reader.get_timestamp()).into(),
+      timestamp: Utc.timestamp_millis_opt(reader.get_timestamp()).unwrap().into(),
       name: reader.get_name()?.to_string(),
       secret_type: SecretType::from_reader(reader.get_type()?),
       tags: reader
@@ -424,7 +424,7 @@ impl SecretVersionRef {
   pub fn from_reader(reader: secret_version_ref::Reader) -> capnp::Result<Self> {
     Ok(SecretVersionRef {
       block_id: reader.get_block_id()?.to_string(),
-      timestamp: Utc.timestamp_millis(reader.get_timestamp()).into(),
+      timestamp: Utc.timestamp_millis_opt(reader.get_timestamp()).unwrap().into(),
     })
   }
 

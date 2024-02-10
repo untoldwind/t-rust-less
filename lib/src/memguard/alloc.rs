@@ -165,7 +165,7 @@ pub unsafe fn malloc(size: usize) -> NonNull<u8> {
 
   assert_eq!(unprotected_ptr_from_user_ptr(user_ptr), unprotected_ptr);
 
-  NonNull::new_unchecked(user_ptr as *mut u8)
+  NonNull::new_unchecked(user_ptr)
 }
 
 /// Secure `free`.

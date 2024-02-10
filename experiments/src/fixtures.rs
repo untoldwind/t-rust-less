@@ -28,7 +28,7 @@ pub fn generate_fixtures() {
   println!("const PUBLIC_KEY : &[u8] = &hex!(\"{}\n\");", long_hex(&public_key));
   println!(
     "const CRYPTED_KEY : &[u8] = &hex!(\"{}\n\");",
-    long_hex(&crypted_private)
+    long_hex(crypted_private)
   );
 
   println!("const MESSAGES : &[&[u8]] = &[");

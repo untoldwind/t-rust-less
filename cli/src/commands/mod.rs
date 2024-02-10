@@ -11,7 +11,6 @@ pub mod tui;
 mod unlock;
 
 pub use self::add_identity::*;
-pub use self::export::*;
 pub use self::generate::*;
 pub use self::import::*;
 pub use self::init::*;

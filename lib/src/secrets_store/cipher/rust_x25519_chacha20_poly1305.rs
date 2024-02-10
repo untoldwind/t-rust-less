@@ -3,7 +3,6 @@ use crate::memguard::SecretBytes;
 use crate::secrets_store::{SecretStoreError, SecretStoreResult};
 use crate::secrets_store_capnp::{block, KeyType};
 use chacha20_poly1305_aead::{decrypt, encrypt};
-use core::borrow::Borrow;
 use rand::{thread_rng, RngCore};
 
 pub static RUST_X25519CHA_CHA20POLY1305: RustX25519ChaCha20Poly1305Cipher = RustX25519ChaCha20Poly1305Cipher();
@@ -22,7 +21,7 @@ impl RustX25519ChaCha20Poly1305Cipher {
   fn unpack_public(key: &[u8]) -> x25519_dalek_ng::PublicKey {
     let mut raw = [0u8; 32];
 
-    raw.copy_from_slice(key.borrow());
+    raw.copy_from_slice(key);
 
     x25519_dalek_ng::PublicKey::from(raw)
   }
@@ -46,8 +45,8 @@ impl Cipher for RustX25519ChaCha20Poly1305Cipher {
   }
 
   fn generate_key_pair(&self) -> SecretStoreResult<(PublicKey, PrivateKey)> {
-    let mut rng = thread_rng();
-    let private = x25519_dalek_ng::StaticSecret::new(&mut rng);
+    let rng = thread_rng();
+    let private = x25519_dalek_ng::StaticSecret::new(rng);
     let public = x25519_dalek_ng::PublicKey::from(&private);
     let mut private_raw = private.to_bytes();
 

@@ -205,7 +205,7 @@ fn create_list_view(state: &ListUIState) -> ResizedView<LinearLayout> {
   let mut entry_select = SelectView::new();
   let mut list = state.secrets_store.list(&state.filter).ok_or_exit("List entries");
   let initial_selected = list.entries.first().map(|e| e.entry.id.clone());
-  entry_select.add_all(list.entries.drain(..).into_iter().map(entry_list_item));
+  entry_select.add_all(list.entries.drain(..).map(entry_list_item));
   entry_select.set_on_select(update_selection);
   LinearLayout::horizontal()
     .child(entry_select.with_name("entry_list").scrollable())

@@ -1,6 +1,6 @@
 [package]
 name = "t-rust-less-lib"
-version = "0.2.16"
+version = "0.2.17"
 authors = ["Untoldwind <landru@untoldwind.net>"]
 build = "build.rs"
 edition = "2021"
@@ -61,8 +61,8 @@ default = ["with_x11", "with_wayland", "rust_crypto", "dropbox", "sled" ]
 
 [target.'cfg(unix)'.dependencies]
 x11 = { version = "2", features = ["xlib"], optional = true }
-wayland-client = { version = "0", optional = true }
-wayland-protocols = { version = "0", features = ["client", "unstable_protocols"], optional = true }
+wayland-client = { version = "0.29", optional = true }
+wayland-protocols = { version = "0.29", features = ["client", "unstable_protocols"], optional = true }
 libc = "0"
 
 [target.'cfg(windows)'.dependencies]

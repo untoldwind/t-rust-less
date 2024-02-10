@@ -19,7 +19,7 @@ impl ZeroizeDateTime {
 
 impl Zeroize for ZeroizeDateTime {
   fn zeroize(&mut self) {
-    self.0 = Utc.timestamp_millis(0)
+    self.0 = Utc.timestamp_millis_opt(0).unwrap()
   }
 }
 

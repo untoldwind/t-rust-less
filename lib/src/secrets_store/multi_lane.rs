@@ -365,7 +365,7 @@ impl SecretsStore for MultiLaneSecretsStore {
     let mut password_strengths = HashMap::with_capacity(current.secret_type.password_properties().len());
 
     for property in current.secret_type.password_properties() {
-      if let Some(value) = current.properties.get(*property) {
+      if let Some(value) = current.properties.get(property) {
         let strength = ZxcvbnEstimator::estimate_strength(value, &[&current.name, &unlocked_user.identity.name]);
 
         password_strengths.insert((*property).to_string(), strength);
@@ -560,9 +560,9 @@ impl MultiLaneSecretsStore {
     Ok(Some(content))
   }
 
-  fn check_recipient<'a>(
+  fn check_recipient(
     identity_id: &str,
-    headers: &capnp::struct_list::Reader<'a, block::header::Owned>,
+    headers: &capnp::struct_list::Reader<'_, block::header::Owned>,
   ) -> SecretStoreResult<bool> {
     'outer: for header in headers.iter() {
       for recipient in header.get_recipients()? {

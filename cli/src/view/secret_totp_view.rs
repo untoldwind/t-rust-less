@@ -21,7 +21,7 @@ impl SecretTOTPView {
   {
     let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
 
-    let (token, maybe_valid_until, maybe_period) = match OTPAuthUrl::parse(&otp_url) {
+    let (token, maybe_valid_until, maybe_period) = match OTPAuthUrl::parse(otp_url) {
       Ok(otpauth) => {
         let (token, valid_until) = otpauth.generate(now);
         let period = match otpauth.otp_type {
