@@ -107,7 +107,7 @@ unsafe impl Allocator for ZeroingHeapAllocator {
     if let AllocationStrategy::GrowHeuristically = self.allocation_strategy {
       self.next_size += size;
     }
-    (ptr, size as u32)
+    (ptr, size)
   }
 
   fn deallocate_segment(&mut self, _ptr: *mut u8, _word_size: u32, _words_used: u32) {

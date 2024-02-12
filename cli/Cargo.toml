@@ -10,12 +10,12 @@ log = "0"
 env_logger = "0"
 clap = { version = "2", default-features = false, features = ["suggestions", "color"]}
 cursive = { version = "0", default-features = false, optional = true }
-termion = { version = "1", optional = true }
+termion = { version = "3", optional = true }
 atty = "0.2"
 t-rust-less-lib = { path = "../lib" }
 serde = { version = "1", features = ["derive"] }
 rand = "0.8"
-dirs = "4"
+dirs = "5"
 url = "2"
 crossterm_style = "0"
 serde_json = "1"
