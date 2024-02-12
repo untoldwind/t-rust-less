@@ -67,7 +67,7 @@ wayland-protocols = { version = "0.29", features = ["client", "unstable_protocol
 libc = "0"
 
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["memoryapi"] }
+winapi = { version = "0.3", features = ["memoryapi", "sysinfoapi"] }
 named_pipe = "0"
 clipboard-win = "4"
 
