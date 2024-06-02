@@ -244,6 +244,7 @@ impl BlockStore for LocalDirBlockStore {
       .create(true)
       .write(true)
       .read(true)
+      .truncate(false)
       .open(base_dir.join("logs").join(&self.node_id))?;
     let existing = Self::parse_change_log(&self.node_id, &log_file)?;
     log_file.seek(SeekFrom::End(0))?;
