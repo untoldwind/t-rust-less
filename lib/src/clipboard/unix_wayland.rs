@@ -1,10 +1,9 @@
 use std::{
-  cell::RefCell,
+  collections::HashMap,
   error::Error,
   fs::File,
   io::Write,
-  os::unix::io::FromRawFd,
-  rc::Rc,
+  os::{fd::AsRawFd, unix::io::FromRawFd},
   sync::{
     atomic::{AtomicBool, Ordering},
     Arc, Mutex, RwLock,
@@ -13,9 +12,20 @@ use std::{
 };
 
 use log::{debug, error};
-use wayland_client::{global_filter, protocol::wl_seat::WlSeat, Display, GlobalManager, Main};
-use wayland_protocols::wlr::unstable::data_control::v1::client::{
-  zwlr_data_control_manager_v1::ZwlrDataControlManagerV1, zwlr_data_control_source_v1::Event,
+use wayland_client::{
+  event_created_child,
+  globals::{registry_queue_init, BindError, GlobalListContents},
+  protocol::{
+    wl_registry::WlRegistry,
+    wl_seat::{self, WlSeat},
+  },
+  Connection, Dispatch, EventQueue, Proxy,
+};
+use wayland_protocols_wlr::data_control::v1::client::{
+  zwlr_data_control_device_v1::{self, ZwlrDataControlDeviceV1},
+  zwlr_data_control_manager_v1::ZwlrDataControlManagerV1,
+  zwlr_data_control_offer_v1::ZwlrDataControlOfferV1,
+  zwlr_data_control_source_v1::{self, ZwlrDataControlSourceV1},
 };
 use zeroize::Zeroize;
 
@@ -33,19 +43,17 @@ const TEXT_MIMES: &[&str] = &[
 ];
 
 struct Context {
-  display: Display,
   open: AtomicBool,
   cancel: AtomicBool,
   provider_holder: RwLock<SelectionProviderHolder>,
 }
 
 impl Context {
-  fn new<T>(display: Display, provider: T) -> Self
+  fn new<T>(provider: T) -> Self
   where
     T: SelectionProvider + 'static,
   {
     Context {
-      display,
       open: AtomicBool::new(false),
       cancel: AtomicBool::new(false),
       provider_holder: RwLock::new(SelectionProviderHolder::new(provider)),
@@ -71,6 +79,124 @@ impl Context {
   }
 }
 
+struct State {
+  context: Arc<Context>,
+  clipboard_manager: ZwlrDataControlManagerV1,
+  seats: HashMap<WlSeat, SeatData>,
+}
+
+impl Dispatch<WlRegistry, GlobalListContents> for State {
+  fn event(
+    _state: &mut Self,
+    _proxy: &WlRegistry,
+    _event: <WlRegistry as wayland_client::Proxy>::Event,
+    _data: &GlobalListContents,
+    _conn: &wayland_client::Connection,
+    _qhandle: &wayland_client::QueueHandle<Self>,
+  ) {
+  }
+}
+
+impl Dispatch<WlSeat, ()> for State {
+  fn event(
+    _state: &mut Self,
+    seat: &WlSeat,
+    event: <WlSeat as wayland_client::Proxy>::Event,
+    _data: &(),
+    _conn: &wayland_client::Connection,
+    _qh: &wayland_client::QueueHandle<Self>,
+  ) {
+    if let wl_seat::Event::Name { name } = event {
+      _state.seats.get_mut(seat).unwrap().set_name(name);
+    }
+  }
+}
+
+impl Dispatch<ZwlrDataControlManagerV1, ()> for State {
+  fn event(
+    _state: &mut Self,
+    _proxy: &ZwlrDataControlManagerV1,
+    _event: <ZwlrDataControlManagerV1 as wayland_client::Proxy>::Event,
+    _data: &(),
+    _conn: &wayland_client::Connection,
+    _qhandle: &wayland_client::QueueHandle<Self>,
+  ) {
+  }
+}
+
+impl Dispatch<ZwlrDataControlSourceV1, ()> for State {
+  fn event(
+    _state: &mut Self,
+    _proxy: &ZwlrDataControlSourceV1,
+    _event: <ZwlrDataControlSourceV1 as wayland_client::Proxy>::Event,
+    _data: &(),
+    _conn: &wayland_client::Connection,
+    _qhandle: &wayland_client::QueueHandle<Self>,
+  ) {
+    match _event {
+      zwlr_data_control_source_v1::Event::Send { mime_type, fd } if TEXT_MIMES.contains(&mime_type.as_str()) => {
+        debug!("Event send: {} {:?}", mime_type, fd);
+        match _state.context.provider_holder.write() {
+          Ok(mut selection_provider) => {
+            if let Some(mut content) = selection_provider.get_value() {
+              let mut f = unsafe { File::from_raw_fd(fd.as_raw_fd()) };
+              f.write_all(content.as_bytes()).ok();
+              content.zeroize();
+            } else {
+              debug!("No more values");
+              _state.context.cancel.store(true, Ordering::Relaxed);
+            }
+          }
+          Err(err) => {
+            error!("Lock error: {}", err);
+            _state.context.cancel.store(true, Ordering::Relaxed);
+          }
+        }
+      }
+      zwlr_data_control_source_v1::Event::Cancelled => {
+        debug!("Event cancel: Lost ownership");
+        _state.context.cancel.store(true, Ordering::Relaxed);
+      }
+      _ => (),
+    }
+  }
+}
+
+impl Dispatch<ZwlrDataControlDeviceV1, WlSeat> for State {
+  fn event(
+    state: &mut Self,
+    _device: &ZwlrDataControlDeviceV1,
+    event: <ZwlrDataControlDeviceV1 as Proxy>::Event,
+    seat: &WlSeat,
+    _conn: &wayland_client::Connection,
+    _qhandle: &wayland_client::QueueHandle<Self>,
+  ) {
+    match event {
+      zwlr_data_control_device_v1::Event::DataOffer { id } => id.destroy(),
+      zwlr_data_control_device_v1::Event::Finished => {
+        state.seats.get_mut(seat).unwrap().set_device(None);
+      }
+      _ => (),
+    }
+  }
+
+  event_created_child!(State, ZwlrDataControlDeviceV1, [
+      zwlr_data_control_device_v1::EVT_DATA_OFFER_OPCODE => (ZwlrDataControlOfferV1, ()),
+  ]);
+}
+
+impl Dispatch<ZwlrDataControlOfferV1, ()> for State {
+  fn event(
+    _state: &mut Self,
+    _offer: &ZwlrDataControlOfferV1,
+    _event: <ZwlrDataControlOfferV1 as wayland_client::Proxy>::Event,
+    _data: &(),
+    _conn: &wayland_client::Connection,
+    _qhandle: &wayland_client::QueueHandle<Self>,
+  ) {
+  }
+}
+
 pub struct Clipboard {
   context: Arc<Context>,
   handle: Mutex<Option<thread::JoinHandle<()>>>,
@@ -81,21 +207,43 @@ impl ClipboardCommon for Clipboard {
   where
     T: SelectionProvider + Clone + 'static,
   {
-    let display = Display::connect_to_env()?;
-
-    debug!("Got display: {}", display.id());
+    let conn = Connection::connect_to_env()?;
+    let (globals, mut queue) = registry_queue_init::<State>(&conn)?;
+    let qh = &queue.handle();
+    let clipboard_manager = match globals.bind(qh, 2..=2, ()) {
+      Ok(manager) => manager,
+      Err(BindError::NotPresent | BindError::UnsupportedVersion) => globals.bind(qh, 1..=1, ())?,
+    };
+    let registry = globals.registry();
+    let seats = globals.contents().with_list(|globals| {
+      globals
+        .iter()
+        .filter(|global| global.interface == WlSeat::interface().name && global.version >= 2)
+        .map(|global| {
+          let seat = registry.bind(global.name, 2, qh, ());
+          (seat, SeatData::default())
+        })
+        .collect()
+    });
 
     match selection_provider.current_selection() {
       Some(providing) => event_hub.send(EventData::ClipboardProviding(providing)),
       None => return Err(ClipboardError::Other("Empty provider".to_string())),
     };
 
-    let context = Arc::new(Context::new(display, selection_provider));
+    let context = Arc::new(Context::new(selection_provider));
+    let mut state = State {
+      context: context.clone(),
+      clipboard_manager,
+      seats,
+    };
+
+    queue.roundtrip(&mut state)?;
 
     let handle = thread::spawn({
       let cloned = context.clone();
       move || {
-        if let Err(err) = try_run(cloned.clone()) {
+        if let Err(err) = try_run(queue, state) {
           cloned.open.store(false, Ordering::Relaxed);
           error!("Wayland clipboard error: {}", err);
         }
@@ -135,85 +283,57 @@ impl ClipboardCommon for Clipboard {
   }
 }
 
-fn try_run(context: Arc<Context>) -> Result<(), Box<dyn Error>> {
-  let mut queue = context.display.create_event_queue();
-  let display = context.display.attach(queue.token());
-  let seats = Rc::new(RefCell::new(vec![]));
-  let mut devices = vec![];
+fn try_run(mut queue: EventQueue<State>, mut state: State) -> Result<(), Box<dyn Error>> {
+  let data_source = state.clipboard_manager.create_data_source(&queue.handle(), ());
 
-  let seats_cloned = seats.clone();
-
-  let manager = GlobalManager::new_with_cb(
-    &display,
-    global_filter!([WlSeat, 2, move |seat: Main<WlSeat>, _: DispatchData| {
-      seats_cloned.borrow_mut().push(seat);
-    }]),
-  );
-
-  queue.sync_roundtrip(&mut (), |_, _, _| {})?;
-
-  debug!("Seats: {:?}", seats.borrow());
-  debug!("Globals: {:?}", manager.list());
-
-  let clipboard_manager: Main<ZwlrDataControlManagerV1> = manager.instantiate_exact(1)?;
-
-  let data_source = clipboard_manager.create_data_source();
-  let context_cloned = context.clone();
-
-  data_source.quick_assign(move |_, event, _| match event {
-    Event::Send { mime_type, fd } if TEXT_MIMES.contains(&mime_type.as_str()) => {
-      debug!("Event send: {} {}", mime_type, fd);
-      match context_cloned.provider_holder.write() {
-        Ok(mut selection_provider) => {
-          if let Some(mut content) = selection_provider.get_value() {
-            let mut f = unsafe { File::from_raw_fd(fd) };
-            f.write_all(content.as_bytes()).ok();
-            content.zeroize();
-          } else {
-            debug!("No more values");
-            context_cloned.cancel.store(true, Ordering::Relaxed);
-          }
-        }
-        Err(err) => {
-          error!("Lock error: {}", err);
-          context_cloned.cancel.store(true, Ordering::Relaxed);
-        }
-      }
-    }
-    Event::Cancelled => {
-      debug!("Event cancel: Lost ownership");
-      context_cloned.cancel.store(true, Ordering::Relaxed)
-    }
-    _ => (),
-  });
+  debug!("Seats: {:?}", &state.seats);
 
   for &mime_type in TEXT_MIMES {
     data_source.offer(mime_type.to_string());
   }
 
-  for seat in seats.borrow_mut().iter_mut() {
-    let device = clipboard_manager.get_data_device(seat);
-    device.quick_assign(|_, _, _| {});
+  for (seat, data) in &mut state.seats {
+    let device = state
+      .clipboard_manager
+      .get_data_device(seat, &queue.handle(), seat.clone());
     device.set_selection(Some(&data_source));
-    devices.push(device);
+    data.set_device(Some(device));
   }
 
   debug!("Start event loop");
-  context.open.store(true, Ordering::Relaxed);
-  while !context.cancel.load(Ordering::Relaxed) {
-    queue.dispatch(&mut (), |_, _, _| {})?;
+  state.context.open.store(true, Ordering::Relaxed);
+  while !state.context.cancel.load(Ordering::Relaxed) {
+    queue.blocking_dispatch(&mut state)?;
   }
-  context.open.store(false, Ordering::Relaxed);
+  state.context.open.store(false, Ordering::Relaxed);
   debug!("End event loop");
 
-  for device in devices {
-    device.destroy();
+  for data in state.seats.values_mut() {
+    data.set_device(None);
   }
   data_source.destroy();
-  for seat in seats.borrow_mut().iter_mut() {
-    seat.detach();
-  }
-  display.detach();
 
   Ok(())
+}
+
+#[derive(Default, Debug)]
+pub struct SeatData {
+  pub name: Option<String>,
+
+  pub device: Option<ZwlrDataControlDeviceV1>,
+}
+
+impl SeatData {
+  pub fn set_name(&mut self, name: String) {
+    self.name = Some(name)
+  }
+
+  pub fn set_device(&mut self, device: Option<ZwlrDataControlDeviceV1>) {
+    let old_device = self.device.take();
+    self.device = device;
+
+    if let Some(device) = old_device {
+      device.destroy();
+    }
+  }
 }

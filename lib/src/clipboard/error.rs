@@ -37,10 +37,31 @@ impl From<std::env::VarError> for ClipboardError {
 impl From<wayland_client::ConnectError> for ClipboardError {
   fn from(error: wayland_client::ConnectError) -> Self {
     match error {
-      wayland_client::ConnectError::NoCompositorListening => ClipboardError::Unavailable,
+      wayland_client::ConnectError::NoCompositor => ClipboardError::Unavailable,
       wayland_client::ConnectError::NoWaylandLib => ClipboardError::Unavailable,
       err => ClipboardError::Other(format!("{}", err)),
     }
+  }
+}
+
+#[cfg(all(unix, feature = "with_wayland"))]
+impl From<wayland_client::globals::GlobalError> for ClipboardError {
+  fn from(error: wayland_client::globals::GlobalError) -> Self {
+    ClipboardError::Other(format!("{}", error))
+  }
+}
+
+#[cfg(all(unix, feature = "with_wayland"))]
+impl From<wayland_client::globals::BindError> for ClipboardError {
+  fn from(error: wayland_client::globals::BindError) -> Self {
+    ClipboardError::Other(format!("{}", error))
+  }
+}
+
+#[cfg(all(unix, feature = "with_wayland"))]
+impl From<wayland_client::DispatchError> for ClipboardError {
+  fn from(error: wayland_client::DispatchError) -> Self {
+    ClipboardError::Other(format!("{}", error))
   }
 }
 
