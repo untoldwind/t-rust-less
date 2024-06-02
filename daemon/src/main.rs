@@ -1,7 +1,6 @@
 mod cli;
 
 mod autolock;
-mod error;
 mod processor;
 mod sync_trigger;
 

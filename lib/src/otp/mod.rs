@@ -53,9 +53,9 @@ impl fmt::Display for OTPAlgorithm {
 #[zeroize(drop)]
 pub struct OTPSecret(Vec<u8>);
 
-impl ToString for OTPSecret {
-  fn to_string(&self) -> String {
-    data_encoding::BASE32_NOPAD.encode(&self.0)
+impl fmt::Display for OTPSecret {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", data_encoding::BASE32_NOPAD.encode(&self.0))
   }
 }
 

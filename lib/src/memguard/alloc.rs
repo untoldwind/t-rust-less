@@ -15,6 +15,7 @@ static mut PAGE_MASK: usize = 0;
 static mut CANARY: [u8; CANARY_SIZE] = [0; CANARY_SIZE];
 
 #[inline]
+#[allow(static_mut_refs)]
 unsafe fn alloc_init() {
   #[cfg(unix)]
   {
@@ -23,7 +24,7 @@ unsafe fn alloc_init() {
 
   #[cfg(windows)]
   {
-    let mut si = mem::MaybeUninit::uninit().assume_init();
+    let mut si = mem::MaybeUninit::zeroed().assume_init();
     ::winapi::um::sysinfoapi::GetSystemInfo(&mut si);
     PAGE_SIZE = si.dwPageSize as usize;
   }
@@ -101,7 +102,7 @@ pub unsafe fn _mprotect(ptr: *mut u8, len: usize, prot: Prot::Ty) -> bool {
 #[cfg(windows)]
 #[inline]
 pub unsafe fn _mprotect(ptr: *mut u8, len: usize, prot: Prot::Ty) -> bool {
-  let mut old = mem::MaybeUninit::uninit().assume_init();
+  let mut old = mem::MaybeUninit::zeroed().assume_init();
   winapi::um::memoryapi::VirtualProtect(
     ptr as winapi::shared::minwindef::LPVOID,
     len as winapi::shared::basetsd::SIZE_T,
