@@ -58,6 +58,7 @@ error_convert_from!(argon2::Error, SecretStoreError, Cipher(display));
 #[cfg(feature = "openssl")]
 error_convert_from!(openssl::error::ErrorStack, SecretStoreError, Cipher(display));
 error_convert_from!(std::io::Error, SecretStoreError, IO(display));
+error_convert_from!(std::str::Utf8Error, SecretStoreError, IO(display));
 error_convert_from!(chacha20_poly1305_aead::DecryptError, SecretStoreError, Cipher(display));
 error_convert_from!(capnp::NotInSchema, SecretStoreError, IO(display));
 error_convert_from!(serde_json::Error, SecretStoreError, Json(display));
@@ -86,7 +87,7 @@ impl From<capnp::Error> for SecretStoreError {
   fn from(error: capnp::Error) -> Self {
     match error.kind {
       capnp::ErrorKind::Failed => {
-        match serde_json::from_str::<SecretStoreError>(error.description.trim_start_matches("remote exception: ")) {
+        match serde_json::from_str::<SecretStoreError>(error.extra.trim_start_matches("remote exception: ")) {
           Ok(service_error) => service_error,
           _ => SecretStoreError::IO(format!("{}", error)),
         }
@@ -101,11 +102,11 @@ impl From<SecretStoreError> for capnp::Error {
     match serde_json::to_string(&error) {
       Ok(json) => capnp::Error {
         kind: capnp::ErrorKind::Failed,
-        description: json,
+        extra: json,
       },
       _ => capnp::Error {
         kind: capnp::ErrorKind::Failed,
-        description: format!("{}", error),
+        extra: format!("{}", error),
       },
     }
   }

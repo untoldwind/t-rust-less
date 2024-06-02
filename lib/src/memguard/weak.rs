@@ -110,7 +110,7 @@ unsafe impl Allocator for ZeroingHeapAllocator {
     (ptr, size)
   }
 
-  fn deallocate_segment(&mut self, _ptr: *mut u8, _word_size: u32, _words_used: u32) {
+  unsafe fn deallocate_segment(&mut self, _ptr: *mut u8, _word_size: u32, _words_used: u32) {
     self.next_size = SUGGESTED_FIRST_SEGMENT_WORDS;
   }
 }

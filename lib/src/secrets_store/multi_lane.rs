@@ -418,9 +418,9 @@ impl MultiLaneSecretsStore {
 
   fn identity_from_ring(ring: ring::Reader) -> SecretStoreResult<Identity> {
     Ok(Identity {
-      id: ring.get_id()?.to_string(),
-      name: ring.get_name()?.to_string(),
-      email: ring.get_email()?.to_string(),
+      id: ring.get_id()?.to_string()?,
+      name: ring.get_name()?.to_string()?,
+      email: ring.get_email()?.to_string()?,
       hidden: ring.get_hidden(),
     })
   }
