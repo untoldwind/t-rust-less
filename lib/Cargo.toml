@@ -24,7 +24,7 @@ sha2 = "0.10"
 hmac = "0.12"
 x25519-dalek-ng = "1"
 chacha20-poly1305-aead = "0"
-capnp = "0.14"
+capnp = "0.19"
 rand = "0.8"
 rust-argon2 = "2"
 zxcvbn = "2"
@@ -76,4 +76,4 @@ mach_o_sys = "0"
 
 [build-dependencies]
 clap = { version = "2", default-features = false, features = ["suggestions", "color"]}
-capnpc = "0.14"
+capnpc = "0.19"

@@ -170,19 +170,19 @@ pub struct SecretEntry {
 impl SecretEntry {
   pub fn from_reader(reader: secret_entry::Reader) -> capnp::Result<Self> {
     Ok(SecretEntry {
-      id: reader.get_id()?.to_string(),
+      id: reader.get_id()?.to_string()?,
       timestamp: Utc.timestamp_millis_opt(reader.get_timestamp()).unwrap().into(),
-      name: reader.get_name()?.to_string(),
+      name: reader.get_name()?.to_string()?,
       secret_type: SecretType::from_reader(reader.get_type()?),
       tags: reader
         .get_tags()?
         .into_iter()
-        .map(|t| t.map(|t| t.to_string()))
+        .map(|t| t.and_then(|t| Ok(t.to_string()?)))
         .collect::<capnp::Result<Vec<String>>>()?,
       urls: reader
         .get_urls()?
         .into_iter()
-        .map(|u| u.map(|u| u.to_string()))
+        .map(|u| u.and_then(|u| Ok(u.to_string()?)))
         .collect::<capnp::Result<Vec<String>>>()?,
       deleted: reader.get_deleted(),
     })
@@ -423,7 +423,7 @@ pub struct SecretVersionRef {
 impl SecretVersionRef {
   pub fn from_reader(reader: secret_version_ref::Reader) -> capnp::Result<Self> {
     Ok(SecretVersionRef {
-      block_id: reader.get_block_id()?.to_string(),
+      block_id: reader.get_block_id()?.to_string()?,
       timestamp: Utc.timestamp_millis_opt(reader.get_timestamp()).unwrap().into(),
     })
   }
@@ -506,7 +506,7 @@ where
   S: AsRef<str>,
 {
   for (idx, text) in texts.into_iter().enumerate() {
-    text_list.set(idx as u32, capnp::text::new_reader(text.as_ref().as_bytes())?);
+    text_list.set(idx as u32, text.as_ref());
   }
   Ok(())
 }

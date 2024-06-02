@@ -55,7 +55,7 @@ impl From<capnp::Error> for ServiceError {
   fn from(error: capnp::Error) -> Self {
     match error.kind {
       capnp::ErrorKind::Failed => {
-        match serde_json::from_str::<ServiceError>(error.description.trim_start_matches("remote exception: ")) {
+        match serde_json::from_str::<ServiceError>(error.extra.trim_start_matches("remote exception: ")) {
           Ok(service_error) => service_error,
           _ => ServiceError::IO(format!("{}", error)),
         }
@@ -70,11 +70,11 @@ impl From<ServiceError> for capnp::Error {
     match serde_json::to_string(&error) {
       Ok(json) => capnp::Error {
         kind: capnp::ErrorKind::Failed,
-        description: json,
+        extra: json,
       },
       _ => capnp::Error {
         kind: capnp::ErrorKind::Failed,
-        description: format!("{}", error),
+        extra: format!("{}", error),
       },
     }
   }

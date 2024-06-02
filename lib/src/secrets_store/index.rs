@@ -63,7 +63,7 @@ impl Index {
     for index_entry in index.get_entries()? {
       let entry = index_entry.get_entry()?;
       for maybe_tag in entry.get_tags()? {
-        let tag = maybe_tag?;
+        let tag = maybe_tag?.to_str()?;
         if !all_tags.contains(tag) {
           all_tags.insert(tag.to_string());
         }
@@ -109,7 +109,7 @@ impl Index {
 
       for old_index_entry in old_index.get_entries()? {
         let old_entry = old_index_entry.get_entry()?;
-        let secret_id = old_entry.get_id()?;
+        let secret_id = old_entry.get_id()?.to_str()?;
         if !to_keep.contains(secret_id) {
           continue;
         }
@@ -156,12 +156,12 @@ impl Index {
     let mut heads = HashMap::with_capacity(index.get_heads()?.len() as usize);
 
     for head in index.get_heads()? {
-      let node_id = head.get_node_id()?.to_string();
+      let node_id = head.get_node_id()?.to_string()?;
       let op = match head.get_operation()? {
         index::HeadOperation::Add => Operation::Add,
         index::HeadOperation::Delete => Operation::Delete,
       };
-      let block = head.get_block_id()?.to_string();
+      let block = head.get_block_id()?.to_string()?;
       heads.insert(node_id, Change { op, block });
     }
 
@@ -194,13 +194,13 @@ impl Index {
       let secret_id = entry.get_id()?;
       let mut remainging_count = 0;
       for version_ref in index_entry.get_version_refs()? {
-        let block_id = version_ref.get_block_id()?;
+        let block_id = version_ref.get_block_id()?.to_str()?;
         if !deleted_blocks.contains(block_id) {
           remainging_count += 1
         }
       }
       if remainging_count > 0 {
-        to_keep.insert(secret_id.to_string());
+        to_keep.insert(secret_id.to_string()?);
       }
     }
 
