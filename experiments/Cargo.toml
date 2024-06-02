@@ -1,6 +1,6 @@
 [package]
 name = "t-rust-less-experiments"
-version = "0.1.0"
+version.workspace = true
 authors = ["Untoldwind <landru@untoldwind.net>"]
 edition = "2018"
 
