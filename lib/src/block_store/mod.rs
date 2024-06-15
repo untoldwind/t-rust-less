@@ -8,6 +8,7 @@ use url::Url;
 pub mod dropbox;
 mod error;
 mod local_dir;
+mod local_wal;
 mod memory;
 mod model;
 #[cfg(feature = "sled")]
@@ -122,6 +123,10 @@ pub fn open_block_store(url: &str, node_id: &str) -> StoreResult<Arc<dyn BlockSt
 
   match store_url.scheme() {
     "file" => Ok(Arc::new(local_dir::LocalDirBlockStore::new(
+      store_url.to_file_path().unwrap(),
+      node_id,
+    )?)),
+    "wal" => Ok(Arc::new(local_wal::LocalWalBlockStore::new(
       store_url.to_file_path().unwrap(),
       node_id,
     )?)),

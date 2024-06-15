@@ -215,6 +215,19 @@ fn test_memory_store() {
   common_store_tests(store);
 }
 
+#[test]
+fn test_local_wal_store() {
+  let tempdir = Builder::new().prefix("t-rust-less-test-wal").tempdir().unwrap();
+  #[cfg(not(windows))]
+  let url = format!("wal://{}", tempdir.path().to_string_lossy());
+  #[cfg(windows)]
+  let url = format!("wal:///{}", tempdir.path().to_string_lossy().replace('\\', "/"));
+
+  let store = open_block_store(&url, "node1").unwrap();
+
+  common_store_tests(store);
+}
+
 #[cfg(feature = "sled")]
 #[test]
 fn test_sled_store() {
