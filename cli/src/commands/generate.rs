@@ -1,4 +1,5 @@
 use crate::error::ExtResult;
+use anyhow::Result;
 use clap::Args;
 use std::sync::Arc;
 use t_rust_less_lib::{
@@ -35,7 +36,7 @@ pub struct GenerateCommand {
 }
 
 impl GenerateCommand {
-  pub fn run(self, service: Arc<dyn TrustlessService>) {
+  pub fn run(self, service: Arc<dyn TrustlessService>) -> Result<()> {
     let param: PasswordGeneratorParam = if self.words {
       PasswordGeneratorParam::Words(PasswordGeneratorWordsParam {
         num_words: self.length.unwrap_or(4),
@@ -61,5 +62,7 @@ impl GenerateCommand {
         service.generate_password(param.clone()).ok_or_exit("Generate password")
       );
     }
+
+    Ok(())
   }
 }

@@ -1,14 +1,13 @@
 use crate::commands::generate_id;
 use crate::commands::tui::create_tui;
-use crate::error::ExtResult;
 use crate::view::PasswordView;
+use anyhow::{bail, Context, Result};
 use atty::Stream;
 use clap::Args;
 use cursive::event::Key;
 use cursive::traits::{Nameable, Resizable};
 use cursive::views::{Dialog, DummyView, EditView, LinearLayout, TextView};
 use cursive::Cursive;
-use std::process;
 use std::sync::Arc;
 use t_rust_less_lib::api::Identity;
 use t_rust_less_lib::secrets_store::SecretsStore;
@@ -18,15 +17,14 @@ use t_rust_less_lib::service::TrustlessService;
 pub struct AddIdentitiesCommand {}
 
 impl AddIdentitiesCommand {
-  pub fn run(self, service: Arc<dyn TrustlessService>, store_name: String) {
+  pub fn run(self, service: Arc<dyn TrustlessService>, store_name: String) -> Result<()> {
     if !atty::is(Stream::Stdout) {
-      println!("Please use a terminal");
-      process::exit(1);
+      bail!("Please use a terminal");
     }
 
     let secrets_store = service
       .open_store(&store_name)
-      .ok_or_exit(format!("Failed opening store {}: ", store_name));
+      .with_context(|| format!("Failed opening store {}: ", store_name))?;
     let mut siv = create_tui();
 
     siv.add_global_callback(Key::Esc, Cursive::quit);
@@ -34,6 +32,8 @@ impl AddIdentitiesCommand {
     add_identity_dialog(&mut siv, secrets_store, "Add identity");
 
     siv.run();
+
+    Ok(())
   }
 }
 

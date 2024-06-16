@@ -1,13 +1,12 @@
 use crate::commands::tui::create_tui;
-use crate::error::ExtResult;
 use crate::view::PasswordView;
+use anyhow::{bail, Context, Result};
 use atty::Stream;
 use clap::Args;
 use cursive::event::Key;
 use cursive::traits::{Nameable, Resizable};
 use cursive::views::{Dialog, DummyView, LinearLayout, SelectView, TextView};
 use cursive::{Cursive, CursiveRunnable};
-use std::process;
 use std::sync::Arc;
 use t_rust_less_lib::api::{Identity, Status};
 use t_rust_less_lib::secrets_store::SecretsStore;
@@ -17,44 +16,43 @@ use t_rust_less_lib::service::TrustlessService;
 pub struct UnlockCommand {}
 
 impl UnlockCommand {
-  pub fn run(self, service: Arc<dyn TrustlessService>, store_name: String) {
+  pub fn run(self, service: Arc<dyn TrustlessService>, store_name: String) -> Result<()> {
     let secrets_store = service
       .open_store(&store_name)
-      .ok_or_exit(format!("Failed opening store {}: ", store_name));
+      .with_context(|| format!("Failed opening store {}: ", store_name))?;
 
-    let status = secrets_store.status().ok_or_exit("Get status");
+    let status = secrets_store.status().with_context(|| "Get status")?;
 
     if status.locked {
       let mut siv = create_tui();
 
-      unlock_store(&mut siv, &secrets_store, &store_name);
+      unlock_store(&mut siv, &secrets_store, &store_name)?;
     }
+
+    Ok(())
   }
 }
 
-pub fn unlock_store(siv: &mut CursiveRunnable, secrets_store: &Arc<dyn SecretsStore>, name: &str) -> Status {
+pub fn unlock_store(siv: &mut CursiveRunnable, secrets_store: &Arc<dyn SecretsStore>, name: &str) -> Result<Status> {
   if !atty::is(Stream::Stdout) {
-    println!("Please use a terminal");
-    process::exit(1);
+    bail!("Please use a terminal");
   }
 
-  let identities = secrets_store.identities().ok_or_exit("Get identities");
+  let identities = secrets_store.identities().with_context(|| "Get identities")?;
 
   if identities.is_empty() {
-    println!("Store does not have any identities to unlock");
-    process::exit(1)
+    bail!("Store does not have any identities to unlock");
   }
 
   unlock_dialog(siv, secrets_store, name, identities);
 
-  let status = secrets_store.status().ok_or_exit("Get status");
+  let status = secrets_store.status().with_context(|| "Get status")?;
 
   if status.locked {
-    println!("Unlock failed");
-    process::exit(1);
+    bail!("Unlock failed");
   }
 
-  status
+  Ok(status)
 }
 
 fn unlock_dialog(

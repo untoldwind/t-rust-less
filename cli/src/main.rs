@@ -1,4 +1,5 @@
 use crate::error::ExtResult;
+use anyhow::Result;
 use clap::Parser;
 use t_rust_less_lib::service::create_service;
 
@@ -9,7 +10,7 @@ mod error;
 pub mod model;
 pub mod view;
 
-fn main() {
+fn main() -> Result<()> {
   let args = cli::Args::parse();
 
   let mut log_builder = env_logger::Builder::from_default_env();
@@ -28,5 +29,5 @@ fn main() {
     .store
     .or_else(|| service.get_default_store().ok_or_exit("Get default store"));
 
-  args.sub_command.run(service, maybe_store_name);
+  args.sub_command.run(service, maybe_store_name)
 }

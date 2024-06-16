@@ -1,11 +1,10 @@
 use crate::commands::tui::create_tui;
 use crate::commands::unlock_store;
-use crate::error::ExtResult;
 use crate::model::import_v1::SecretV1;
+use anyhow::{bail, Context, Result};
 use clap::Args;
 use std::fs::File;
 use std::io::{stdin, BufRead, BufReader};
-use std::process;
 use std::sync::Arc;
 use t_rust_less_lib::api::SecretVersion;
 use t_rust_less_lib::service::TrustlessService;
@@ -20,32 +19,36 @@ pub struct ImportCommand {
 }
 
 impl ImportCommand {
-  pub fn run(self, service: Arc<dyn TrustlessService>, store_name: String) {
+  pub fn run(self, service: Arc<dyn TrustlessService>, store_name: String) -> Result<()> {
     if self.v1 {
-      import_v1(service, store_name, self.file);
+      import_v1(service, store_name, self.file)?;
     } else {
-      println!("Only v1 import supported yet");
-      process::exit(1)
+      bail!("Only v1 import supported yet");
     }
+
+    Ok(())
   }
 }
 
-pub fn import_v1(service: Arc<dyn TrustlessService>, store_name: String, maybe_file_name: Option<String>) {
+pub fn import_v1(
+  service: Arc<dyn TrustlessService>,
+  store_name: String,
+  maybe_file_name: Option<String>,
+) -> Result<()> {
   let secrets_store = service
     .open_store(&store_name)
-    .ok_or_exit(format!("Failed opening store {}: ", store_name));
+    .with_context(|| format!("Failed opening store {}: ", store_name))?;
 
-  let status = secrets_store.status().ok_or_exit("Get status");
+  let status = secrets_store.status().with_context(|| "Get status")?;
 
   let import_stream: Box<dyn BufRead> = match &maybe_file_name {
     Some(file_name) => {
-      let file = File::open(file_name).ok_or_exit(format!("Failed opening {}", file_name));
+      let file = File::open(file_name).with_context(|| format!("Failed opening {}", file_name))?;
       Box::new(BufReader::new(file))
     }
     None => {
       if status.locked {
-        eprintln!("Store is locked! Cannot unlock store when importing from stdin (duh).");
-        process::exit(1);
+        bail!("Store is locked! Cannot unlock store when importing from stdin (duh).");
       }
       Box::new(BufReader::new(stdin()))
     }
@@ -53,12 +56,12 @@ pub fn import_v1(service: Arc<dyn TrustlessService>, store_name: String, maybe_f
 
   if status.locked {
     let mut siv = create_tui();
-    unlock_store(&mut siv, &secrets_store, &store_name);
+    unlock_store(&mut siv, &secrets_store, &store_name)?;
   }
 
   for maybe_line in import_stream.lines() {
-    let line = maybe_line.ok_or_exit("IO Error");
-    let mut secret = serde_json::from_str::<SecretV1>(&line).ok_or_exit("Invalid format");
+    let line = maybe_line.with_context(|| "IO Error")?;
+    let mut secret = serde_json::from_str::<SecretV1>(&line).with_context(|| "Invalid format")?;
 
     eprintln!("Importing secret {}", secret.id);
 
@@ -76,9 +79,11 @@ pub fn import_v1(service: Arc<dyn TrustlessService>, store_name: String, maybe_f
         recipients: vec![],
       };
 
-      secrets_store.add(version).ok_or_exit("Add secret version");
+      secrets_store.add(version).with_context(|| "Add secret version")?;
     }
   }
 
-  secrets_store.update_index().ok_or_exit("Index update");
+  secrets_store.update_index().with_context(|| "Index update")?;
+
+  Ok(())
 }

@@ -1,5 +1,4 @@
-use std::process;
-
+use anyhow::{bail, Context, Result};
 use atty::Stream;
 use clap::Args;
 use cursive::traits::{Nameable, Resizable};
@@ -11,7 +10,6 @@ use crate::commands::add_identity::add_identity_dialog;
 use crate::commands::generate_id;
 use crate::commands::tui::create_tui;
 use crate::config::{default_autolock_timeout, default_store_dir};
-use crate::error::exit_with_error;
 use cursive::event::Key;
 use std::fs;
 use std::sync::Arc;
@@ -22,23 +20,16 @@ use url::Url;
 pub struct InitCommand {}
 
 impl InitCommand {
-  pub fn run(self, service: Arc<dyn TrustlessService>, maybe_store_name: Option<String>) {
+  pub fn run(self, service: Arc<dyn TrustlessService>, maybe_store_name: Option<String>) -> Result<()> {
     if !atty::is(Stream::Stdout) {
-      println!("Please use a terminal");
-      process::exit(1);
+      bail!("Please use a terminal");
     }
 
     let store_name = maybe_store_name.unwrap_or_else(|| "t-rust-less-store".to_string());
-    let store_configs = match service.list_stores() {
-      Ok(configs) => configs,
-      Err(err) => {
-        exit_with_error(
-          format!("Checking exsting configuration for store {}: ", store_name),
-          err,
-        );
-        unreachable!()
-      }
-    };
+    let store_configs = service
+      .list_stores()
+      .with_context(|| format!("Checking exsting configuration for store {}: ", store_name))?;
+
     let maybe_config = store_configs
       .iter()
       .find(|config| config.name.as_str() == store_name.as_str());
@@ -90,6 +81,8 @@ impl InitCommand {
     );
 
     siv.run();
+
+    Ok(())
   }
 }
 

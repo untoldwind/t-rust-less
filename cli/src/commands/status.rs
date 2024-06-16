@@ -1,4 +1,4 @@
-use crate::error::ExtResult;
+use anyhow::{Context, Result};
 use atty::Stream;
 use clap::Args;
 use crossterm_style::{style, Color};
@@ -9,11 +9,11 @@ use t_rust_less_lib::service::TrustlessService;
 pub struct StatusCommand {}
 
 impl StatusCommand {
-  pub fn run(self, service: Arc<dyn TrustlessService>, store_name: String) {
+  pub fn run(self, service: Arc<dyn TrustlessService>, store_name: String) -> Result<()> {
     let secrets_store = service
       .open_store(&store_name)
-      .ok_or_exit(format!("Failed opening store {}: ", store_name));
-    let status = secrets_store.status().ok_or_exit("Get status");
+      .with_context(|| format!("Failed opening store {}: ", store_name))?;
+    let status = secrets_store.status().with_context(|| "Get status")?;
 
     if atty::is(Stream::Stdout) {
       println!();
@@ -31,5 +31,7 @@ impl StatusCommand {
       println!("Client version: {}", env!("CARGO_PKG_VERSION"));
       println!("Store version : {}", status.version);
     }
+
+    Ok(())
   }
 }

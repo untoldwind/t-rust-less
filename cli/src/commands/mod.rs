@@ -11,6 +11,7 @@ mod status;
 pub mod tui;
 mod unlock;
 
+use anyhow::Result;
 use std::process;
 use std::sync::Arc;
 
@@ -51,7 +52,7 @@ pub struct IdentitiesCommand {
 }
 
 impl IdentitiesCommand {
-  pub fn run(self, service: Arc<dyn TrustlessService>, store_name: String) {
+  pub fn run(self, service: Arc<dyn TrustlessService>, store_name: String) -> Result<()> {
     match self.subcommand {
       IdentitiesSubCommand::Add(cmd) => cmd.run(service, store_name),
       IdentitiesSubCommand::List(cmd) => cmd.run(service, store_name),
@@ -69,6 +70,8 @@ pub enum MainCommand {
   Unlock(unlock::UnlockCommand),
   #[clap(about = "Import secrets entries")]
   Import(import::ImportCommand),
+  #[clap(about = "Export secrets entries")]
+  Export(export::ExportCommand),
   #[clap(about = "Show current status of the password store")]
   Status(status::StatusCommand),
   #[clap(about = "List secrets", alias = "ls")]
@@ -82,10 +85,9 @@ pub enum MainCommand {
 }
 
 impl MainCommand {
-  pub fn run(self, service: Arc<dyn TrustlessService>, maybe_store_name: Option<String>) {
+  pub fn run(self, service: Arc<dyn TrustlessService>, maybe_store_name: Option<String>) -> Result<()> {
     if let MainCommand::Init(cmd) = self {
-      cmd.run(service, maybe_store_name);
-      return;
+      return cmd.run(service, maybe_store_name);
     }
 
     let store_name = match maybe_store_name {
@@ -100,12 +102,13 @@ impl MainCommand {
       MainCommand::Lock(cmd) => cmd.run(service, store_name),
       MainCommand::Unlock(cmd) => cmd.run(service, store_name),
       MainCommand::Import(cmd) => cmd.run(service, store_name),
+      MainCommand::Export(cmd) => cmd.run(service, store_name),
       MainCommand::Status(cmd) => cmd.run(service, store_name),
       MainCommand::List(cmd) => cmd.run(service, store_name),
       MainCommand::Generate(cmd) => cmd.run(service),
       MainCommand::Identities(cmd) => cmd.run(service, store_name),
       MainCommand::Completions(cmd) => cmd.run(),
-      _ => (),
+      _ => Ok(()),
     }
   }
 }

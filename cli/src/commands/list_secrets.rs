@@ -2,6 +2,7 @@ use crate::commands::tui::create_tui;
 use crate::commands::unlock_store;
 use crate::error::ExtResult;
 use crate::view::{SecretView, StatusView};
+use anyhow::{Context, Result};
 use atty::Stream;
 use chrono::{DateTime, Utc};
 use clap::Args;
@@ -31,7 +32,7 @@ pub struct ListSecretsCommand {
 }
 
 impl ListSecretsCommand {
-  pub fn run(self, service: Arc<dyn TrustlessService>, store_name: String) {
+  pub fn run(self, service: Arc<dyn TrustlessService>, store_name: String) -> Result<()> {
     let filter = SecretListFilter {
       name: self.name,
       tag: self.tag,
@@ -44,17 +45,17 @@ impl ListSecretsCommand {
   }
 }
 
-pub fn list_secrets(service: Arc<dyn TrustlessService>, store_name: String, filter: SecretListFilter) {
+pub fn list_secrets(service: Arc<dyn TrustlessService>, store_name: String, filter: SecretListFilter) -> Result<()> {
   let secrets_store = service
     .open_store(&store_name)
-    .ok_or_exit(format!("Failed opening store {}: ", store_name));
+    .with_context(|| format!("Failed opening store {}: ", store_name))?;
 
-  let mut status = secrets_store.status().ok_or_exit("Get status");
+  let mut status = secrets_store.status().with_context(|| "Get status")?;
 
   if atty::is(Stream::Stdout) {
     if status.locked {
       let mut siv = create_tui();
-      status = unlock_store(&mut siv, &secrets_store, &store_name);
+      status = unlock_store(&mut siv, &secrets_store, &store_name)?;
       siv.quit();
     }
     let mut siv = create_tui();
@@ -67,14 +68,16 @@ pub fn list_secrets(service: Arc<dyn TrustlessService>, store_name: String, filt
       status_text: TextContent::new(status_text(&status)),
       last_update: None,
     };
-    list_secrets_ui(&mut siv, initial_state, status);
+    list_secrets_ui(&mut siv, initial_state, status)?;
   } else {
-    let list = secrets_store.list(&filter).ok_or_exit("List entries");
+    let list = secrets_store.list(&filter).with_context(|| "List entries")?;
 
     for entry in list.entries.iter() {
       println!("{:?}", entry);
     }
   }
+
+  Ok(())
 }
 
 struct ListUIState {
@@ -86,7 +89,7 @@ struct ListUIState {
   last_update: Option<DateTime<Utc>>,
 }
 
-fn list_secrets_ui(siv: &mut CursiveRunnable, initial_state: ListUIState, status: Status) {
+fn list_secrets_ui(siv: &mut CursiveRunnable, initial_state: ListUIState, status: Status) -> Result<()> {
   let mut name_search = EditView::new();
   if let Some(name_filter) = &initial_state.filter.name {
     name_search.set_content(name_filter.to_string());
@@ -122,6 +125,8 @@ fn list_secrets_ui(siv: &mut CursiveRunnable, initial_state: ListUIState, status
   siv.set_user_data(initial_state);
 
   siv.run();
+
+  Ok(())
 }
 
 fn update_name_filter(s: &mut Cursive, name_filter: &str, _: usize) {
