@@ -415,6 +415,7 @@ pub struct PasswordEstimate {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Zeroize)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[zeroize(drop)]
 pub struct PasswordStrength {
   pub entropy: f64,

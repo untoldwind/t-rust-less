@@ -1,28 +1,21 @@
-use std::fmt;
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Error, Serialize, Deserialize)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 pub enum OTPError {
+  #[error("Invalid url: {0}")]
   InvalidUrl(String),
+  #[error("Invalid url scheme. Expected otpauth")]
   InvalidScheme,
+  #[error("Invalid OTP type. Only totp and hotp are supported")]
   InvalidType,
+  #[error("Invalid OTP algorithm. Only SHA1, SHA256, SHA512 are supported")]
   InvalidAlgorithm,
+  #[error("Invalid secret")]
   InvalidSecret,
+  #[error("Missing required parameter: {0}")]
   MissingParameter(String),
-}
-
-impl fmt::Display for OTPError {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    match self {
-      OTPError::InvalidUrl(error) => write!(f, "Invalid url: {}", error)?,
-      OTPError::InvalidScheme => write!(f, "Invalid url scheme. Expected otpauth")?,
-      OTPError::InvalidType => write!(f, "Invalid OTP type. Only totp and hotp are supported")?,
-      OTPError::InvalidAlgorithm => write!(f, "Invalid OTP algorithm. Only SHA1, SHA256, SHA512 are supported")?,
-      OTPError::InvalidSecret => write!(f, "Invalid secret")?,
-      OTPError::MissingParameter(name) => write!(f, "Missing required parameter: {}", name)?,
-    }
-
-    Ok(())
-  }
 }
 
 pub type OTPResult<T> = Result<T, OTPError>;
