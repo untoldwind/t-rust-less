@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Zeroize)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[zeroize(drop)]
 pub struct StoreConfig {
   pub name: String,

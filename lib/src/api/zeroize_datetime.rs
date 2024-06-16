@@ -4,6 +4,7 @@ use std::ops;
 use zeroize::Zeroize;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Ord, PartialOrd)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[serde(transparent)]
 pub struct ZeroizeDateTime(DateTime<Utc>);
 

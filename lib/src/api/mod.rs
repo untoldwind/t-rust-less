@@ -28,6 +28,7 @@ pub const PROPERTY_NOTES: &str = "notes";
 /// Status information of a secrets store
 ///
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Zeroize)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[zeroize(drop)]
 pub struct Status {
   pub locked: bool,
@@ -41,6 +42,7 @@ pub struct Status {
 /// secrets store and be a recipient of secrets.
 ///
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Zeroize)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[zeroize(drop)]
 pub struct Identity {
   pub id: String,
@@ -60,6 +62,7 @@ impl std::fmt::Display for Identity {
 /// This only serves as a hint for an UI.
 ///
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[serde(rename_all = "lowercase")]
 pub enum SecretType {
   Login,
@@ -135,6 +138,7 @@ impl fmt::Display for SecretType {
 /// Match on `name` is supposed to be "fuzzy" by some fancy scheme.
 ///
 #[derive(Clone, Debug, Serialize, Deserialize, Default, PartialEq, Eq, Zeroize)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[zeroize(drop)]
 pub struct SecretListFilter {
   pub url: Option<String>,
@@ -155,6 +159,7 @@ pub struct SecretListFilter {
 /// See SecretVersion for further detail.
 ///
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, Zeroize)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[zeroize(drop)]
 pub struct SecretEntry {
   pub id: String,
@@ -232,6 +237,7 @@ impl PartialEq for SecretEntry {
 /// which parts should be highlighted in the UI
 ///
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, Zeroize)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[zeroize(drop)]
 pub struct SecretEntryMatch {
   pub entry: SecretEntry,
@@ -270,6 +276,7 @@ impl PartialEq for SecretEntryMatch {
 ///
 /// Also contains a unique list of tags of all secrets (e.g. to support autocompletion)
 #[derive(Clone, Debug, Serialize, Deserialize, Default, PartialEq, Eq, Zeroize)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[zeroize(drop)]
 pub struct SecretList {
   pub all_tags: Vec<String>,
@@ -277,6 +284,7 @@ pub struct SecretList {
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[serde(transparent)]
 pub struct SecretProperties(BTreeMap<String, String>);
 
@@ -325,6 +333,7 @@ impl Zeroize for SecretProperties {
 /// sort of (small) document to a password.
 ///
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Zeroize)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[zeroize(drop)]
 pub struct SecretAttachment {
   name: String,
@@ -339,6 +348,7 @@ pub struct SecretAttachment {
 /// overwritten or modified once stored. To change a Secret just add a new SecretVersion for it.
 ///
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Zeroize)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[zeroize(drop)]
 pub struct SecretVersion {
   /// Identifier of the secret this version belongs to.
