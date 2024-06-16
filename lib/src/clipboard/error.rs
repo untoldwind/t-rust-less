@@ -1,20 +1,15 @@
-use std::fmt;
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Error, Serialize, Deserialize)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 pub enum ClipboardError {
+  #[error("Clipboard not available")]
   Unavailable,
+  #[error("Clipboard mutex error: {0}")]
   Mutex(String),
+  #[error("Clipboard error: {0}")]
   Other(String),
-}
-
-impl fmt::Display for ClipboardError {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    match self {
-      ClipboardError::Unavailable => write!(f, "Clipboard not available"),
-      ClipboardError::Mutex(error) => write!(f, "Clipboard mutex error: {}", error),
-      ClipboardError::Other(error) => write!(f, "Clipboard error: {}", error),
-    }
-  }
 }
 
 pub type ClipboardResult<T> = Result<T, ClipboardError>;

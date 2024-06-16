@@ -1,31 +1,24 @@
 use serde::{Deserialize, Serialize};
 use std::convert::From;
-use std::fmt;
+use thiserror::Error;
 use zeroize::Zeroize;
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Zeroize, Clone)]
+#[derive(Debug, Error, PartialEq, Eq, Serialize, Deserialize, Zeroize, Clone)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[zeroize(drop)]
 pub enum StoreError {
+  #[error("Invalid block: {0}")]
   InvalidBlock(String),
+  #[error("Invalid store url: {0}")]
   InvalidStoreUrl(String),
+  #[error("IO: {0}")]
   IO(String),
+  #[error("Mutex: {0}")]
   Mutex(String),
+  #[error("Conflict: {0}")]
   Conflict(String),
+  #[error("Store with name {0} not found")]
   StoreNotFound(String),
-}
-
-impl fmt::Display for StoreError {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    match self {
-      StoreError::InvalidBlock(block_id) => write!(f, "Invalid block: {}", block_id)?,
-      StoreError::InvalidStoreUrl(url) => write!(f, "Invalid store url: {}", url)?,
-      StoreError::IO(error) => write!(f, "IO: {}", error)?,
-      StoreError::Mutex(error) => write!(f, "Internal locking problem: {}", error)?,
-      StoreError::Conflict(error) => write!(f, "Conflict: {}", error)?,
-      StoreError::StoreNotFound(name) => write!(f, "Store with name {} not found", name)?,
-    }
-    Ok(())
-  }
 }
 
 pub type StoreResult<T> = Result<T, StoreError>;

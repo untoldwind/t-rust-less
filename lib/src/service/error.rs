@@ -1,36 +1,27 @@
 use crate::secrets_store::SecretStoreError;
 use crate::{block_store::StoreError, clipboard::ClipboardError};
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use thiserror::Error;
 use zeroize::Zeroize;
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Zeroize, Clone)]
+#[derive(Debug, Error, PartialEq, Eq, Serialize, Deserialize, Zeroize, Clone)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[zeroize(drop)]
 pub enum ServiceError {
+  #[error("SecretsStoreError: {0}")]
   SecretsStore(SecretStoreError),
+  #[error("StoreError: {0}")]
   StoreError(StoreError),
+  #[error("IO: {0}")]
   IO(String),
+  #[error("Mutex: {0}")]
   Mutex(String),
+  #[error("Store with name {0} not found")]
   StoreNotFound(String),
+  #[error("Clipboard closed")]
   ClipboardClosed,
+  #[error("Functionality not available (on your platform)")]
   NotAvailable,
-}
-
-impl std::error::Error for ServiceError {}
-
-impl fmt::Display for ServiceError {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    match self {
-      ServiceError::SecretsStore(error) => write!(f, "SecretsStoreError: {}", error)?,
-      ServiceError::StoreError(error) => write!(f, "StoreError: {}", error)?,
-      ServiceError::IO(error) => write!(f, "IO: {}", error)?,
-      ServiceError::Mutex(error) => write!(f, "Mutex: {}", error)?,
-      ServiceError::StoreNotFound(name) => write!(f, "Store with name {} not found", name)?,
-      ServiceError::ClipboardClosed => write!(f, "Clipboard closed")?,
-      ServiceError::NotAvailable => write!(f, "Functionality not available (on your platform)")?,
-    }
-    Ok(())
-  }
 }
 
 pub type ServiceResult<T> = Result<T, ServiceError>;

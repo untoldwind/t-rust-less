@@ -1,56 +1,47 @@
 use crate::block_store::StoreError;
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use thiserror::Error;
 use zeroize::Zeroize;
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Zeroize, Clone)]
+#[derive(Debug, Error, PartialEq, Eq, Serialize, Deserialize, Zeroize, Clone)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[zeroize(drop)]
 pub enum SecretStoreError {
+  #[error("Store is locked")]
   Locked,
+  #[error("Forbidden user")]
   Forbidden,
+  #[error("Invalid passphrase")]
   InvalidPassphrase,
+  #[error("Already unlocked")]
   AlreadyUnlocked,
+  #[error("Conflicting ids/id already taken")]
   Conflict,
+  #[error("Key derivation error: {0}")]
   KeyDerivation(String),
+  #[error("Cipher error: {0}")]
   Cipher(String),
+  #[error("IO: {0}")]
   IO(String),
+  #[error("User is not a recipient of this message")]
   NoRecipient,
+  #[error("Invalid data padding")]
   Padding,
+  #[error("Mutex: {0}")]
   Mutex(String),
+  #[error("BlockStore: {0}")]
   BlockStore(StoreError),
+  #[error("Invalid store url: {0}")]
   InvalidStoreUrl(String),
+  #[error("Json error: {0}")]
   Json(String),
+  #[error("Invalid recipient: {0}")]
   InvalidRecipient(String),
+  #[error("Missing private key for cipher: {0}")]
   MissingPrivateKey(String),
+  #[error("Secret not found")]
   NotFound,
 }
-
-impl fmt::Display for SecretStoreError {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    match self {
-      SecretStoreError::Locked => write!(f, "Store is locked")?,
-      SecretStoreError::Forbidden => write!(f, "Forbidden user")?,
-      SecretStoreError::InvalidPassphrase => write!(f, "Invalid passphrase")?,
-      SecretStoreError::AlreadyUnlocked => write!(f, "Already unlocked")?,
-      SecretStoreError::Conflict => write!(f, "Conflicting ids/id already taken")?,
-      SecretStoreError::KeyDerivation(error) => write!(f, "Key derivation error: {}", error)?,
-      SecretStoreError::Cipher(error) => write!(f, "Cipher error: {}", error)?,
-      SecretStoreError::IO(error) => write!(f, "IO: {}", error)?,
-      SecretStoreError::NoRecipient => write!(f, "User is not a recipient of this message")?,
-      SecretStoreError::Padding => write!(f, "Invalid data padding")?,
-      SecretStoreError::Mutex(error) => write!(f, "Mutex: {}", error)?,
-      SecretStoreError::BlockStore(error) => write!(f, "BlockStore: {}", error)?,
-      SecretStoreError::InvalidStoreUrl(error) => write!(f, "Invalid store url: {}", error)?,
-      SecretStoreError::Json(error) => write!(f, "Json error: {}", error)?,
-      SecretStoreError::InvalidRecipient(error) => write!(f, "Invalid recipient: {}", error)?,
-      SecretStoreError::MissingPrivateKey(cipher) => write!(f, "Missing private key for cipher: {}", cipher)?,
-      SecretStoreError::NotFound => write!(f, "Secret not found")?,
-    }
-    Ok(())
-  }
-}
-
-impl std::error::Error for SecretStoreError {}
 
 pub type SecretStoreResult<T> = Result<T, SecretStoreError>;
 

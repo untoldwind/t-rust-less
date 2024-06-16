@@ -39,7 +39,7 @@ impl ExportCommand {
         .get(&entry_match.entry.id)
         .with_context(|| format!("Get entry {} {}", entry_match.entry.id, entry_match.entry.name))?;
 
-    println!("{}", secret.id);
+      println!("{}", secret.id);
     }
 
     Ok(())

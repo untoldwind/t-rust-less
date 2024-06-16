@@ -24,6 +24,7 @@ env_logger = "0"
 clap = "4"
 clap_complete = "4"
 anyhow = "1"
+thiserror = "1"
 
 [profile.release]
 opt-level = 3
