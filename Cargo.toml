@@ -11,6 +11,17 @@ resolver = "2"
 [workspace.package]
 version = "0.2.18"
 
+[workspace.dependencies]
+log = "0"
+rmp-serde = "0"
+zeroize = "1"
+zeroize_derive  = "1"
+byteorder = "1"
+serde = "1"
+serde_json = "1"
+chrono = "0"
+env_logger = "0"
+
 [profile.release]
 opt-level = 3
 debug = false

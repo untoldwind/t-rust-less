@@ -6,22 +6,22 @@ build = "build.rs"
 edition = "2021"
 
 [dependencies]
-log = "0"
-env_logger = "0"
+log = { workspace = true }
+env_logger = { workspace = true }
 clap = { version = "2", default-features = false, features = ["suggestions", "color"]}
 cursive = { version = "0", default-features = false, optional = true }
 termion = { version = "3", optional = true }
 atty = "0.2"
 t-rust-less-lib = { path = "../lib" }
-serde = { version = "1", features = ["derive"] }
+serde = { workspace = true, features = ["derive"] }
 rand = "0.8"
 dirs = "5"
 url = "2"
 crossterm_style = "0"
-serde_json = "1"
-chrono = { version = "0", features = ["serde"] }
-zeroize = "1"
-zeroize_derive  = "1"
+serde_json = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+zeroize = { workspace = true }
+zeroize_derive  = { workspace = true }
 
 [features]
 termion_backend = ["termion", "cursive/termion-backend", "cursive/toml"]
