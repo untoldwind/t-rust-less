@@ -2,13 +2,13 @@
 name = "t-rust-less"
 version.workspace = true
 authors = ["Untoldwind <landru@untoldwind.net>"]
-build = "build.rs"
 edition = "2021"
 
 [dependencies]
 log = { workspace = true }
 env_logger = { workspace = true }
-clap = { version = "2", default-features = false, features = ["suggestions", "color"]}
+clap = { workspace = true, features = ["cargo", "derive"] }
+clap_complete = { workspace = true }
 cursive = { version = "0", default-features = false, optional = true }
 termion = { version = "3", optional = true }
 atty = "0.2"

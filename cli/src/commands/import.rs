@@ -2,6 +2,7 @@ use crate::commands::tui::create_tui;
 use crate::commands::unlock_store;
 use crate::error::ExtResult;
 use crate::model::import_v1::SecretV1;
+use clap::Args;
 use std::fs::File;
 use std::io::{stdin, BufRead, BufReader};
 use std::process;
@@ -9,14 +10,34 @@ use std::sync::Arc;
 use t_rust_less_lib::api::SecretVersion;
 use t_rust_less_lib::service::TrustlessService;
 
-pub fn import_v1(service: Arc<dyn TrustlessService>, store_name: String, maybe_file_name: Option<&str>) {
+#[derive(Debug, Args)]
+pub struct ImportCommand {
+  #[clap(long, help = "Import V1 format (from original trustless)")]
+  pub v1: bool,
+
+  #[clap(help = "File to import. If not set import will read from stdin")]
+  pub file: Option<String>,
+}
+
+impl ImportCommand {
+  pub fn run(self, service: Arc<dyn TrustlessService>, store_name: String) {
+    if self.v1 {
+      import_v1(service, store_name, self.file);
+    } else {
+      println!("Only v1 import supported yet");
+      process::exit(1)
+    }
+  }
+}
+
+pub fn import_v1(service: Arc<dyn TrustlessService>, store_name: String, maybe_file_name: Option<String>) {
   let secrets_store = service
     .open_store(&store_name)
     .ok_or_exit(format!("Failed opening store {}: ", store_name));
 
   let status = secrets_store.status().ok_or_exit("Get status");
 
-  let import_stream: Box<dyn BufRead> = match maybe_file_name {
+  let import_stream: Box<dyn BufRead> = match &maybe_file_name {
     Some(file_name) => {
       let file = File::open(file_name).ok_or_exit(format!("Failed opening {}", file_name));
       Box::new(BufReader::new(file))

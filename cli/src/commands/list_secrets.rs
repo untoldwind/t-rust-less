@@ -4,6 +4,7 @@ use crate::error::ExtResult;
 use crate::view::{SecretView, StatusView};
 use atty::Stream;
 use chrono::{DateTime, Utc};
+use clap::Args;
 use cursive::event::{Event, Key};
 use cursive::theme::Effect;
 use cursive::traits::{Nameable, Resizable, Scrollable};
@@ -16,6 +17,32 @@ use t_rust_less_lib::api::{
 };
 use t_rust_less_lib::secrets_store::SecretsStore;
 use t_rust_less_lib::service::TrustlessService;
+
+#[derive(Debug, Args)]
+pub struct ListSecretsCommand {
+  #[clap(long, short, help = "Fuzzy name filter")]
+  pub name: Option<String>,
+  #[clap(long, short)]
+  pub url: Option<String>,
+  #[clap(long, short)]
+  pub tag: Option<String>,
+  #[clap(long)]
+  pub deleted: bool,
+}
+
+impl ListSecretsCommand {
+  pub fn run(self, service: Arc<dyn TrustlessService>, store_name: String) {
+    let filter = SecretListFilter {
+      name: self.name,
+      tag: self.tag,
+      url: self.url,
+      deleted: self.deleted,
+      ..Default::default()
+    };
+
+    list_secrets(service, store_name, filter)
+  }
+}
 
 pub fn list_secrets(service: Arc<dyn TrustlessService>, store_name: String, filter: SecretListFilter) {
   let secrets_store = service

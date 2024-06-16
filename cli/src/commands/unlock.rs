@@ -2,6 +2,7 @@ use crate::commands::tui::create_tui;
 use crate::error::ExtResult;
 use crate::view::PasswordView;
 use atty::Stream;
+use clap::Args;
 use cursive::event::Key;
 use cursive::traits::{Nameable, Resizable};
 use cursive::views::{Dialog, DummyView, LinearLayout, SelectView, TextView};
@@ -12,17 +13,22 @@ use t_rust_less_lib::api::{Identity, Status};
 use t_rust_less_lib::secrets_store::SecretsStore;
 use t_rust_less_lib::service::TrustlessService;
 
-pub fn unlock(service: Arc<dyn TrustlessService>, store_name: String) {
-  let secrets_store = service
-    .open_store(&store_name)
-    .ok_or_exit(format!("Failed opening store {}: ", store_name));
+#[derive(Debug, Args)]
+pub struct UnlockCommand {}
 
-  let status = secrets_store.status().ok_or_exit("Get status");
+impl UnlockCommand {
+  pub fn run(self, service: Arc<dyn TrustlessService>, store_name: String) {
+    let secrets_store = service
+      .open_store(&store_name)
+      .ok_or_exit(format!("Failed opening store {}: ", store_name));
 
-  if status.locked {
-    let mut siv = create_tui();
+    let status = secrets_store.status().ok_or_exit("Get status");
 
-    unlock_store(&mut siv, &secrets_store, &store_name);
+    if status.locked {
+      let mut siv = create_tui();
+
+      unlock_store(&mut siv, &secrets_store, &store_name);
+    }
   }
 }
 

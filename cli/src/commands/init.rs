@@ -1,6 +1,7 @@
 use std::process;
 
 use atty::Stream;
+use clap::Args;
 use cursive::traits::{Nameable, Resizable};
 use cursive::views::{Dialog, DummyView, EditView, LinearLayout, TextView};
 use cursive::Cursive;
@@ -17,74 +18,79 @@ use std::sync::Arc;
 use t_rust_less_lib::service::TrustlessService;
 use url::Url;
 
-pub fn init(service: Arc<dyn TrustlessService>, maybe_store_name: Option<String>) {
-  if !atty::is(Stream::Stdout) {
-    println!("Please use a terminal");
-    process::exit(1);
-  }
+#[derive(Debug, Args)]
+pub struct InitCommand {}
 
-  let store_name = maybe_store_name.unwrap_or_else(|| "t-rust-less-store".to_string());
-  let store_configs = match service.list_stores() {
-    Ok(configs) => configs,
-    Err(err) => {
-      exit_with_error(
-        format!("Checking exsting configuration for store {}: ", store_name),
-        err,
-      );
-      unreachable!()
+impl InitCommand {
+  pub fn run(self, service: Arc<dyn TrustlessService>, maybe_store_name: Option<String>) {
+    if !atty::is(Stream::Stdout) {
+      println!("Please use a terminal");
+      process::exit(1);
     }
-  };
-  let maybe_config = store_configs
-    .iter()
-    .find(|config| config.name.as_str() == store_name.as_str());
-  let store_path = match maybe_config {
-    Some(config) => match Url::parse(&config.store_url) {
-      Ok(url) => url.path().to_string(),
+
+    let store_name = maybe_store_name.unwrap_or_else(|| "t-rust-less-store".to_string());
+    let store_configs = match service.list_stores() {
+      Ok(configs) => configs,
+      Err(err) => {
+        exit_with_error(
+          format!("Checking exsting configuration for store {}: ", store_name),
+          err,
+        );
+        unreachable!()
+      }
+    };
+    let maybe_config = store_configs
+      .iter()
+      .find(|config| config.name.as_str() == store_name.as_str());
+    let store_path = match maybe_config {
+      Some(config) => match Url::parse(&config.store_url) {
+        Ok(url) => url.path().to_string(),
+        _ => default_store_dir(&store_name).to_string_lossy().to_string(),
+      },
       _ => default_store_dir(&store_name).to_string_lossy().to_string(),
-    },
-    _ => default_store_dir(&store_name).to_string_lossy().to_string(),
-  };
-  let autolock_timeout_secs = match maybe_config {
-    Some(config) => config.autolock_timeout_secs,
-    _ => default_autolock_timeout().as_secs(),
-  };
+    };
+    let autolock_timeout_secs = match maybe_config {
+      Some(config) => config.autolock_timeout_secs,
+      _ => default_autolock_timeout().as_secs(),
+    };
 
-  let mut siv = create_tui();
+    let mut siv = create_tui();
 
-  siv.set_user_data(service);
-  siv.add_global_callback(Key::Esc, Cursive::quit);
+    siv.set_user_data(service);
+    siv.add_global_callback(Key::Esc, Cursive::quit);
 
-  siv.add_layer(
-    Dialog::around(
-      LinearLayout::vertical()
-        .child(TextView::new("Store name"))
-        .child(EditView::new().content(store_name).disabled().with_name("store_name"))
-        .child(DummyView {})
-        .child(TextView::new("Store directory"))
-        .child(
-          EditView::new()
-            .content(collapse_path(store_path))
-            .with_name("store_dir")
-            .fixed_width(60),
-        )
-        .child(DummyView {})
-        .child(TextView::new("Auto-lock timeout (sec)"))
-        .child(
-          EditView::new()
-            .content(autolock_timeout_secs.to_string())
-            .with_name("autolock_timeout"),
-        ),
-    )
-    .button("Abort", Cursive::quit)
-    .button("Store", store_config)
-    .title("t-rust-less configuration")
-    .padding_left(5)
-    .padding_right(5)
-    .padding_top(1)
-    .padding_bottom(1),
-  );
+    siv.add_layer(
+      Dialog::around(
+        LinearLayout::vertical()
+          .child(TextView::new("Store name"))
+          .child(EditView::new().content(store_name).disabled().with_name("store_name"))
+          .child(DummyView {})
+          .child(TextView::new("Store directory"))
+          .child(
+            EditView::new()
+              .content(collapse_path(store_path))
+              .with_name("store_dir")
+              .fixed_width(60),
+          )
+          .child(DummyView {})
+          .child(TextView::new("Auto-lock timeout (sec)"))
+          .child(
+            EditView::new()
+              .content(autolock_timeout_secs.to_string())
+              .with_name("autolock_timeout"),
+          ),
+      )
+      .button("Abort", Cursive::quit)
+      .button("Store", store_config)
+      .title("t-rust-less configuration")
+      .padding_left(5)
+      .padding_right(5)
+      .padding_top(1)
+      .padding_bottom(1),
+    );
 
-  siv.run();
+    siv.run();
+  }
 }
 
 macro_rules! try_with_dialog {

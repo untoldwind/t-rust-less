@@ -1,10 +1,6 @@
 use crate::error::ExtResult;
-use atty::Stream;
-use crossterm_style::{style, Color};
-use log::error;
-use std::process;
-use t_rust_less_lib::api::SecretListFilter;
-use t_rust_less_lib::service::{config_file, create_service};
+use clap::Parser;
+use t_rust_less_lib::service::create_service;
 
 mod cli;
 mod commands;
@@ -13,32 +9,12 @@ mod error;
 pub mod model;
 pub mod view;
 
-fn uninitialized() {
-  if atty::is(Stream::Stdout) {
-    println!();
-    println!("{}", style("No default store found").with(Color::Red));
-    println!();
-    println!(
-      "t-rust-less was unable to find a default store in configuration at '{}'.",
-      config_file().to_string_lossy()
-    );
-    println!("Probably t-rust-less has not been initialized yet. You may fix this problem with 't-rust-less init'");
-    println!();
-  } else {
-    error!(
-      "Missing default store in configuration: {}",
-      config_file().to_string_lossy()
-    );
-  }
-  process::exit(1)
-}
-
 fn main() {
-  let matches = cli::app().get_matches();
+  let args = cli::Args::parse();
 
   let mut log_builder = env_logger::Builder::from_default_env();
 
-  if matches.is_present("debug") {
+  if args.debug {
     log_builder.filter(None, log::LevelFilter::Debug);
   } else {
     log_builder.filter(None, log::LevelFilter::Error);
@@ -47,70 +23,10 @@ fn main() {
   log_builder.init();
 
   let service = create_service().ok_or_exit("Failed creating service");
-  let maybe_store_name = matches
-    .value_of("store")
-    .map(str::to_string)
+
+  let maybe_store_name = args
+    .store
     .or_else(|| service.get_default_store().ok_or_exit("Get default store"));
 
-  if matches.subcommand_matches("init").is_some() {
-    commands::init(service, maybe_store_name);
-    return;
-  }
-  let store_name = match maybe_store_name {
-    Some(store_name) => store_name,
-    _ => {
-      uninitialized();
-      unreachable!()
-    }
-  };
-
-  match matches.subcommand() {
-    ("status", _) => commands::status(service, store_name),
-    ("list", Some(sub_matches)) => {
-      let filter = SecretListFilter {
-        name: sub_matches.value_of("name").map(ToString::to_string),
-        tag: sub_matches.value_of("tag").map(ToString::to_string),
-        url: sub_matches.value_of("url").map(ToString::to_string),
-        deleted: sub_matches.is_present("deleted"),
-        ..Default::default()
-      };
-
-      commands::list_secrets(service, store_name, filter)
-    }
-    ("identities", Some(sub_matches)) => match sub_matches.subcommand() {
-      ("add", _) => commands::add_identity(service, store_name),
-      ("list", _) => commands::list_identities(service, store_name),
-      (command, _) => {
-        println!("Command {} not implemented", command);
-        process::exit(1)
-      }
-    },
-    ("lock", _) => commands::lock(service, store_name),
-    ("unlock", _) => commands::unlock(service, store_name),
-    ("import", Some(sub_matches)) => {
-      let file_name = sub_matches.value_of("file");
-      if sub_matches.is_present("v1") {
-        commands::import_v1(service, store_name, file_name);
-      } else {
-        println!("Only v1 import supported yet");
-        process::exit(1)
-      }
-    }
-    ("generate", Some(sub_matches)) => {
-      let param = commands::password_generate_param_from_args(sub_matches);
-
-      commands::generate(
-        service,
-        param,
-        sub_matches
-          .value_of("count")
-          .and_then(|v| v.parse::<usize>().ok())
-          .unwrap_or(5),
-      );
-    }
-    (command, _) => {
-      println!("Command {} not implemented", command);
-      process::exit(1)
-    }
-  }
+  args.sub_command.run(service, maybe_store_name);
 }
