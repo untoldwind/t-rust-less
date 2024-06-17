@@ -142,7 +142,7 @@ unsafe fn unprotected_ptr_from_user_ptr(memptr: *const u8) -> *mut u8 {
 pub unsafe fn malloc(size: usize) -> NonNull<u8> {
   ALLOC_INIT.call_once(|| alloc_init());
 
-  if size >= core::usize::MAX - PAGE_SIZE * 4 {
+  if size >= usize::MAX - PAGE_SIZE * 4 {
     panic!("malloc fail: not enough memory")
   }
 
