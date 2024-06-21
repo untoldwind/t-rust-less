@@ -408,6 +408,7 @@ impl SecretVersion {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Zeroize)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[zeroize(drop)]
 pub struct PasswordEstimate {
   pub password: String,
@@ -425,6 +426,7 @@ pub struct PasswordStrength {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Zeroize)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[zeroize(drop)]
 pub struct SecretVersionRef {
   pub block_id: String,
@@ -455,6 +457,7 @@ impl std::fmt::Display for SecretVersionRef {
 ///
 /// The is the default view when retrieving a specific secret.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 pub struct Secret {
   pub id: String,
   #[serde(rename = "type")]
@@ -483,6 +486,7 @@ impl Drop for Secret {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Zeroize)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[zeroize(drop)]
 pub struct PasswordGeneratorCharsParam {
   pub num_chars: u8,
@@ -497,6 +501,7 @@ pub struct PasswordGeneratorCharsParam {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Zeroize)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[zeroize(drop)]
 pub struct PasswordGeneratorWordsParam {
   pub num_words: u8,
@@ -504,6 +509,7 @@ pub struct PasswordGeneratorWordsParam {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Zeroize)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[serde(rename_all = "lowercase")]
 #[zeroize(drop)]
 pub enum PasswordGeneratorParam {
@@ -523,6 +529,7 @@ where
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Zeroize)]
+#[cfg_attr(feature = "with_specta", derive(specta::Type))]
 #[zeroize(drop)]
 pub struct ClipboardProviding {
   pub store_name: String,
