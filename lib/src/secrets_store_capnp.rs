@@ -49,13 +49,14 @@ impl ::capnp::traits::HasTypeId for KeyDerivationType {
   const TYPE_ID: u64 = 0xef69_a995_a2f2_b938u64;
 }
 mod key_derivation_type {
-  pub static ENCODED_NODE: [::capnp::Word; 24] = [
-    ::capnp::word(0, 0, 0, 0, 5, 0, 6, 0),
+  pub static ENCODED_NODE: [::capnp::Word; 25] = [
+    ::capnp::word(0, 0, 0, 0, 6, 0, 6, 0),
     ::capnp::word(56, 185, 242, 162, 149, 169, 105, 239),
     ::capnp::word(24, 0, 0, 0, 2, 0, 0, 0),
     ::capnp::word(103, 128, 46, 172, 72, 114, 174, 137),
     ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
     ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
+    ::capnp::word(22, 0, 0, 0, 63, 0, 0, 0),
     ::capnp::word(21, 0, 0, 0, 82, 1, 0, 0),
     ::capnp::word(41, 0, 0, 0, 7, 0, 0, 0),
     ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
@@ -129,13 +130,14 @@ impl ::capnp::traits::HasTypeId for KeyType {
   const TYPE_ID: u64 = 0x84b3_21f9_95d5_f7f7u64;
 }
 mod key_type {
-  pub static ENCODED_NODE: [::capnp::Word; 29] = [
-    ::capnp::word(0, 0, 0, 0, 5, 0, 6, 0),
+  pub static ENCODED_NODE: [::capnp::Word; 30] = [
+    ::capnp::word(0, 0, 0, 0, 6, 0, 6, 0),
     ::capnp::word(247, 247, 213, 149, 249, 33, 179, 132),
     ::capnp::word(24, 0, 0, 0, 2, 0, 0, 0),
     ::capnp::word(103, 128, 46, 172, 72, 114, 174, 137),
     ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
     ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
+    ::capnp::word(100, 0, 0, 0, 166, 0, 0, 0),
     ::capnp::word(21, 0, 0, 0, 2, 1, 0, 0),
     ::capnp::word(33, 0, 0, 0, 7, 0, 0, 0),
     ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
@@ -542,13 +544,14 @@ pub mod ring {
   }
   impl Pipeline {}
   mod _private {
-    pub static ENCODED_NODE: [::capnp::Word; 126] = [
-      ::capnp::word(0, 0, 0, 0, 5, 0, 6, 0),
+    pub static ENCODED_NODE: [::capnp::Word; 127] = [
+      ::capnp::word(0, 0, 0, 0, 6, 0, 6, 0),
       ::capnp::word(133, 30, 124, 165, 221, 11, 43, 165),
       ::capnp::word(24, 0, 0, 0, 1, 0, 1, 0),
       ::capnp::word(103, 128, 46, 172, 72, 114, 174, 137),
       ::capnp::word(5, 0, 7, 0, 0, 0, 0, 0),
       ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
+      ::capnp::word(204, 0, 0, 0, 137, 2, 0, 0),
       ::capnp::word(21, 0, 0, 0, 234, 0, 0, 0),
       ::capnp::word(33, 0, 0, 0, 39, 0, 0, 0),
       ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
@@ -930,13 +933,14 @@ pub mod ring {
     }
     impl Pipeline {}
     mod _private {
-      pub static ENCODED_NODE: [::capnp::Word; 49] = [
-        ::capnp::word(0, 0, 0, 0, 5, 0, 6, 0),
+      pub static ENCODED_NODE: [::capnp::Word; 50] = [
+        ::capnp::word(0, 0, 0, 0, 6, 0, 6, 0),
         ::capnp::word(39, 179, 51, 234, 20, 237, 65, 217),
         ::capnp::word(29, 0, 0, 0, 1, 0, 1, 0),
         ::capnp::word(133, 30, 124, 165, 221, 11, 43, 165),
         ::capnp::word(1, 0, 7, 0, 0, 0, 0, 0),
         ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
+        ::capnp::word(131, 1, 0, 0, 205, 1, 0, 0),
         ::capnp::word(21, 0, 0, 0, 58, 1, 0, 0),
         ::capnp::word(37, 0, 0, 0, 7, 0, 0, 0),
         ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
@@ -1296,13 +1300,14 @@ pub mod ring {
     }
     impl Pipeline {}
     mod _private {
-      pub static ENCODED_NODE: [::capnp::Word; 96] = [
-        ::capnp::word(0, 0, 0, 0, 5, 0, 6, 0),
+      pub static ENCODED_NODE: [::capnp::Word; 97] = [
+        ::capnp::word(0, 0, 0, 0, 6, 0, 6, 0),
         ::capnp::word(236, 69, 202, 109, 161, 58, 241, 150),
         ::capnp::word(29, 0, 0, 0, 1, 0, 1, 0),
         ::capnp::word(133, 30, 124, 165, 221, 11, 43, 165),
         ::capnp::word(2, 0, 7, 0, 0, 0, 0, 0),
         ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
+        ::capnp::word(211, 1, 0, 0, 135, 2, 0, 0),
         ::capnp::word(21, 0, 0, 0, 66, 1, 0, 0),
         ::capnp::word(37, 0, 0, 0, 7, 0, 0, 0),
         ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
@@ -1683,13 +1688,14 @@ pub mod block {
   }
   impl Pipeline {}
   mod _private {
-    pub static ENCODED_NODE: [::capnp::Word; 59] = [
-      ::capnp::word(0, 0, 0, 0, 5, 0, 6, 0),
+    pub static ENCODED_NODE: [::capnp::Word; 60] = [
+      ::capnp::word(0, 0, 0, 0, 6, 0, 6, 0),
       ::capnp::word(145, 242, 158, 22, 178, 24, 61, 141),
       ::capnp::word(24, 0, 0, 0, 1, 0, 0, 0),
       ::capnp::word(103, 128, 46, 172, 72, 114, 174, 137),
       ::capnp::word(2, 0, 7, 0, 0, 0, 0, 0),
       ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
+      ::capnp::word(229, 2, 0, 0, 254, 3, 0, 0),
       ::capnp::word(21, 0, 0, 0, 242, 0, 0, 0),
       ::capnp::word(33, 0, 0, 0, 39, 0, 0, 0),
       ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
@@ -2042,13 +2048,14 @@ pub mod block {
     }
     impl Pipeline {}
     mod _private {
-      pub static ENCODED_NODE: [::capnp::Word; 70] = [
-        ::capnp::word(0, 0, 0, 0, 5, 0, 6, 0),
+      pub static ENCODED_NODE: [::capnp::Word; 71] = [
+        ::capnp::word(0, 0, 0, 0, 6, 0, 6, 0),
         ::capnp::word(178, 68, 47, 223, 102, 36, 109, 134),
         ::capnp::word(30, 0, 0, 0, 1, 0, 1, 0),
         ::capnp::word(145, 242, 158, 22, 178, 24, 61, 141),
         ::capnp::word(2, 0, 7, 0, 0, 0, 0, 0),
         ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
+        ::capnp::word(47, 3, 0, 0, 168, 3, 0, 0),
         ::capnp::word(21, 0, 0, 0, 42, 1, 0, 0),
         ::capnp::word(37, 0, 0, 0, 7, 0, 0, 0),
         ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
@@ -2391,13 +2398,14 @@ pub mod block {
     }
     impl Pipeline {}
     mod _private {
-      pub static ENCODED_NODE: [::capnp::Word; 51] = [
-        ::capnp::word(0, 0, 0, 0, 5, 0, 6, 0),
+      pub static ENCODED_NODE: [::capnp::Word; 52] = [
+        ::capnp::word(0, 0, 0, 0, 6, 0, 6, 0),
         ::capnp::word(47, 158, 67, 231, 19, 218, 197, 221),
         ::capnp::word(30, 0, 0, 0, 1, 0, 0, 0),
         ::capnp::word(145, 242, 158, 22, 178, 24, 61, 141),
         ::capnp::word(2, 0, 7, 0, 0, 0, 0, 0),
         ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
+        ::capnp::word(174, 3, 0, 0, 252, 3, 0, 0),
         ::capnp::word(21, 0, 0, 0, 90, 1, 0, 0),
         ::capnp::word(41, 0, 0, 0, 7, 0, 0, 0),
         ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
@@ -2740,13 +2748,14 @@ pub mod index {
   }
   impl Pipeline {}
   mod _private {
-    pub static ENCODED_NODE: [::capnp::Word; 66] = [
-      ::capnp::word(0, 0, 0, 0, 5, 0, 6, 0),
+    pub static ENCODED_NODE: [::capnp::Word; 67] = [
+      ::capnp::word(0, 0, 0, 0, 6, 0, 6, 0),
       ::capnp::word(185, 245, 217, 11, 187, 125, 205, 237),
       ::capnp::word(24, 0, 0, 0, 1, 0, 0, 0),
       ::capnp::word(103, 128, 46, 172, 72, 114, 174, 137),
       ::capnp::word(2, 0, 7, 0, 0, 0, 0, 0),
       ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
+      ::capnp::word(182, 4, 0, 0, 32, 6, 0, 0),
       ::capnp::word(21, 0, 0, 0, 242, 0, 0, 0),
       ::capnp::word(33, 0, 0, 0, 55, 0, 0, 0),
       ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
@@ -2879,13 +2888,14 @@ pub mod index {
     const TYPE_ID: u64 = 0xac4c_c0a2_0812_023au64;
   }
   mod head_operation {
-    pub static ENCODED_NODE: [::capnp::Word; 28] = [
-      ::capnp::word(0, 0, 0, 0, 5, 0, 6, 0),
+    pub static ENCODED_NODE: [::capnp::Word; 29] = [
+      ::capnp::word(0, 0, 0, 0, 6, 0, 6, 0),
       ::capnp::word(58, 2, 18, 8, 162, 192, 76, 172),
       ::capnp::word(30, 0, 0, 0, 2, 0, 0, 0),
       ::capnp::word(185, 245, 217, 11, 187, 125, 205, 237),
       ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
       ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
+      ::capnp::word(3, 5, 0, 0, 64, 5, 0, 0),
       ::capnp::word(21, 0, 0, 0, 98, 1, 0, 0),
       ::capnp::word(41, 0, 0, 0, 7, 0, 0, 0),
       ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
@@ -3184,13 +3194,14 @@ pub mod index {
     }
     impl Pipeline {}
     mod _private {
-      pub static ENCODED_NODE: [::capnp::Word; 65] = [
-        ::capnp::word(0, 0, 0, 0, 5, 0, 6, 0),
+      pub static ENCODED_NODE: [::capnp::Word; 66] = [
+        ::capnp::word(0, 0, 0, 0, 6, 0, 6, 0),
         ::capnp::word(225, 180, 15, 143, 187, 243, 39, 136),
         ::capnp::word(30, 0, 0, 0, 1, 0, 1, 0),
         ::capnp::word(185, 245, 217, 11, 187, 125, 205, 237),
         ::capnp::word(2, 0, 7, 0, 0, 0, 0, 0),
         ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
+        ::capnp::word(70, 5, 0, 0, 179, 5, 0, 0),
         ::capnp::word(21, 0, 0, 0, 26, 1, 0, 0),
         ::capnp::word(37, 0, 0, 0, 7, 0, 0, 0),
         ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
@@ -3543,13 +3554,14 @@ pub mod index {
       }
     }
     mod _private {
-      pub static ENCODED_NODE: [::capnp::Word; 54] = [
-        ::capnp::word(0, 0, 0, 0, 5, 0, 6, 0),
+      pub static ENCODED_NODE: [::capnp::Word; 55] = [
+        ::capnp::word(0, 0, 0, 0, 6, 0, 6, 0),
         ::capnp::word(128, 162, 88, 239, 64, 223, 78, 251),
         ::capnp::word(30, 0, 0, 0, 1, 0, 0, 0),
         ::capnp::word(185, 245, 217, 11, 187, 125, 205, 237),
         ::capnp::word(2, 0, 7, 0, 0, 0, 0, 0),
         ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
+        ::capnp::word(185, 5, 0, 0, 30, 6, 0, 0),
         ::capnp::word(21, 0, 0, 0, 34, 1, 0, 0),
         ::capnp::word(37, 0, 0, 0, 7, 0, 0, 0),
         ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
@@ -3680,13 +3692,14 @@ impl ::capnp::traits::HasTypeId for SecretType {
   const TYPE_ID: u64 = 0xd2ab_cf28_752d_5330u64;
 }
 mod secret_type {
-  pub static ENCODED_NODE: [::capnp::Word; 44] = [
-    ::capnp::word(0, 0, 0, 0, 5, 0, 6, 0),
+  pub static ENCODED_NODE: [::capnp::Word; 45] = [
+    ::capnp::word(0, 0, 0, 0, 6, 0, 6, 0),
     ::capnp::word(48, 83, 45, 117, 40, 207, 171, 210),
     ::capnp::word(24, 0, 0, 0, 2, 0, 0, 0),
     ::capnp::word(103, 128, 46, 172, 72, 114, 174, 137),
     ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
     ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
+    ::capnp::word(34, 6, 0, 0, 140, 6, 0, 0),
     ::capnp::word(21, 0, 0, 0, 26, 1, 0, 0),
     ::capnp::word(37, 0, 0, 0, 7, 0, 0, 0),
     ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
@@ -4087,13 +4100,14 @@ pub mod secret_entry {
   }
   impl Pipeline {}
   mod _private {
-    pub static ENCODED_NODE: [::capnp::Word; 133] = [
-      ::capnp::word(0, 0, 0, 0, 5, 0, 6, 0),
+    pub static ENCODED_NODE: [::capnp::Word; 134] = [
+      ::capnp::word(0, 0, 0, 0, 6, 0, 6, 0),
       ::capnp::word(223, 139, 11, 251, 164, 3, 247, 252),
       ::capnp::word(24, 0, 0, 0, 1, 0, 2, 0),
       ::capnp::word(103, 128, 46, 172, 72, 114, 174, 137),
       ::capnp::word(4, 0, 7, 0, 0, 0, 0, 0),
       ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
+      ::capnp::word(142, 6, 0, 0, 73, 7, 0, 0),
       ::capnp::word(21, 0, 0, 0, 34, 1, 0, 0),
       ::capnp::word(37, 0, 0, 0, 7, 0, 0, 0),
       ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
@@ -4485,13 +4499,14 @@ pub mod secret_version_ref {
   }
   impl Pipeline {}
   mod _private {
-    pub static ENCODED_NODE: [::capnp::Word; 51] = [
-      ::capnp::word(0, 0, 0, 0, 5, 0, 6, 0),
+    pub static ENCODED_NODE: [::capnp::Word; 52] = [
+      ::capnp::word(0, 0, 0, 0, 6, 0, 6, 0),
       ::capnp::word(67, 125, 164, 21, 101, 25, 93, 222),
       ::capnp::word(24, 0, 0, 0, 1, 0, 1, 0),
       ::capnp::word(103, 128, 46, 172, 72, 114, 174, 137),
       ::capnp::word(1, 0, 7, 0, 0, 0, 0, 0),
       ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),
+      ::capnp::word(75, 7, 0, 0, 151, 7, 0, 0),
       ::capnp::word(21, 0, 0, 0, 74, 1, 0, 0),
       ::capnp::word(41, 0, 0, 0, 7, 0, 0, 0),
       ::capnp::word(0, 0, 0, 0, 0, 0, 0, 0),

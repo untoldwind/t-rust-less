@@ -18,6 +18,7 @@ pub mod service;
   clippy::wrong_self_convention,
   clippy::redundant_closure,
   clippy::redundant_field_names,
-  clippy::match_single_binding
+  clippy::match_single_binding,
+  clippy::needless_lifetimes
 )]
 pub mod secrets_store_capnp;

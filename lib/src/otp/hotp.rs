@@ -18,7 +18,7 @@ pub struct HOTPGenerator<'a> {
   pub secret: &'a [u8],
 }
 
-impl<'a> HOTPGenerator<'a> {
+impl HOTPGenerator<'_> {
   fn calculate<D>(&mut self) -> String
   where
     D: CoreProxy,

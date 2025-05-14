@@ -293,7 +293,7 @@ struct DirectoryIterator<'a, T: UserAuthClient> {
   cursor: Option<String>,
 }
 
-impl<'a, T: UserAuthClient> Iterator for DirectoryIterator<'a, T> {
+impl<T: UserAuthClient> Iterator for DirectoryIterator<'_, T> {
   type Item = StoreResult<files::Metadata>;
 
   fn next(&mut self) -> Option<Self::Item> {

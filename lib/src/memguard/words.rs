@@ -265,7 +265,7 @@ pub struct Ref<'a> {
   words: &'a SecretWords,
 }
 
-impl<'a> Ref<'a> {
+impl Ref<'_> {
   pub fn as_bytes(&self) -> &[u8] {
     unsafe {
       let words = slice::from_raw_parts(self.words.ptr.as_ptr(), self.words.size);
@@ -278,13 +278,13 @@ impl<'a> Ref<'a> {
   }
 }
 
-impl<'a> Drop for Ref<'a> {
+impl Drop for Ref<'_> {
   fn drop(&mut self) {
     self.words.unlock_read()
   }
 }
 
-impl<'a> Deref for Ref<'a> {
+impl Deref for Ref<'_> {
   type Target = [u8];
 
   fn deref(&self) -> &Self::Target {
@@ -292,7 +292,7 @@ impl<'a> Deref for Ref<'a> {
   }
 }
 
-impl<'a> AsRef<[u8]> for Ref<'a> {
+impl AsRef<[u8]> for Ref<'_> {
   fn as_ref(&self) -> &[u8] {
     self.as_bytes()
   }
@@ -302,13 +302,13 @@ pub struct RefMut<'a> {
   words: &'a mut SecretWords,
 }
 
-impl<'a> Drop for RefMut<'a> {
+impl Drop for RefMut<'_> {
   fn drop(&mut self) {
     self.words.unlock_write()
   }
 }
 
-impl<'a> Deref for RefMut<'a> {
+impl Deref for RefMut<'_> {
   type Target = [u8];
 
   fn deref(&self) -> &Self::Target {
@@ -316,19 +316,19 @@ impl<'a> Deref for RefMut<'a> {
   }
 }
 
-impl<'a> DerefMut for RefMut<'a> {
+impl DerefMut for RefMut<'_> {
   fn deref_mut(&mut self) -> &mut Self::Target {
     unsafe { slice::from_raw_parts_mut(self.words.ptr.as_ptr() as *mut u8, self.words.size * 8) }
   }
 }
 
-impl<'a> AsRef<[u8]> for RefMut<'a> {
+impl AsRef<[u8]> for RefMut<'_> {
   fn as_ref(&self) -> &[u8] {
     unsafe { slice::from_raw_parts(self.words.ptr.as_ptr() as *const u8, self.words.size * 8) }
   }
 }
 
-impl<'a> AsMut<[u8]> for RefMut<'a> {
+impl AsMut<[u8]> for RefMut<'_> {
   fn as_mut(&mut self) -> &mut [u8] {
     unsafe { slice::from_raw_parts_mut(self.words.ptr.as_ptr() as *mut u8, self.words.size * 8) }
   }

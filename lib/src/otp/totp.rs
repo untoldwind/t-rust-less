@@ -9,7 +9,7 @@ pub struct TOTPGenerator<'a> {
   pub secret: &'a [u8],
 }
 
-impl<'a> TOTPGenerator<'a> {
+impl TOTPGenerator<'_> {
   pub fn generate(&self, timestamp: u64) -> (String, u64) {
     let mut hotp_gen = HOTPGenerator {
       algorithm: self.algorithm,
