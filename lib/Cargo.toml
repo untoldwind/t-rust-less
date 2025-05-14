@@ -63,6 +63,8 @@ dropbox = [ "dropbox-sdk", "tiny_http" ]
 with_specta = ["specta"]
 with_sled = ["sled"]
 default = ["with_x11", "with_wayland", "rust_crypto", "dropbox" ]
+nightly-features = []
+use_os = []
 
 [target.'cfg(unix)'.dependencies]
 x11 = { version = "2", features = ["xlib"], optional = true }

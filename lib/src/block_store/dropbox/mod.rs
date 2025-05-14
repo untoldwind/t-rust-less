@@ -63,14 +63,14 @@ impl DropboxBlockStore {
 
   #[allow(clippy::type_complexity)]
   fn download_stream(&self, path: String) -> StoreResult<(Option<usize>, Option<Box<dyn Read>>)> {
-    match files::download(&self.client, &files::DownloadArg::new(path), None, None)? {
+    match files::download(&self.client, &files::DownloadArg::new(path), None, None) {
       Ok(result) => {
         let content = result.body.ok_or_else(|| StoreError::IO("No body".to_string()))?;
 
         Ok((result.content_length.map(|l| l as usize), Some(content)))
       }
-      Err(dropbox_sdk::files::DownloadError::Path(_)) => Ok((None, None)),
-      Err(dropbox_sdk::files::DownloadError::UnsupportedFile) => Ok((None, None)),
+      Err(dropbox_sdk::Error::Api(dropbox_sdk::files::DownloadError::Path(_))) => Ok((None, None)),
+      Err(dropbox_sdk::Error::Api(dropbox_sdk::files::DownloadError::UnsupportedFile)) => Ok((None, None)),
       Err(err) => Err(StoreError::IO(format!("{}", err))),
     }
   }
@@ -167,13 +167,13 @@ impl BlockStore for DropboxBlockStore {
 
   fn store_ring(&self, ring_id: &str, version: u64, raw: &[u8]) -> StoreResult<()> {
     let path = format!("/{}/rings/{}.{}", self.name, ring_id, version);
-    if files::get_metadata(&self.client, &files::GetMetadataArg::new(path.clone()))?.is_ok() {
+    if files::get_metadata(&self.client, &files::GetMetadataArg::new(path.clone())).is_ok() {
       return Err(StoreError::Conflict(format!(
         "Ring {} with version {} already exists",
         ring_id, version
       )));
     }
-    files::upload(&self.client, &files::UploadArg::new(path), raw)??;
+    files::upload(&self.client, &files::UploadArg::new(path), raw)?;
     Ok(())
   }
 
@@ -200,7 +200,7 @@ impl BlockStore for DropboxBlockStore {
   fn add_block(&self, raw: &[u8]) -> StoreResult<String> {
     let block_id = generate_block_id(raw);
     let path = self.block_path(&block_id)?;
-    files::upload(&self.client, &files::UploadArg::new(path), raw)??;
+    files::upload(&self.client, &files::UploadArg::new(path), raw)?;
 
     Ok(block_id)
   }
@@ -234,7 +234,7 @@ impl BlockStore for DropboxBlockStore {
       &self.client,
       &files::UploadArg::new(format!("/{}/logs/{}", self.name, self.node_id)),
       &buffer,
-    )??;
+    )?;
 
     Ok(())
   }
@@ -251,7 +251,7 @@ impl BlockStore for DropboxBlockStore {
       &self.client,
       &files::UploadArg::new(format!("/{}/logs/{}", self.name, change_log.node)),
       &buffer,
-    )??;
+    )?;
 
     Ok(())
   }
@@ -266,9 +266,9 @@ fn list_directory<T: UserAuthClient>(
   let result = match files::list_folder(
     client,
     &files::ListFolderArg::new(requested_path).with_recursive(recursive),
-  )? {
+  ) {
     Ok(result) => result,
-    Err(ListFolderError::Path(_)) => {
+    Err(dropbox_sdk::Error::Api(ListFolderError::Path(_))) => {
       return Ok(DirectoryIterator {
         client,
         cursor: None,
@@ -301,14 +301,13 @@ impl<'a, T: UserAuthClient> Iterator for DirectoryIterator<'a, T> {
       Some(Ok(entry))
     } else if let Some(cursor) = self.cursor.take() {
       match files::list_folder_continue(self.client, &files::ListFolderContinueArg::new(cursor)) {
-        Ok(Ok(result)) => {
+        Ok(result) => {
           self.buffer.extend(result.entries);
           if result.has_more {
             self.cursor = Some(result.cursor);
           }
           self.buffer.pop_front().map(Ok)
         }
-        Ok(Err(e)) => Some(Err(e.into())),
         Err(e) => Some(Err(e.into())),
       }
     } else {

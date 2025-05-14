@@ -38,8 +38,8 @@ pub unsafe fn memcmp(b1: *const u8, b2: *const u8, len: usize) -> i32 {
 /// # Safety
 ///
 /// `s` has to point to a memory section of at least `n` bytes
-#[cfg(feature = "nightly")]
-#[cfg(any(not(apple), not(feature = "use_os")))]
+#[cfg(feature = "nightly-features")]
+#[cfg(any(not(target_os = "macos"), not(feature = "use_os")))]
 #[inline(never)]
 pub unsafe fn memset(s: *mut u8, c: u8, n: usize) {
   core::intrinsics::volatile_set_memory(s, c, n);
@@ -50,8 +50,8 @@ pub unsafe fn memset(s: *mut u8, c: u8, n: usize) {
 /// # Safety
 ///
 /// `s` has to point to a memory section of at least `n` bytes
-#[cfg(not(feature = "nightly"))]
-#[cfg(any(not(apple), not(feature = "use_os")))]
+#[cfg(not(feature = "nightly-features"))]
+#[cfg(any(not(target_os = "macos"), not(feature = "use_os")))]
 #[inline(never)]
 pub unsafe fn memset(s: *mut u8, c: u8, n: usize) {
   for i in 0..n {
@@ -60,7 +60,7 @@ pub unsafe fn memset(s: *mut u8, c: u8, n: usize) {
 }
 
 /// Call `memset_s`.
-#[cfg(all(apple, feature = "use_os"))]
+#[cfg(all(target_os = "macos", feature = "use_os"))]
 pub unsafe fn memset(s: *mut u8, c: u8, n: usize) {
   use libc::{c_int, c_void};
   use mach_o_sys::ranlib::{errno_t, rsize_t};
@@ -80,7 +80,7 @@ pub unsafe fn memset(s: *mut u8, c: u8, n: usize) {
 ///
 /// `dest` has to point to a memory section of at least `n` bytes
 #[cfg(any(
-  not(any(all(windows, not(target_env = "msvc")), freebsdlike, netbsdlike)),
+  not(any(all(windows, not(target_env = "msvc")), target_os = "freebsd", target_os = "netbsd")),
   not(feature = "use_os")
 ))]
 #[inline]
@@ -93,7 +93,7 @@ pub unsafe fn memzero(dest: *mut u8, n: usize) {
 /// # Safety
 ///
 /// `dest` has to point to a memory section of at least `n` bytes
-#[cfg(all(any(freebsdlike, netbsdlike), feature = "use_os"))]
+#[cfg(all(any(target_os = "freebsd", target_os = "netbsd"), feature = "use_os"))]
 pub unsafe fn memzero(dest: *mut u8, n: usize) {
   extern "C" {
     fn explicit_bzero(s: *mut libc::c_void, n: libc::size_t);
@@ -124,7 +124,7 @@ pub unsafe fn mlock(addr: *mut u8, len: usize) -> bool {
   #[cfg(target_os = "linux")]
   libc::madvise(addr as *mut ::libc::c_void, len, ::libc::MADV_DONTDUMP);
 
-  #[cfg(freebsdlike)]
+  #[cfg(target_os = "freebsd")]
   libc::madvise(addr as *mut ::libc::c_void, len, ::libc::MADV_NOCORE);
 
   libc::mlock(addr as *mut ::libc::c_void, len) == 0
@@ -155,7 +155,7 @@ pub unsafe fn munlock(addr: *mut u8, len: usize) -> bool {
   #[cfg(target_os = "linux")]
   libc::madvise(addr as *mut ::libc::c_void, len, ::libc::MADV_DODUMP);
 
-  #[cfg(freebsdlike)]
+  #[cfg(target_os = "freebsd")]
   libc::madvise(addr as *mut ::libc::c_void, len, ::libc::MADV_CORE);
 
   libc::munlock(addr as *mut ::libc::c_void, len) == 0

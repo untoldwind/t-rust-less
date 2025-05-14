@@ -3,10 +3,10 @@ use cursive::event::{Event, EventResult, Key};
 use cursive::theme::{ColorStyle, Effect};
 use cursive::view::{CannotFocus, View};
 use cursive::{Cursive, Printer, Rect, Vec2, With};
-use std::rc::Rc;
+use std::sync::Arc;
 use t_rust_less_lib::memguard::SecretBytes;
 
-pub type OnSubmit = dyn Fn(&mut Cursive);
+pub type OnSubmit = dyn Fn(&mut Cursive) + Sync + Send;
 
 /// A stripped down version of an EditView offering the bare minimum functions to
 /// enter a password/passphrase.
@@ -16,7 +16,7 @@ pub struct PasswordView {
 
   last_length: usize,
 
-  on_submit: Option<Rc<OnSubmit>>,
+  on_submit: Option<Arc<OnSubmit>>,
 
   enabled: bool,
 
@@ -82,9 +82,9 @@ impl PasswordView {
   /// aspect, see [`set_on_submit_mut`](#method.set_on_submit_mut).
   pub fn set_on_submit<F>(&mut self, callback: F)
   where
-    F: Fn(&mut Cursive) + 'static,
+    F: Fn(&mut Cursive) + Sync + Send + 'static,
   {
-    self.on_submit = Some(Rc::new(callback));
+    self.on_submit = Some(Arc::new(callback));
   }
 
   /// Sets a callback to be called when `<Enter>` is pressed.
@@ -92,7 +92,7 @@ impl PasswordView {
   /// Chainable variant.
   pub fn on_submit<F>(self, callback: F) -> Self
   where
-    F: Fn(&mut Cursive) + 'static,
+    F: Fn(&mut Cursive) + Sync + Send + 'static,
   {
     self.with(|v| v.set_on_submit(callback))
   }

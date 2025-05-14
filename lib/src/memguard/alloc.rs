@@ -138,7 +138,7 @@ unsafe fn unprotected_ptr_from_user_ptr(memptr: *const u8) -> *mut u8 {
   unprotected_ptr_u as *mut u8
 }
 
-#[allow(clippy::cast_ptr_alignment)]
+#[allow(clippy::cast_ptr_alignment, static_mut_refs)]
 pub unsafe fn malloc(size: usize) -> NonNull<u8> {
   ALLOC_INIT.call_once(|| alloc_init());
 
@@ -170,7 +170,7 @@ pub unsafe fn malloc(size: usize) -> NonNull<u8> {
 }
 
 /// Secure `free`.
-#[allow(clippy::cast_ptr_alignment)]
+#[allow(clippy::cast_ptr_alignment, static_mut_refs)]
 pub unsafe fn free<T>(memptr: NonNull<T>) {
   let memptr = memptr.as_ptr() as *mut u8;
 
