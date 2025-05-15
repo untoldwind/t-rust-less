@@ -4,6 +4,8 @@ jobs:
   build_linux:
     runs-on: ubuntu-latest
     steps:
+    - name: Install x11 dev
+      run: sudo apt-get install libx11-dev
     - name: Install rust target
       uses: actions-rs/toolchain@v1
       with:
