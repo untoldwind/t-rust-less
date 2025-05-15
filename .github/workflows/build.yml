@@ -22,7 +22,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: clippy
-        args: -- -Dwarnings -no-default-features --features crossterm_backend    
+        args: -- -Dwarnings  
     - name: Build
       uses: actions-rs/cargo@v1
       with:
