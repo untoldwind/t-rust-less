@@ -4,53 +4,53 @@ jobs:
   build_linux:
     runs-on: ubuntu-latest
     steps:
-    - name: Install x11 dev
-      run: sudo apt-get install libx11-dev
-    - name: Install rust target
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
-        components: rustfmt, clippy
-    - uses: actions/checkout@v4
-    - name: Check formatting
-      uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: -- --check
-    - name: Check clippy
-      uses: actions-rs/cargo@v1
-      with:
-        command: clippy
-        args: -- -Dwarnings  
-    - name: Build
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --release
-    - name: Test
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --release
+      - name: Install x11 dev
+        run: sudo apt-get install libx11-dev
+      - name: Install rust target
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+      - uses: actions/checkout@v4
+      - name: Check formatting
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: -- --check
+      - name: Check clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: -- -Dwarnings
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --release
 
   build_windows:
-    runs-on: windows-2019
+    runs-on: windows-2022
     steps:
-    - name: Install rust target
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
-        components: rustfmt, clippy
-    - uses: actions/checkout@v2
-    - name: Build
-      uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --release
-    - name: Test
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --release
+      - name: Install rust target
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+      - uses: actions/checkout@v2
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --release
