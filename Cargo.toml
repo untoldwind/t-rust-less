@@ -3,7 +3,7 @@ members = ["lib", "cli", "daemon", "native", "experiments"]
 resolver = "2"
 
 [workspace.package]
-version = "0.2.20"
+version = "0.2.21"
 
 [workspace.dependencies]
 log = "0"
