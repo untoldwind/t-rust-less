@@ -26,7 +26,7 @@ pub fn create_tui() -> CursiveRunnable {
   let mut siv = cursive::default();
 
   if let Err(error) = siv.load_toml(THEME) {
-    error!("{:?}", error);
+    error!("{error:?}");
   }
 
   siv

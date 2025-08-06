@@ -70,7 +70,7 @@ error_convert_from!(rmp_serde::decode::Error, SecretStoreError, IO(display));
 
 impl<T> From<std::sync::PoisonError<T>> for SecretStoreError {
   fn from(error: std::sync::PoisonError<T>) -> Self {
-    SecretStoreError::Mutex(format!("{}", error))
+    SecretStoreError::Mutex(format!("{error}"))
   }
 }
 
@@ -80,10 +80,10 @@ impl From<capnp::Error> for SecretStoreError {
       capnp::ErrorKind::Failed => {
         match serde_json::from_str::<SecretStoreError>(error.extra.trim_start_matches("remote exception: ")) {
           Ok(service_error) => service_error,
-          _ => SecretStoreError::IO(format!("{}", error)),
+          _ => SecretStoreError::IO(format!("{error}")),
         }
       }
-      _ => SecretStoreError::IO(format!("{}", error)),
+      _ => SecretStoreError::IO(format!("{error}")),
     }
   }
 }
@@ -97,7 +97,7 @@ impl From<SecretStoreError> for capnp::Error {
       },
       _ => capnp::Error {
         kind: capnp::ErrorKind::Failed,
-        extra: format!("{}", error),
+        extra: format!("{error}"),
       },
     }
   }

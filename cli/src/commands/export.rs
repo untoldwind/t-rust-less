@@ -28,7 +28,7 @@ impl ExportCommand {
   pub fn run(self, service: Arc<dyn TrustlessService>, store_name: String) -> Result<()> {
     let secrets_store = service
       .open_store(&store_name)
-      .with_context(|| format!("Failed opening store {}: ", store_name))?;
+      .with_context(|| format!("Failed opening store {store_name}: "))?;
     let status = secrets_store.status().ok_or_exit("Get status");
 
     if status.locked {
@@ -56,7 +56,7 @@ impl ExportCommand {
 
     let mut export_stream: Box<dyn Write> = match &self.file {
       Some(file_name) => {
-        let file = File::open(file_name).with_context(|| format!("Failed opening {}", file_name))?;
+        let file = File::open(file_name).with_context(|| format!("Failed opening {file_name}"))?;
         Box::new(file)
       }
       None => Box::new(stdout()),

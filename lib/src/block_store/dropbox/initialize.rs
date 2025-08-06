@@ -48,12 +48,12 @@ impl ServerHandle {
           .ok_or_else(|| StoreError::IO("auth url does not contain code".to_string()))?,
       ),
       Ok(Err(err)) => {
-        error!("Failed receiving dropbox authcode {}", err);
+        error!("Failed receiving dropbox authcode {err}");
         Err(StoreError::IO(err))
       }
       Err(err) => {
-        error!("Failed receiving dropbox authcode {:?}", err);
-        Err(StoreError::IO(format!("{:?}", err)))
+        error!("Failed receiving dropbox authcode {err:?}");
+        Err(StoreError::IO(format!("{err:?}")))
       }
     }
   }
@@ -107,11 +107,11 @@ pub fn initialize_store(name: &str) -> StoreResult<DropboxInitializer> {
 }
 
 pub fn start_authcode_server() -> StoreResult<ServerHandle> {
-  let server = Arc::new(Server::http("127.0.0.1:9898").map_err(|e| StoreError::IO(format!("{}", e)))?);
+  let server = Arc::new(Server::http("127.0.0.1:9898").map_err(|e| StoreError::IO(format!("{e}")))?);
   let server_cloned = server.clone();
 
   let join_handle = thread::spawn(move || {
-    let request = server_cloned.recv().map_err(|e| format!("{}", e))?;
+    let request = server_cloned.recv().map_err(|e| format!("{e}"))?;
     let url = format!("{}{}", REDIRECT_URL, request.url());
     request
       .respond(

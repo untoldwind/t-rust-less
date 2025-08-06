@@ -19,7 +19,7 @@ impl UnlockCommand {
   pub fn run(self, service: Arc<dyn TrustlessService>, store_name: String) -> Result<()> {
     let secrets_store = service
       .open_store(&store_name)
-      .with_context(|| format!("Failed opening store {}: ", store_name))?;
+      .with_context(|| format!("Failed opening store {store_name}: "))?;
 
     let status = secrets_store.status().with_context(|| "Get status")?;
 
@@ -85,7 +85,7 @@ fn unlock_dialog(
             .with_name("passphrase"),
         ),
     )
-    .title(format!("Unlock store {}", name))
+    .title(format!("Unlock store {name}"))
     .button("Unlock", do_unlock_store)
     .button("Abort", Cursive::quit)
     .padding_left(5)
@@ -112,7 +112,7 @@ fn do_unlock_store(s: &mut Cursive) {
   };
 
   if let Err(error) = secrets_store.unlock(&identity_id, passphrase) {
-    s.add_layer(Dialog::info(format!("Unable to unlock store:\n{}", error)));
+    s.add_layer(Dialog::info(format!("Unable to unlock store:\n{error}")));
     return;
   }
 

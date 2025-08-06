@@ -17,7 +17,7 @@ fn main() {
   let service = match create_service() {
     Ok(service) => service,
     Err(error) => {
-      error!("Failed creating service: {}", error);
+      error!("Failed creating service: {error}");
       process::exit(1);
     }
   };
@@ -25,13 +25,13 @@ fn main() {
   let mut processor = match processor::Processor::new(service, stdin(), stdout()) {
     Ok(processor) => processor,
     Err(error) => {
-      error!("Failed creating processor: {}", error);
+      error!("Failed creating processor: {error}");
       process::exit(1);
     }
   };
 
   if let Err(error) = processor.process() {
-    error!("Error: {}", error);
+    error!("Error: {error}");
     process::exit(1);
   }
 }

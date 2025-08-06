@@ -18,7 +18,7 @@ pub fn synchronize_rings(local: Arc<dyn BlockStore>, remote: Arc<dyn BlockStore>
         continue;
       }
     }
-    info!("Downloading ring: {}", remote_ring_id);
+    info!("Downloading ring: {remote_ring_id}");
     let (remote_version, ring) = remote.get_ring(remote_ring_id)?;
     local.store_ring(remote_ring_id, remote_version, &ring)?;
     local_changes = true
@@ -30,7 +30,7 @@ pub fn synchronize_rings(local: Arc<dyn BlockStore>, remote: Arc<dyn BlockStore>
         continue;
       }
     }
-    info!("Uploading ring: {}", local_ring_id);
+    info!("Uploading ring: {local_ring_id}");
     let (local_version, ring) = local.get_ring(local_ring_id)?;
     remote.store_ring(local_ring_id, local_version, &ring)?;
   }
@@ -81,7 +81,7 @@ pub fn synchronize_blocks(local: Arc<dyn BlockStore>, remote: Arc<dyn BlockStore
     if local_removed.contains(local_missing) {
       continue;
     }
-    info!("Downloading block: {}", local_missing);
+    info!("Downloading block: {local_missing}");
     let block = remote.get_block(local_missing)?;
     local.add_block(&block)?;
     local_changes = true;
@@ -91,7 +91,7 @@ pub fn synchronize_blocks(local: Arc<dyn BlockStore>, remote: Arc<dyn BlockStore
     if remote_removed.contains(remote_missing) {
       continue;
     }
-    info!("Uploading block: {}", remote_missing);
+    info!("Uploading block: {remote_missing}");
     let block = local.get_block(remote_missing)?;
     remote.add_block(&block)?;
   }

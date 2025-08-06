@@ -48,7 +48,7 @@ impl ListSecretsCommand {
 pub fn list_secrets(service: Arc<dyn TrustlessService>, store_name: String, filter: SecretListFilter) -> Result<()> {
   let secrets_store = service
     .open_store(&store_name)
-    .with_context(|| format!("Failed opening store {}: ", store_name))?;
+    .with_context(|| format!("Failed opening store {store_name}: "))?;
 
   let mut status = secrets_store.status().with_context(|| "Get status")?;
 
@@ -73,7 +73,7 @@ pub fn list_secrets(service: Arc<dyn TrustlessService>, store_name: String, filt
     let list = secrets_store.list(&filter).with_context(|| "List entries")?;
 
     for entry in list.entries.iter() {
-      println!("{:?}", entry);
+      println!("{entry:?}");
     }
   }
 

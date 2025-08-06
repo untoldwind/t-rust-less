@@ -32,8 +32,8 @@ impl SecretTOTPView {
       }
       _ => ("".to_string(), None, None),
     };
-    let token_display_id = format!("token_display_{}", property);
-    let token_valid_id = format!("token_valid_{}", property);
+    let token_display_id = format!("token_display_{property}");
+    let token_valid_id = format!("token_valid_{property}");
     let mut token_display =
       LinearLayout::vertical().child(TextView::new(token).with_name(token_display_id.clone()).full_width());
 
@@ -48,7 +48,7 @@ impl SecretTOTPView {
 
     SecretTOTPView {
       base_view: LinearLayout::horizontal()
-        .child(TextView::new(format!("{:10}: ", property)))
+        .child(TextView::new(format!("{property:10}: ")))
         .child(token_display.full_width())
         .child(Button::new("Copy", on_copy)),
       otp_url: otp_url.to_string(),

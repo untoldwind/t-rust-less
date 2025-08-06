@@ -132,12 +132,11 @@ impl BlockStore for LocalWalBlockStore {
 
   fn store_ring(&self, ring_id: &str, version: u64, raw: &[u8]) -> StoreResult<()> {
     let base_dir = self.base_dir.write()?;
-    let file_name = base_dir.join(format!("{}.{}.ring", ring_id, version));
+    let file_name = base_dir.join(format!("{ring_id}.{version}.ring"));
 
     if file_name.exists() {
       return Err(StoreError::Conflict(format!(
-        "Ring {} with version {} already exists",
-        ring_id, version
+        "Ring {ring_id} with version {version} already exists",
       )));
     }
 
@@ -173,13 +172,13 @@ impl BlockStore for LocalWalBlockStore {
   }
 
   fn get_index(&self, index_id: &str) -> StoreResult<Option<crate::memguard::weak::ZeroingWords>> {
-    debug!("Try getting index  {}", index_id);
+    debug!("Try getting index  {index_id}");
     let base_dir = self.base_dir.read()?;
     Self::read_optional_file(base_dir.join(format!("{}.{}.index", self.node_id, index_id)))
   }
 
   fn store_index(&self, index_id: &str, raw: &[u8]) -> StoreResult<()> {
-    debug!("Try storing index  {}", index_id);
+    debug!("Try storing index  {index_id}");
     let base_dir = self.base_dir.write()?;
     let index_file_path = base_dir.join(format!("{}.{}.index", self.node_id, index_id));
     let mut index_file = File::create(index_file_path)?;
@@ -221,7 +220,7 @@ impl BlockStore for LocalWalBlockStore {
       .parse::<u64>()
       .map_err(|_| StoreError::InvalidBlock(block.to_string()))?;
 
-    let mut block_file = File::open(base_dir.join(format!("{}.blocks", node_id)))?;
+    let mut block_file = File::open(base_dir.join(format!("{node_id}.blocks")))?;
     block_file.seek(SeekFrom::Start(offset))?;
     let mut chunk_size = [0u8; 8];
     block_file.read_exact(&mut chunk_size)?;

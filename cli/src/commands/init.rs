@@ -28,7 +28,7 @@ impl InitCommand {
     let store_name = maybe_store_name.unwrap_or_else(|| "t-rust-less-store".to_string());
     let store_configs = service
       .list_stores()
-      .with_context(|| format!("Checking exsting configuration for store {}: ", store_name))?;
+      .with_context(|| format!("Checking exsting configuration for store {store_name}: "))?;
 
     let maybe_config = store_configs
       .iter()
@@ -124,7 +124,7 @@ fn store_config(s: &mut Cursive) {
   try_with_dialog!(fs::create_dir_all(&store_path), s, "Failed creating directory:\n{}");
 
   let store_url = Url::from_directory_path(store_path).unwrap();
-  let secrets_store_url = format!("multilane+{}", store_url);
+  let secrets_store_url = format!("multilane+{store_url}");
   let config = StoreConfig {
     name: store_name.to_string(),
     client_id,

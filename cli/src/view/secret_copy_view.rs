@@ -14,7 +14,7 @@ impl SecretCopyView {
   {
     SecretCopyView {
       base_view: LinearLayout::horizontal()
-        .child(TextView::new(format!("{:10}: ", property)))
+        .child(TextView::new(format!("{property:10}: ")))
         .child(TextView::new(value).full_width())
         .child(Button::new("Copy", on_copy)),
     }

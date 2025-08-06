@@ -37,13 +37,13 @@ pub fn import_v1(
 ) -> Result<()> {
   let secrets_store = service
     .open_store(&store_name)
-    .with_context(|| format!("Failed opening store {}: ", store_name))?;
+    .with_context(|| format!("Failed opening store {store_name}: "))?;
 
   let status = secrets_store.status().with_context(|| "Get status")?;
 
   let import_stream: Box<dyn BufRead> = match &maybe_file_name {
     Some(file_name) => {
-      let file = File::open(file_name).with_context(|| format!("Failed opening {}", file_name))?;
+      let file = File::open(file_name).with_context(|| format!("Failed opening {file_name}"))?;
       Box::new(BufReader::new(file))
     }
     None => {

@@ -17,14 +17,14 @@ pub type ClipboardResult<T> = Result<T, ClipboardError>;
 #[cfg(all(unix, feature = "with_x11"))]
 impl From<std::ffi::NulError> for ClipboardError {
   fn from(error: std::ffi::NulError) -> Self {
-    ClipboardError::Other(format!("{}", error))
+    ClipboardError::Other(format!("{error}"))
   }
 }
 
 #[cfg(all(unix, feature = "with_x11"))]
 impl From<std::env::VarError> for ClipboardError {
   fn from(error: std::env::VarError) -> Self {
-    ClipboardError::Other(format!("{}", error))
+    ClipboardError::Other(format!("{error}"))
   }
 }
 
@@ -34,7 +34,7 @@ impl From<wayland_client::ConnectError> for ClipboardError {
     match error {
       wayland_client::ConnectError::NoCompositor => ClipboardError::Unavailable,
       wayland_client::ConnectError::NoWaylandLib => ClipboardError::Unavailable,
-      err => ClipboardError::Other(format!("{}", err)),
+      err => ClipboardError::Other(format!("{err}")),
     }
   }
 }
@@ -42,26 +42,26 @@ impl From<wayland_client::ConnectError> for ClipboardError {
 #[cfg(all(unix, feature = "with_wayland"))]
 impl From<wayland_client::globals::GlobalError> for ClipboardError {
   fn from(error: wayland_client::globals::GlobalError) -> Self {
-    ClipboardError::Other(format!("{}", error))
+    ClipboardError::Other(format!("{error}"))
   }
 }
 
 #[cfg(all(unix, feature = "with_wayland"))]
 impl From<wayland_client::globals::BindError> for ClipboardError {
   fn from(error: wayland_client::globals::BindError) -> Self {
-    ClipboardError::Other(format!("{}", error))
+    ClipboardError::Other(format!("{error}"))
   }
 }
 
 #[cfg(all(unix, feature = "with_wayland"))]
 impl From<wayland_client::DispatchError> for ClipboardError {
   fn from(error: wayland_client::DispatchError) -> Self {
-    ClipboardError::Other(format!("{}", error))
+    ClipboardError::Other(format!("{error}"))
   }
 }
 
 impl<T> From<std::sync::PoisonError<T>> for ClipboardError {
   fn from(error: std::sync::PoisonError<T>) -> Self {
-    ClipboardError::Mutex(format!("{}", error))
+    ClipboardError::Mutex(format!("{error}"))
   }
 }

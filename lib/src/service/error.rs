@@ -38,7 +38,7 @@ error_convert_from!(rmp_serde::decode::Error, ServiceError, IO(display));
 
 impl<T> From<std::sync::PoisonError<T>> for ServiceError {
   fn from(error: std::sync::PoisonError<T>) -> Self {
-    ServiceError::Mutex(format!("{}", error))
+    ServiceError::Mutex(format!("{error}"))
   }
 }
 
@@ -48,10 +48,10 @@ impl From<capnp::Error> for ServiceError {
       capnp::ErrorKind::Failed => {
         match serde_json::from_str::<ServiceError>(error.extra.trim_start_matches("remote exception: ")) {
           Ok(service_error) => service_error,
-          _ => ServiceError::IO(format!("{}", error)),
+          _ => ServiceError::IO(format!("{error}")),
         }
       }
-      _ => ServiceError::IO(format!("{}", error)),
+      _ => ServiceError::IO(format!("{error}")),
     }
   }
 }
@@ -65,7 +65,7 @@ impl From<ServiceError> for capnp::Error {
       },
       _ => capnp::Error {
         kind: capnp::ErrorKind::Failed,
-        extra: format!("{}", error),
+        extra: format!("{error}"),
       },
     }
   }

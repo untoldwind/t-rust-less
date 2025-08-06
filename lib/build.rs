@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
       .output_path(".")
       .run()
     {
-      return Err(format!("{}", err).into());
+      return Err(format!("{err}").into());
     }
   }
 

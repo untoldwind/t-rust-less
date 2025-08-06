@@ -47,7 +47,7 @@ impl Context {
       let black = xlib::XBlackPixel(display, xlib::XDefaultScreen(display));
       let window = xlib::XCreateSimpleWindow(display, root, 0, 0, 1, 1, 0, black, black);
 
-      debug!("Window id: {}", window);
+      debug!("Window id: {window}");
 
       xlib::XSelectInput(display, window, xlib::StructureNotifyMask | xlib::PropertyChangeMask);
 
@@ -71,7 +71,7 @@ impl Context {
         utf8_string,
       };
 
-      debug!("{:?}", atoms);
+      debug!("{atoms:?}");
 
       Ok(Context {
         display,
@@ -279,7 +279,7 @@ fn run(context: Arc<Context>) {
                 };
               }
               Err(err) => {
-                error!("Unable to lock provider {}", err);
+                error!("Unable to lock provider {err}");
                 context.clear_selection();
                 selection.property = 0;
               }
@@ -308,7 +308,7 @@ fn run(context: Arc<Context>) {
 
           break;
         }
-        ignored => debug!("Ignoring event: {}", ignored),
+        ignored => debug!("Ignoring event: {ignored}"),
       }
     }
 

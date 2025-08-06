@@ -22,7 +22,7 @@ pub struct NonZeroPadding;
 
 impl Padding for NonZeroPadding {
   fn pad_secret_data(data: &[u8], align: usize) -> SecretStoreResult<SecretBytes> {
-    assert!(!data.iter().any(|b| *b == 0));
+    assert!(!data.contains(&0));
 
     let mut rng = thread_rng();
     let over_align = data.len() % align;

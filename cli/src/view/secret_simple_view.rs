@@ -9,7 +9,7 @@ impl SecretSimpleView {
   pub fn new(property: &str, value: &str) -> Self {
     SecretSimpleView {
       base_view: LinearLayout::horizontal()
-        .child(TextView::new(format!("{:10}: ", property)))
+        .child(TextView::new(format!("{property:10}: ")))
         .child(TextView::new(value)),
     }
   }

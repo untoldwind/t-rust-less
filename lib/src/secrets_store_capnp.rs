@@ -77,7 +77,7 @@ mod key_derivation_type {
     ::capnp::word(97, 114, 103, 111, 110, 50, 0, 0),
   ];
   pub fn get_annotation_types(child_index: Option<u16>, index: u32) -> ::capnp::introspect::Type {
-    panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+    panic!("invalid annotation indices ({child_index:?}, {index}) ")
   }
 }
 
@@ -163,7 +163,7 @@ mod key_type {
     ::capnp::word(111, 108, 121, 49, 51, 48, 53, 0),
   ];
   pub fn get_annotation_types(child_index: Option<u16>, index: u32) -> ::capnp::introspect::Type {
-    panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+    panic!("invalid annotation indices ({child_index:?}, {index}) ")
   }
 }
 
@@ -681,11 +681,11 @@ pub mod ring {
         3 => <::capnp::struct_list::Owned<crate::secrets_store_capnp::ring::public_key::Owned> as ::capnp::introspect::Introspect>::introspect(),
         4 => <::capnp::struct_list::Owned<crate::secrets_store_capnp::ring::private_key::Owned> as ::capnp::introspect::Introspect>::introspect(),
         5 => <bool as ::capnp::introspect::Introspect>::introspect(),
-        _ => panic!("invalid field index {}", index),
+        _ => panic!("invalid field index {index}"),
       }
     }
     pub fn get_annotation_types(child_index: Option<u16>, index: u32) -> ::capnp::introspect::Type {
-      panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+      panic!("invalid annotation indices ({child_index:?}, {index}) ")
     }
     pub static RAW_SCHEMA: ::capnp::introspect::RawStructSchema = ::capnp::introspect::RawStructSchema {
       encoded_node: &ENCODED_NODE,
@@ -989,11 +989,11 @@ pub mod ring {
         match index {
           0 => <crate::secrets_store_capnp::KeyType as ::capnp::introspect::Introspect>::introspect(),
           1 => <::capnp::data::Owned as ::capnp::introspect::Introspect>::introspect(),
-          _ => panic!("invalid field index {}", index),
+          _ => panic!("invalid field index {index}"),
         }
       }
       pub fn get_annotation_types(child_index: Option<u16>, index: u32) -> ::capnp::introspect::Type {
-        panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+        panic!("invalid annotation indices ({child_index:?}, {index}) ")
       }
       pub static RAW_SCHEMA: ::capnp::introspect::RawStructSchema = ::capnp::introspect::RawStructSchema {
         encoded_node: &ENCODED_NODE,
@@ -1406,11 +1406,11 @@ pub mod ring {
           2 => <u8 as ::capnp::introspect::Introspect>::introspect(),
           3 => <::capnp::data::Owned as ::capnp::introspect::Introspect>::introspect(),
           4 => <::capnp::data::Owned as ::capnp::introspect::Introspect>::introspect(),
-          _ => panic!("invalid field index {}", index),
+          _ => panic!("invalid field index {index}"),
         }
       }
       pub fn get_annotation_types(child_index: Option<u16>, index: u32) -> ::capnp::introspect::Type {
-        panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+        panic!("invalid annotation indices ({child_index:?}, {index}) ")
       }
       pub static RAW_SCHEMA: ::capnp::introspect::RawStructSchema = ::capnp::introspect::RawStructSchema {
         encoded_node: &ENCODED_NODE,
@@ -1754,11 +1754,11 @@ pub mod block {
       match index {
         0 => <::capnp::struct_list::Owned<crate::secrets_store_capnp::block::header::Owned> as ::capnp::introspect::Introspect>::introspect(),
         1 => <::capnp::data::Owned as ::capnp::introspect::Introspect>::introspect(),
-        _ => panic!("invalid field index {}", index),
+        _ => panic!("invalid field index {index}"),
       }
     }
     pub fn get_annotation_types(child_index: Option<u16>, index: u32) -> ::capnp::introspect::Type {
-      panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+      panic!("invalid annotation indices ({child_index:?}, {index}) ")
     }
     pub static RAW_SCHEMA: ::capnp::introspect::RawStructSchema = ::capnp::introspect::RawStructSchema {
       encoded_node: &ENCODED_NODE,
@@ -2126,11 +2126,11 @@ pub mod block {
           0 => <crate::secrets_store_capnp::KeyType as ::capnp::introspect::Introspect>::introspect(),
           1 => <::capnp::data::Owned as ::capnp::introspect::Introspect>::introspect(),
           2 => <::capnp::struct_list::Owned<crate::secrets_store_capnp::block::recipient_key::Owned> as ::capnp::introspect::Introspect>::introspect(),
-          _ => panic!("invalid field index {}", index),
+          _ => panic!("invalid field index {index}"),
         }
       }
       pub fn get_annotation_types(child_index: Option<u16>, index: u32) -> ::capnp::introspect::Type {
-        panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+        panic!("invalid annotation indices ({child_index:?}, {index}) ")
       }
       pub static RAW_SCHEMA: ::capnp::introspect::RawStructSchema = ::capnp::introspect::RawStructSchema {
         encoded_node: &ENCODED_NODE,
@@ -2456,11 +2456,11 @@ pub mod block {
         match index {
           0 => <::capnp::text::Owned as ::capnp::introspect::Introspect>::introspect(),
           1 => <::capnp::data::Owned as ::capnp::introspect::Introspect>::introspect(),
-          _ => panic!("invalid field index {}", index),
+          _ => panic!("invalid field index {index}"),
         }
       }
       pub fn get_annotation_types(child_index: Option<u16>, index: u32) -> ::capnp::introspect::Type {
-        panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+        panic!("invalid annotation indices ({child_index:?}, {index}) ")
       }
       pub static RAW_SCHEMA: ::capnp::introspect::RawStructSchema = ::capnp::introspect::RawStructSchema {
         encoded_node: &ENCODED_NODE,
@@ -2821,11 +2821,11 @@ pub mod index {
       match index {
         0 => <::capnp::struct_list::Owned<crate::secrets_store_capnp::index::head::Owned> as ::capnp::introspect::Introspect>::introspect(),
         1 => <::capnp::struct_list::Owned<crate::secrets_store_capnp::index::entry::Owned> as ::capnp::introspect::Introspect>::introspect(),
-        _ => panic!("invalid field index {}", index),
+        _ => panic!("invalid field index {index}" ),
       }
     }
     pub fn get_annotation_types(child_index: Option<u16>, index: u32) -> ::capnp::introspect::Type {
-      panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+      panic!("invalid annotation indices ({child_index:?}, {index}) ")
     }
     pub static RAW_SCHEMA: ::capnp::introspect::RawStructSchema = ::capnp::introspect::RawStructSchema {
       encoded_node: &ENCODED_NODE,
@@ -2920,7 +2920,7 @@ pub mod index {
       ::capnp::word(100, 101, 108, 101, 116, 101, 0, 0),
     ];
     pub fn get_annotation_types(child_index: Option<u16>, index: u32) -> ::capnp::introspect::Type {
-      panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+      panic!("invalid annotation indices ({child_index:?}, {index}) ")
     }
   }
 
@@ -3267,11 +3267,11 @@ pub mod index {
           0 => <::capnp::text::Owned as ::capnp::introspect::Introspect>::introspect(),
           1 => <crate::secrets_store_capnp::index::HeadOperation as ::capnp::introspect::Introspect>::introspect(),
           2 => <::capnp::text::Owned as ::capnp::introspect::Introspect>::introspect(),
-          _ => panic!("invalid field index {}", index),
+          _ => panic!("invalid field index {index}"),
         }
       }
       pub fn get_annotation_types(child_index: Option<u16>, index: u32) -> ::capnp::introspect::Type {
-        panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+        panic!("invalid annotation indices ({child_index:?}, {index}) ")
       }
       pub static RAW_SCHEMA: ::capnp::introspect::RawStructSchema = ::capnp::introspect::RawStructSchema {
         encoded_node: &ENCODED_NODE,
@@ -3615,11 +3615,11 @@ pub mod index {
         match index {
           0 => <crate::secrets_store_capnp::secret_entry::Owned as ::capnp::introspect::Introspect>::introspect(),
           1 => <::capnp::struct_list::Owned<crate::secrets_store_capnp::secret_version_ref::Owned> as ::capnp::introspect::Introspect>::introspect(),
-          _ => panic!("invalid field index {}", index),
+          _ => panic!("invalid field index {index}"),
         }
       }
       pub fn get_annotation_types(child_index: Option<u16>, index: u32) -> ::capnp::introspect::Type {
-        panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+        panic!("invalid annotation indices ({child_index:?}, {index}) ")
       }
       pub static RAW_SCHEMA: ::capnp::introspect::RawStructSchema = ::capnp::introspect::RawStructSchema {
         encoded_node: &ENCODED_NODE,
@@ -3740,7 +3740,7 @@ mod secret_type {
     ::capnp::word(111, 116, 104, 101, 114, 0, 0, 0),
   ];
   pub fn get_annotation_types(child_index: Option<u16>, index: u32) -> ::capnp::introspect::Type {
-    panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+    panic!("invalid annotation indices ({child_index:?}, {index}) ")
   }
 }
 
@@ -4245,11 +4245,11 @@ pub mod secret_entry {
         4 => <::capnp::text_list::Owned as ::capnp::introspect::Introspect>::introspect(),
         5 => <::capnp::text_list::Owned as ::capnp::introspect::Introspect>::introspect(),
         6 => <bool as ::capnp::introspect::Introspect>::introspect(),
-        _ => panic!("invalid field index {}", index),
+        _ => panic!("invalid field index {index}"),
       }
     }
     pub fn get_annotation_types(child_index: Option<u16>, index: u32) -> ::capnp::introspect::Type {
-      panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+      panic!("invalid annotation indices ({child_index:?}, {index}) ")
     }
     pub static RAW_SCHEMA: ::capnp::introspect::RawStructSchema = ::capnp::introspect::RawStructSchema {
       encoded_node: &ENCODED_NODE,
@@ -4557,11 +4557,11 @@ pub mod secret_version_ref {
       match index {
         0 => <::capnp::text::Owned as ::capnp::introspect::Introspect>::introspect(),
         1 => <i64 as ::capnp::introspect::Introspect>::introspect(),
-        _ => panic!("invalid field index {}", index),
+        _ => panic!("invalid field index {index}"),
       }
     }
     pub fn get_annotation_types(child_index: Option<u16>, index: u32) -> ::capnp::introspect::Type {
-      panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+      panic!("invalid annotation indices ({child_index:?}, {index}) ")
     }
     pub static RAW_SCHEMA: ::capnp::introspect::RawStructSchema = ::capnp::introspect::RawStructSchema {
       encoded_node: &ENCODED_NODE,

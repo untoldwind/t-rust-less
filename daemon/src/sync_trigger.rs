@@ -16,7 +16,7 @@ fn trigger_sync(service: Arc<dyn TrustlessService>) -> Pin<Box<dyn Future<Output
       Some(next_run) => (next_run - Utc::now()).num_milliseconds(),
       _ => 0,
     };
-    debug!("Trigger sync: Next sync in {} millis", millis);
+    debug!("Trigger sync: Next sync in {millis} millis");
 
     let duration = Duration::from_millis(if millis > 0 { millis as u64 } else { 1000 });
     spawn(async move {

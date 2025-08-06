@@ -101,7 +101,7 @@ where
     match result {
       Ok(success) => success.into(),
       Err(error) => {
-        let display = format!("{}", error);
+        let display = format!("{error}");
         CommandResult::Error { error, display }
       }
     }
@@ -116,7 +116,7 @@ where
     match result {
       Ok(success) => success.into(),
       Err(error) => {
-        let display = format!("{}", error);
+        let display = format!("{error}");
         CommandResult::Error {
           error: ServiceError::SecretsStore(error),
           display,

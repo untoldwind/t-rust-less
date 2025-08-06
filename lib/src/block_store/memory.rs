@@ -65,8 +65,7 @@ impl BlockStore for MemoryBlockStore {
       Ok(())
     } else {
       Err(StoreError::Conflict(format!(
-        "Ring {} with version {} already exists",
-        ring_id, version
+        "Ring {ring_id} with version {version} already exists",
       )))
     }
   }

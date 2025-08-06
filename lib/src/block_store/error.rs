@@ -42,13 +42,13 @@ error_convert_from!(dropbox_sdk::files::UploadError, StoreError, IO(display));
 #[cfg(feature = "dropbox")]
 impl<E: std::error::Error> From<dropbox_sdk::Error<E>> for StoreError {
   fn from(error: dropbox_sdk::Error<E>) -> Self {
-    StoreError::Mutex(format!("{}", error))
+    StoreError::Mutex(format!("{error}"))
   }
 }
 
 impl<T> From<std::sync::PoisonError<T>> for StoreError {
   fn from(error: std::sync::PoisonError<T>) -> Self {
-    StoreError::Mutex(format!("{}", error))
+    StoreError::Mutex(format!("{error}"))
   }
 }
 

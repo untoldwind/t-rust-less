@@ -12,7 +12,7 @@ impl StatusCommand {
   pub fn run(self, service: Arc<dyn TrustlessService>, store_name: String) -> Result<()> {
     let secrets_store = service
       .open_store(&store_name)
-      .with_context(|| format!("Failed opening store {}: ", store_name))?;
+      .with_context(|| format!("Failed opening store {store_name}: "))?;
     let status = secrets_store.status().with_context(|| "Get status")?;
 
     if atty::is(Stream::Stdout) {

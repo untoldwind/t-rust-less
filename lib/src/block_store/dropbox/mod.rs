@@ -71,7 +71,7 @@ impl DropboxBlockStore {
       }
       Err(dropbox_sdk::Error::Api(dropbox_sdk::files::DownloadError::Path(_))) => Ok((None, None)),
       Err(dropbox_sdk::Error::Api(dropbox_sdk::files::DownloadError::UnsupportedFile)) => Ok((None, None)),
-      Err(err) => Err(StoreError::IO(format!("{}", err))),
+      Err(err) => Err(StoreError::IO(format!("{err}"))),
     }
   }
 
@@ -169,8 +169,7 @@ impl BlockStore for DropboxBlockStore {
     let path = format!("/{}/rings/{}.{}", self.name, ring_id, version);
     if files::get_metadata(&self.client, &files::GetMetadataArg::new(path.clone())).is_ok() {
       return Err(StoreError::Conflict(format!(
-        "Ring {} with version {} already exists",
-        ring_id, version
+        "Ring {ring_id} with version {version} already exists",
       )));
     }
     files::upload(&self.client, &files::UploadArg::new(path), raw)?;

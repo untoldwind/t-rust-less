@@ -135,7 +135,7 @@ impl Dispatch<ZwlrDataControlSourceV1, ()> for State {
   ) {
     match _event {
       zwlr_data_control_source_v1::Event::Send { mime_type, fd } if TEXT_MIMES.contains(&mime_type.as_str()) => {
-        debug!("Event send: {} {:?}", mime_type, fd);
+        debug!("Event send: {mime_type} {fd:?}");
         match _state.context.provider_holder.write() {
           Ok(mut selection_provider) => {
             if let Some(mut content) = selection_provider.get_value() {
@@ -148,7 +148,7 @@ impl Dispatch<ZwlrDataControlSourceV1, ()> for State {
             }
           }
           Err(err) => {
-            error!("Lock error: {}", err);
+            error!("Lock error: {err}");
             _state.context.cancel.store(true, Ordering::Relaxed);
           }
         }
@@ -245,7 +245,7 @@ impl ClipboardCommon for Clipboard {
       move || {
         if let Err(err) = try_run(queue, state) {
           cloned.open.store(false, Ordering::Relaxed);
-          error!("Wayland clipboard error: {}", err);
+          error!("Wayland clipboard error: {err}");
         }
       }
     });

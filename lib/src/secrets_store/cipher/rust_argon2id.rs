@@ -46,7 +46,7 @@ impl KeyDerivation for RustArgon2id {
   ) -> SecretStoreResult<SealKey> {
     let p = PRESETS
       .get(preset as usize)
-      .ok_or_else(|| SecretStoreError::Cipher(format!("Invalid key derivation preset: {}", preset)))?;
+      .ok_or_else(|| SecretStoreError::Cipher(format!("Invalid key derivation preset: {preset}")))?;
     let config = Config {
       ad: &[],
       hash_length: key_length as u32,

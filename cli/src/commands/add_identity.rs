@@ -24,7 +24,7 @@ impl AddIdentitiesCommand {
 
     let secrets_store = service
       .open_store(&store_name)
-      .with_context(|| format!("Failed opening store {}: ", store_name))?;
+      .with_context(|| format!("Failed opening store {store_name}: "))?;
     let mut siv = create_tui();
 
     siv.add_global_callback(Key::Esc, Cursive::quit);
@@ -89,6 +89,6 @@ fn create_identity(s: &mut Cursive) {
   let secrets_store: &Arc<dyn SecretsStore> = s.user_data().unwrap();
   match secrets_store.add_identity(identity, passphrase) {
     Ok(_) => s.quit(),
-    Err(error) => s.add_layer(Dialog::info(format!("Failed to create identity: {}", error))),
+    Err(error) => s.add_layer(Dialog::info(format!("Failed to create identity: {error}"))),
   }
 }

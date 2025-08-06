@@ -105,7 +105,7 @@ impl EventHub for LocalEventHub {
     match self.event_queue.write() {
       Ok(mut event_queue) => event_queue.queue(event),
       Err(e) => {
-        error!("Queue event failed: {}", e);
+        error!("Queue event failed: {e}");
       }
     };
   }
@@ -280,7 +280,7 @@ impl TrustlessService for LocalTrustlessService {
     let opened_stores = match self.opened_stores.read() {
       Ok(opened_stores) => opened_stores,
       Err(err) => {
-        error!("Failed locking opened stores: {}", err);
+        error!("Failed locking opened stores: {err}");
         return;
       }
     };
@@ -289,16 +289,16 @@ impl TrustlessService for LocalTrustlessService {
       let status = match secrets_store.status() {
         Ok(status) => status,
         Err(error) => {
-          error!("Autolocker was unable to query status: {}", error);
+          error!("Autolocker was unable to query status: {error}");
           continue;
         }
       };
 
       if let Some(autolock_at) = status.autolock_at {
         if autolock_at < Utc::now().into() {
-          info!("Autolocking {}", name);
+          info!("Autolocking {name}");
           if let Err(error) = secrets_store.lock() {
-            error!("Autolocker was unable to lock store: {}", error);
+            error!("Autolocker was unable to lock store: {error}");
           }
         }
       }
@@ -322,7 +322,7 @@ impl TrustlessService for LocalTrustlessService {
         let mut result = None;
         for synchronizer in synchronizers.iter_mut() {
           if let Err(err) = synchronizer.synchronize() {
-            error!("Synchronization failed: {}", err);
+            error!("Synchronization failed: {err}");
           }
           let next = synchronizer.next_run();
           result = match result {
@@ -334,7 +334,7 @@ impl TrustlessService for LocalTrustlessService {
         result
       }
       Err(err) => {
-        error!("Synchronization lock failed: {}", err);
+        error!("Synchronization lock failed: {err}");
         None
       }
     }

@@ -57,7 +57,7 @@ impl SelectionProvider for SecretsProvider {
           Some(Zeroizing::new(token))
         }
         Err(error) => {
-          error!("Invalid OTPAuth url: {}", error);
+          error!("Invalid OTPAuth url: {error}");
           None
         }
       }

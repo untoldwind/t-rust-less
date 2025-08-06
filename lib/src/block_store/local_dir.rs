@@ -151,12 +151,11 @@ impl BlockStore for LocalDirBlockStore {
     let ring_dir = self.base_dir.write()?.join("rings");
     DirBuilder::new().recursive(true).create(&ring_dir)?;
 
-    let file_name = ring_dir.join(format!("{}.{}", ring_id, version));
+    let file_name = ring_dir.join(format!("{ring_id}.{version}"));
 
     if file_name.exists() {
       return Err(StoreError::Conflict(format!(
-        "Ring {} with version {} already exists",
-        ring_id, version
+        "Ring {ring_id} with version {version} already exists",
       )));
     }
 
@@ -193,13 +192,13 @@ impl BlockStore for LocalDirBlockStore {
   }
 
   fn get_index(&self, index_id: &str) -> StoreResult<Option<ZeroingWords>> {
-    debug!("Try getting index  {}", index_id);
+    debug!("Try getting index  {index_id}");
     let base_dir = self.base_dir.read()?;
     Self::read_optional_file(base_dir.join("indexes").join(&self.node_id).join(index_id))
   }
 
   fn store_index(&self, index_id: &str, raw: &[u8]) -> StoreResult<()> {
-    debug!("Try storing index  {}", index_id);
+    debug!("Try storing index  {index_id}");
     let base_dir = self.base_dir.write()?;
     let index_file_path = base_dir.join("indexes").join(&self.node_id).join(index_id);
     DirBuilder::new()

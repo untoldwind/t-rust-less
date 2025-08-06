@@ -14,7 +14,7 @@ impl SecretNodeView {
   {
     SecretNodeView {
       base_view: LinearLayout::horizontal()
-        .child(TextView::new(format!("{:10}: ", property)))
+        .child(TextView::new(format!("{property:10}: ")))
         .child(TextArea::new().disabled().content(value).full_width().min_height(3))
         .child(Button::new("Copy", on_copy)),
     }

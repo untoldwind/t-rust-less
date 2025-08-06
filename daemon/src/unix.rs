@@ -32,7 +32,7 @@ pub async fn run_server(service: Arc<LocalTrustlessService>) -> Result<(), Box<d
         info!("New client connection");
 
         if let Err(err) = handle_connection(&mut processor, &mut rd, &mut wr).await {
-          error!("{}", err);
+          error!("{err}");
         }
 
         info!("Client disconnect");

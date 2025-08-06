@@ -71,7 +71,7 @@ where
           CommandResult::Success
         }
         Err(error) => {
-          let display = format!("{}", error);
+          let display = format!("{error}");
           CommandResult::Error { error, display }
         }
       },

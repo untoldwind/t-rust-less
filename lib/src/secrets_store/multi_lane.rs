@@ -98,7 +98,7 @@ impl SecretsStore for MultiLaneSecretsStore {
 
   fn unlock(&self, identity_id: &str, passphrase: SecretBytes) -> SecretStoreResult<()> {
     let identity = {
-      info!("Unlocking store for {}", identity_id);
+      info!("Unlocking store for {identity_id}");
       let mut unlocked_user = self.unlocked_user.write()?;
 
       if unlocked_user.is_some() {
@@ -455,7 +455,7 @@ impl MultiLaneSecretsStore {
           .iter()
           .find(|user_public_key| user_public_key.get_type() == Ok(key_type))
           .ok_or_else(|| {
-            SecretStoreError::InvalidRecipient(format!("{} does not have required key type", identity_id))
+            SecretStoreError::InvalidRecipient(format!("{identity_id} does not have required key type"))
           })?;
 
         recipient_keys.push((identity_id, user_public_key.get_key()?.to_vec()))
