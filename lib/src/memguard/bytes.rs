@@ -126,12 +126,12 @@ impl SecretBytes {
     self.capacity
   }
 
-  pub fn borrow(&self) -> Ref {
+  pub fn borrow(&self) -> Ref<'_> {
     self.lock_read();
     Ref { bytes: self }
   }
 
-  pub fn borrow_mut(&mut self) -> RefMut {
+  pub fn borrow_mut(&mut self) -> RefMut<'_> {
     self.lock_write();
     RefMut { bytes: self }
   }

@@ -101,12 +101,12 @@ impl SecretWords {
     self.capacity
   }
 
-  pub fn borrow(&self) -> Ref {
+  pub fn borrow(&self) -> Ref<'_> {
     self.lock_read();
     Ref { words: self }
   }
 
-  pub fn borrow_mut(&mut self) -> RefMut {
+  pub fn borrow_mut(&mut self) -> RefMut<'_> {
     self.lock_write();
     RefMut { words: self }
   }
