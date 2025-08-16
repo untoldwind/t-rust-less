@@ -162,6 +162,10 @@ pub unsafe fn munlock(addr: *mut u8, len: usize) -> bool {
 }
 
 /// Windows `VirtualUnlock`.
+///
+/// # Safety
+///
+/// `addr` has to point to a memory section of at least `len` bytes
 #[cfg(windows)]
 pub unsafe fn munlock(addr: *mut u8, len: usize) -> bool {
   memzero(addr, len);
@@ -173,9 +177,11 @@ pub unsafe fn munlock(addr: *mut u8, len: usize) -> bool {
 
 #[cfg(test)]
 mod tests {
+  #[cfg(unix)]
   use std::cmp;
   use std::mem;
 
+  #[cfg(unix)]
   use quickcheck::quickcheck;
 
   use super::*;
