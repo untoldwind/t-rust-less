@@ -34,14 +34,14 @@ itertools = "0"
 toml = "0"
 dirs = "5"
 futures = "0.3"
-tokio = { version = "1", features = ["net", "rt" ] }
+tokio = { version = "1", features = ["net", "rt"] }
 tokio-util = { version = "0.7", features = ["compat"] }
 zeroize = { workspace = true }
-zeroize_derive  = { workspace = true }
+zeroize_derive = { workspace = true }
 rsa = { version = "0.9", optional = true }
 aes-gcm = { version = "0", optional = true }
 rmp-serde = { workspace = true }
-dropbox-sdk = { version= "0", optional = true }
+dropbox-sdk = { version = "0", optional = true }
 sled = { version = "0", optional = true }
 tiny_http = { version = "0", optional = true }
 typenum = "1"
@@ -59,10 +59,10 @@ hex-literal = "0"
 with_x11 = ["x11"]
 with_wayland = ["wayland-client", "wayland-protocols", "wayland-protocols-wlr"]
 rust_crypto = ["rsa", "aes-gcm"]
-dropbox = [ "dropbox-sdk", "tiny_http" ]
+dropbox = ["dropbox-sdk", "tiny_http"]
 with_specta = ["specta"]
 with_sled = ["sled"]
-default = ["with_x11", "with_wayland", "rust_crypto", "dropbox" ]
+default = ["with_x11", "with_wayland", "rust_crypto"]
 nightly-features = []
 use_os = []
 
@@ -70,7 +70,9 @@ use_os = []
 x11 = { version = "2", features = ["xlib"], optional = true }
 wayland-client = { version = "0.31", optional = true }
 wayland-protocols = { version = "0.31", features = ["client"], optional = true }
-wayland-protocols-wlr = { version = "0.2", features = ["client"], optional = true }
+wayland-protocols-wlr = { version = "0.2", features = [
+    "client",
+], optional = true }
 libc = "0"
 
 [target.'cfg(windows)'.dependencies]
@@ -82,5 +84,8 @@ clipboard-win = "4"
 mach_o_sys = "0"
 
 [build-dependencies]
-clap = { version = "2", default-features = false, features = ["suggestions", "color"]}
+clap = { version = "2", default-features = false, features = [
+    "suggestions",
+    "color",
+] }
 capnpc = "0.19"
