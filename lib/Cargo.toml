@@ -66,13 +66,16 @@ default = ["with_x11", "with_wayland", "rust_crypto"]
 nightly-features = []
 use_os = []
 
-[target.'cfg(unix)'.dependencies]
+[target.'cfg(all(unix, not(target_os="android")))'.dependencies]
 x11 = { version = "2", features = ["xlib"], optional = true }
 wayland-client = { version = "0.31", optional = true }
 wayland-protocols = { version = "0.31", features = ["client"], optional = true }
 wayland-protocols-wlr = { version = "0.2", features = [
     "client",
 ], optional = true }
+libc = "0"
+
+[target.'cfg(target_os="android")'.dependencies]
 libc = "0"
 
 [target.'cfg(windows)'.dependencies]

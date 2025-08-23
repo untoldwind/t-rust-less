@@ -1,11 +1,14 @@
 mod error;
-#[cfg(all(unix, feature = "with_x11", feature = "with_wayland"))]
+#[cfg(all(unix, not(target_os = "android"), feature = "with_x11", feature = "with_wayland"))]
 mod unix_mixed;
-#[cfg(all(unix, not(any(feature = "with_x11", feature = "with_wayland"))))]
+#[cfg(any(
+  target_os = "android",
+  all(unix, not(any(feature = "with_x11", feature = "with_wayland")))
+))]
 mod unix_none;
-#[cfg(all(unix, feature = "with_wayland"))]
+#[cfg(all(unix, not(target_os = "android"), feature = "with_wayland"))]
 pub mod unix_wayland;
-#[cfg(all(unix, feature = "with_x11"))]
+#[cfg(all(unix, not(target_os = "android"), feature = "with_x11"))]
 mod unix_x11;
 #[cfg(windows)]
 mod windows;
@@ -20,13 +23,26 @@ use std::sync::Arc;
 use crate::api::{ClipboardProviding, EventHub};
 
 pub use self::error::*;
-#[cfg(all(unix, feature = "with_x11", feature = "with_wayland"))]
+#[cfg(all(unix, not(target_os = "android"), feature = "with_x11", feature = "with_wayland"))]
 pub use self::unix_mixed::Clipboard;
-#[cfg(all(unix, not(any(feature = "with_x11", feature = "with_wayland"))))]
+#[cfg(any(
+  target_os = "android",
+  all(unix, not(any(feature = "with_x11", feature = "with_wayland")))
+))]
 pub use self::unix_none::Clipboard;
-#[cfg(all(unix, feature = "with_wayland", not(feature = "with_x11")))]
+#[cfg(all(
+  unix,
+  not(target_os = "android"),
+  feature = "with_wayland",
+  not(feature = "with_x11")
+))]
 pub use self::unix_wayland::Clipboard;
-#[cfg(all(unix, feature = "with_x11", not(feature = "with_wayland")))]
+#[cfg(all(
+  unix,
+  not(target_os = "android"),
+  feature = "with_x11",
+  not(feature = "with_wayland")
+))]
 pub use self::unix_x11::Clipboard;
 #[cfg(windows)]
 pub use self::windows::Clipboard;

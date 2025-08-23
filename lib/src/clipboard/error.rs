@@ -14,21 +14,21 @@ pub enum ClipboardError {
 
 pub type ClipboardResult<T> = Result<T, ClipboardError>;
 
-#[cfg(all(unix, feature = "with_x11"))]
+#[cfg(all(unix, not(target_os = "android"), feature = "with_x11"))]
 impl From<std::ffi::NulError> for ClipboardError {
   fn from(error: std::ffi::NulError) -> Self {
     ClipboardError::Other(format!("{error}"))
   }
 }
 
-#[cfg(all(unix, feature = "with_x11"))]
+#[cfg(all(unix, not(target_os = "android"), feature = "with_x11"))]
 impl From<std::env::VarError> for ClipboardError {
   fn from(error: std::env::VarError) -> Self {
     ClipboardError::Other(format!("{error}"))
   }
 }
 
-#[cfg(all(unix, feature = "with_wayland"))]
+#[cfg(all(unix, not(target_os = "android"), feature = "with_wayland"))]
 impl From<wayland_client::ConnectError> for ClipboardError {
   fn from(error: wayland_client::ConnectError) -> Self {
     match error {
@@ -39,21 +39,21 @@ impl From<wayland_client::ConnectError> for ClipboardError {
   }
 }
 
-#[cfg(all(unix, feature = "with_wayland"))]
+#[cfg(all(unix, not(target_os = "android"), feature = "with_wayland"))]
 impl From<wayland_client::globals::GlobalError> for ClipboardError {
   fn from(error: wayland_client::globals::GlobalError) -> Self {
     ClipboardError::Other(format!("{error}"))
   }
 }
 
-#[cfg(all(unix, feature = "with_wayland"))]
+#[cfg(all(unix, not(target_os = "android"), feature = "with_wayland"))]
 impl From<wayland_client::globals::BindError> for ClipboardError {
   fn from(error: wayland_client::globals::BindError) -> Self {
     ClipboardError::Other(format!("{error}"))
   }
 }
 
-#[cfg(all(unix, feature = "with_wayland"))]
+#[cfg(all(unix, not(target_os = "android"), feature = "with_wayland"))]
 impl From<wayland_client::DispatchError> for ClipboardError {
   fn from(error: wayland_client::DispatchError) -> Self {
     ClipboardError::Other(format!("{error}"))
