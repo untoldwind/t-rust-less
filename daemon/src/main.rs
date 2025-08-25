@@ -14,7 +14,7 @@ mod windows;
 use windows::run_server;
 
 use std::{error::Error, sync::Arc};
-use t_rust_less_lib::service::{local::LocalTrustlessService, TrustlessService};
+use t_rust_less_lib::service::{config::LocalConfigProvider, local::LocalTrustlessService, TrustlessService};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     init_console_logger(matches.is_present("debug"));
   }
 
-  let service = Arc::new(LocalTrustlessService::new()?);
+  let service = Arc::new(LocalTrustlessService::new(LocalConfigProvider::default())?);
   if service.needs_synchronization() {
     sync_trigger::start_sync_loop(service.clone());
   }

@@ -4,13 +4,14 @@ use log::{error, info};
 use std::error::Error;
 use std::fs;
 use std::sync::Arc;
+use t_rust_less_lib::service::config::LocalConfigProvider;
 use t_rust_less_lib::service::local::LocalTrustlessService;
 use t_rust_less_lib::service::unix::daemon_socket_path;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::UnixListener;
 use tokio::signal;
 
-pub async fn run_server(service: Arc<LocalTrustlessService>) -> Result<(), Box<dyn Error>> {
+pub async fn run_server(service: Arc<LocalTrustlessService<LocalConfigProvider>>) -> Result<(), Box<dyn Error>> {
   let socket_path = daemon_socket_path();
 
   info!("Listening on socket {}", socket_path.to_string_lossy());

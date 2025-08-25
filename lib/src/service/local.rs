@@ -4,7 +4,7 @@ use crate::api::{ClipboardProviding, Event, EventData, EventHub, PasswordGenerat
 use crate::block_store::StoreError;
 use crate::clipboard::{Clipboard, ClipboardCommon};
 use crate::secrets_store::{open_secrets_store, SecretStoreResult, SecretsStore};
-use crate::service::config::{read_config, write_config, Config};
+use crate::service::config::{Config, ConfigProvider};
 use crate::service::error::{ServiceError, ServiceResult};
 #[cfg(any(unix, windows))]
 use crate::service::secrets_provider::SecretsProvider;
@@ -111,20 +111,22 @@ impl EventHub for LocalEventHub {
   }
 }
 
-pub struct LocalTrustlessService {
+pub struct LocalTrustlessService<C> {
   config: RwLock<Config>,
+  config_provider: C,
   opened_stores: RwLock<HashMap<String, Arc<dyn SecretsStore>>>,
   synchronizers: Mutex<Vec<Synchronizer>>,
   clipboard: RwLock<Arc<ClipboardHolder>>,
   event_hub: Arc<LocalEventHub>,
 }
 
-impl LocalTrustlessService {
-  pub fn new() -> ServiceResult<LocalTrustlessService> {
-    let config = read_config()?.unwrap_or_default();
+impl<C: ConfigProvider> LocalTrustlessService<C> {
+  pub fn new(config_provider: C) -> ServiceResult<Self> {
+    let config = config_provider.read_config()?.unwrap_or_default();
 
     Ok(LocalTrustlessService {
       config: RwLock::new(config),
+      config_provider,
       opened_stores: RwLock::new(HashMap::new()),
       synchronizers: Mutex::new(vec![]),
       clipboard: RwLock::new(Arc::new(ClipboardHolder::Empty)),
@@ -133,7 +135,7 @@ impl LocalTrustlessService {
   }
 }
 
-impl TrustlessService for LocalTrustlessService {
+impl<C: ConfigProvider> TrustlessService for LocalTrustlessService<C> {
   fn list_stores(&self) -> ServiceResult<Vec<StoreConfig>> {
     let config = self.config.read()?;
 
@@ -151,7 +153,7 @@ impl TrustlessService for LocalTrustlessService {
       config.default_store = Some(store_config.name.to_string());
     }
     config.stores.insert(store_config.name.to_string(), store_config);
-    write_config(&config)?;
+    self.config_provider.write_config(&config)?;
 
     Ok(())
   }
@@ -160,7 +162,7 @@ impl TrustlessService for LocalTrustlessService {
     let mut config = self.config.write()?;
 
     if config.stores.remove(name).is_some() {
-      write_config(&config)?;
+      self.config_provider.write_config(&config)?;
     }
 
     Ok(())
@@ -216,7 +218,7 @@ impl TrustlessService for LocalTrustlessService {
     }
 
     config.default_store = Some(name.to_string());
-    write_config(&config)?;
+    self.config_provider.write_config(&config)?;
 
     Ok(())
   }
@@ -341,7 +343,7 @@ impl TrustlessService for LocalTrustlessService {
   }
 }
 
-impl std::fmt::Debug for LocalTrustlessService {
+impl<C: ConfigProvider> std::fmt::Debug for LocalTrustlessService<C> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "Local Trustless service")
   }

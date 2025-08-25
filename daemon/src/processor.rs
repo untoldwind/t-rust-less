@@ -3,6 +3,7 @@ use std::io;
 use std::sync::Arc;
 use t_rust_less_lib::api::{Command, CommandResult};
 use t_rust_less_lib::memguard::ZeroizeBytesBuffer;
+use t_rust_less_lib::service::config::LocalConfigProvider;
 use t_rust_less_lib::service::local::LocalTrustlessService;
 use t_rust_less_lib::service::{ClipboardControl, ServiceError, ServiceResult, TrustlessService};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
@@ -10,12 +11,12 @@ use zeroize::Zeroizing;
 
 #[derive(Clone)]
 pub struct Processor {
-  service: Arc<LocalTrustlessService>,
+  service: Arc<LocalTrustlessService<LocalConfigProvider>>,
   current_clipboard: Option<Arc<dyn ClipboardControl>>,
 }
 
 impl Processor {
-  pub fn new(service: Arc<LocalTrustlessService>) -> Self {
+  pub fn new(service: Arc<LocalTrustlessService<LocalConfigProvider>>) -> Self {
     Processor {
       service,
       current_clipboard: None,

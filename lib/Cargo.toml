@@ -32,7 +32,7 @@ log = { workspace = true }
 sublime_fuzzy = "0"
 itertools = "0"
 toml = "0"
-dirs = "5"
+dirs = "6"
 futures = "0.3"
 tokio = { version = "1", features = ["net", "rt"] }
 tokio-util = { version = "0.7", features = ["compat"] }

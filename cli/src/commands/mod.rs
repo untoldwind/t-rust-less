@@ -24,8 +24,7 @@ use atty::Stream;
 use clap::Subcommand;
 use log::error;
 use rand::{distributions, thread_rng, Rng};
-use t_rust_less_lib::service::config_file;
-use t_rust_less_lib::service::TrustlessService;
+use t_rust_less_lib::service::{config::LocalConfigProvider, TrustlessService};
 
 fn generate_id(length: usize) -> String {
   let rng = thread_rng();
@@ -120,14 +119,14 @@ fn uninitialized() {
     println!();
     println!(
       "t-rust-less was unable to find a default store in configuration at '{}'.",
-      config_file().to_string_lossy()
+      LocalConfigProvider::config_file().to_string_lossy()
     );
     println!("Probably t-rust-less has not been initialized yet. You may fix this problem with 't-rust-less init'");
     println!();
   } else {
     error!(
       "Missing default store in configuration: {}",
-      config_file().to_string_lossy()
+      LocalConfigProvider::config_file().to_string_lossy()
     );
   }
   process::exit(1)

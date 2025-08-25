@@ -1,9 +1,12 @@
 use chrono::{DateTime, Utc};
 
-use crate::api::{ClipboardProviding, Event, PasswordGeneratorParam, StoreConfig};
+use crate::{
+  api::{ClipboardProviding, Event, PasswordGeneratorParam, StoreConfig},
+  service::config::LocalConfigProvider,
+};
 use std::sync::Arc;
 
-mod config;
+pub mod config;
 mod error;
 pub mod local;
 pub mod pw_generator;
@@ -16,7 +19,6 @@ pub mod unix;
 #[cfg(windows)]
 pub mod windows;
 
-pub use self::config::config_file;
 pub use self::error::*;
 
 use crate::secrets_store::{SecretStoreResult, SecretsStore};
@@ -85,5 +87,7 @@ pub fn create_service() -> ServiceResult<Arc<dyn TrustlessService>> {
       return Ok(Arc::new(remote));
     }
   }
-  Ok(Arc::new(self::local::LocalTrustlessService::new()?))
+  Ok(Arc::new(self::local::LocalTrustlessService::new(
+    LocalConfigProvider::default(),
+  )?))
 }
