@@ -25,6 +25,12 @@ pub struct LocalConfigProvider {
 }
 
 impl LocalConfigProvider {
+  pub fn new<P: Into<PathBuf>>(config_file: P) -> Self {
+    LocalConfigProvider {
+      config_file: config_file.into(),
+    }
+  }
+
   pub fn config_file() -> PathBuf {
     let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
     dirs::config_dir()
