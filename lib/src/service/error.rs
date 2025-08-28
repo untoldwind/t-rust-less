@@ -30,11 +30,20 @@ error_convert_from!(std::io::Error, ServiceError, IO(display));
 error_convert_from!(toml::de::Error, ServiceError, IO(display));
 error_convert_from!(SecretStoreError, ServiceError, SecretsStore(direct));
 error_convert_from!(StoreError, ServiceError, StoreError(direct));
-error_convert_from!(ClipboardError, ServiceError, IO(display));
 error_convert_from!(futures::task::SpawnError, ServiceError, IO(display));
 error_convert_from!(serde_json::Error, ServiceError, IO(display));
 error_convert_from!(rmp_serde::encode::Error, ServiceError, IO(display));
 error_convert_from!(rmp_serde::decode::Error, ServiceError, IO(display));
+
+impl From<ClipboardError> for ServiceError {
+  fn from(value: ClipboardError) -> Self {
+    match value {
+      ClipboardError::Unavailable => ServiceError::NotAvailable,
+      ClipboardError::Mutex(err) => ServiceError::Mutex(err),
+      ClipboardError::Other(err) => ServiceError::IO(err),
+    }
+  }
+}
 
 impl<T> From<std::sync::PoisonError<T>> for ServiceError {
   fn from(error: std::sync::PoisonError<T>) -> Self {
