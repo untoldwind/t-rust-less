@@ -5,24 +5,24 @@ authors = ["Untoldwind <landru@untoldwind.net>"]
 edition = "2021"
 
 [dependencies]
-log = { workspace = true }
-env_logger = { workspace = true }
+anyhow = { workspace = true }
+atty = "0.2"
+chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true, features = ["cargo", "derive"] }
 clap_complete = { workspace = true }
-cursive = { version = "0", default-features = false, optional = true }
-termion = { version = "3", optional = true }
-atty = "0.2"
-t-rust-less-lib = { path = "../lib" }
-serde = { workspace = true, features = ["derive"] }
-rand = "0.8"
-dirs = "5"
-url = "2"
 crossterm_style = "0"
+cursive = { version = "0", default-features = false, optional = true }
+dirs = "5"
+env_logger = { workspace = true }
+log = { workspace = true }
+rand = "0.8"
+serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-chrono = { workspace = true, features = ["serde"] }
+t-rust-less-lib = { path = "../lib" }
+termion = { version = "3", optional = true }
+url = "2"
 zeroize = { workspace = true }
-zeroize_derive  = { workspace = true }
-anyhow = { workspace = true }
+zeroize_derive = { workspace = true }
 
 [features]
 termion_backend = ["termion", "cursive/termion-backend", "cursive/toml"]

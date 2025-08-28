@@ -5,17 +5,21 @@ authors = ["Untoldwind <landru@untoldwind.net>"]
 edition = "2018"
 
 [dependencies]
-log = "0"
 env_logger = "0"
-t-rust-less-lib = { path = "../lib", features = ["with_x11", "with_wayland", "rust_crypto", "dropbox"], default-features = false }
-serde = { version = "1", features = ["derive"] }
-rand = "0.8"
-dirs = "1"
-url = "2"
-serde_json = "1"
-chrono = { version = "0", features = ["serde"] }
-hex = "0"
+log = "0"
+t-rust-less-lib = { path = "../lib", features = [
+    "with_x11",
+    "with_wayland",
+    "rust_crypto",
+], default-features = false }
 capnp = "0.19"
+chrono = { version = "0", features = ["serde"] }
+dirs = "1"
+hex = "0"
+rand = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+url = "2"
 zeroize = "1"
 
 [dev-dependencies]
