@@ -1,6 +1,7 @@
 use std::{error::Error, sync::Arc};
 
 use log::{error, info};
+use t_rust_less_lib::service::config::LocalConfigProvider;
 use t_rust_less_lib::service::local::LocalTrustlessService;
 use t_rust_less_lib::service::windows::DAEMON_PIPE_NAME;
 use tokio::net::windows::named_pipe::ServerOptions;
@@ -8,7 +9,7 @@ use tokio::signal;
 
 use crate::processor::Processor;
 
-pub async fn run_server(service: Arc<LocalTrustlessService>) -> Result<(), Box<dyn Error>> {
+pub async fn run_server(service: Arc<LocalTrustlessService<LocalConfigProvider>>) -> Result<(), Box<dyn Error>> {
   let mut server = ServerOptions::new()
     .first_pipe_instance(true)
     .reject_remote_clients(true)
