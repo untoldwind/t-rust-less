@@ -6,6 +6,7 @@ mod sync_trigger;
 
 #[cfg(unix)]
 mod unix;
+use clap::Parser;
 #[cfg(unix)]
 use unix::run_server;
 #[cfg(windows)]
@@ -18,15 +19,15 @@ use t_rust_less_lib::service::{config::LocalConfigProvider, local::LocalTrustles
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-  let matches = cli::app().get_matches();
+  let args = cli::Args::parse();
 
   #[cfg(not(unix))]
-  init_console_logger(matches.is_present("debug"));
+  init_console_logger(args.debug);
   #[cfg(unix)]
-  if matches.is_present("journal") {
-    init_systemd_logger(matches.is_present("debug"));
+  if args.journal {
+    init_systemd_logger(args.debug);
   } else {
-    init_console_logger(matches.is_present("debug"));
+    init_console_logger(args.debug);
   }
 
   let service = Arc::new(LocalTrustlessService::new(LocalConfigProvider::default())?);

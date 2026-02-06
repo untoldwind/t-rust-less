@@ -2,15 +2,12 @@
 name = "t-rust-less-daemon"
 version.workspace = true
 authors = ["Untoldwind <landru@untoldwind.net>"]
-build = "build.rs"
 edition = "2021"
 
 [dependencies]
 chrono = { workspace = true }
-clap = { version = "2", default-features = false, features = [
-    "suggestions",
-    "color",
-] }
+clap = { workspace = true, features = ["cargo", "derive"] }
+clap_complete = { workspace = true }
 env_logger = { workspace = true }
 futures = "0.3"
 log = { workspace = true }

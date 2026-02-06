@@ -1,18 +1,11 @@
-use clap::{App, Arg};
+use clap::Parser;
 
-pub fn app() -> App<'static, 'static> {
-  let app = App::new("t-rust-less")
-    .version(clap::crate_version!())
-    .about("Manages passwords")
-    .arg(
-      Arg::with_name("debug")
-        .short("D")
-        .long("debug")
-        .help("Enable debug logs"),
-    );
-
+#[derive(Parser, Debug)]
+#[clap(name = "t-rust-less-daemon", about = "Manages passwords", version = clap::crate_version!())]
+pub struct Args {
+  #[clap(short, long, help = "Enable debug logs")]
+  pub debug: bool,
   #[cfg(unix)]
-  let app = app.arg(Arg::with_name("journal").long("journal").help("Log to systemd journal"));
-
-  app
+  #[clap(long, help = "Log to systemd journal")]
+  pub journal: bool,
 }
