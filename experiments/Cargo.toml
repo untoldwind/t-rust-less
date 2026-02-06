@@ -12,7 +12,7 @@ t-rust-less-lib = { path = "../lib", features = [
     "with_wayland",
     "rust_crypto",
 ], default-features = false }
-capnp = "0.19"
+capnp = "0.25"
 chrono = { version = "0", features = ["serde"] }
 dirs = "1"
 hex = "0"
