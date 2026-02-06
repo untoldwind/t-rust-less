@@ -18,20 +18,20 @@ fn xorbytes(src1: &[u8], src2: &[u8], tgt: &mut [u8]) {
 }
 
 impl RustX25519ChaCha20Poly1305Cipher {
-  fn unpack_public(key: &[u8]) -> x25519_dalek_ng::PublicKey {
+  fn unpack_public(key: &[u8]) -> x25519_dalek::PublicKey {
     let mut raw = [0u8; 32];
 
     raw.copy_from_slice(key);
 
-    x25519_dalek_ng::PublicKey::from(raw)
+    x25519_dalek::PublicKey::from(raw)
   }
 
-  fn unpack_private(key: &PrivateKey) -> x25519_dalek_ng::StaticSecret {
+  fn unpack_private(key: &PrivateKey) -> x25519_dalek::StaticSecret {
     let mut raw = [0u8; 32]; // StaticSecrets takes ownership of this an clears it on drop
 
     raw.copy_from_slice(&key.borrow());
 
-    x25519_dalek_ng::StaticSecret::from(raw)
+    x25519_dalek::StaticSecret::from(raw)
   }
 }
 
@@ -46,8 +46,8 @@ impl Cipher for RustX25519ChaCha20Poly1305Cipher {
 
   fn generate_key_pair(&self) -> SecretStoreResult<(PublicKey, PrivateKey)> {
     let rng = thread_rng();
-    let private = x25519_dalek_ng::StaticSecret::new(rng);
-    let public = x25519_dalek_ng::PublicKey::from(&private);
+    let private = x25519_dalek::StaticSecret::random_from_rng(rng);
+    let public = x25519_dalek::PublicKey::from(&private);
     let mut private_raw = private.to_bytes();
 
     Ok((public.as_bytes().to_vec(), SecretBytes::from(&mut private_raw[..])))
@@ -114,8 +114,8 @@ impl Cipher for RustX25519ChaCha20Poly1305Cipher {
     let mut recipient_keys = header_builder.init_recipients(recipients.len() as u32);
 
     for (idx, (recipient_id, recipient_public_key)) in recipients.iter().enumerate() {
-      let ephemeral_private = x25519_dalek_ng::EphemeralSecret::new(&mut rng);
-      let ephemeral_public = x25519_dalek_ng::PublicKey::from(&ephemeral_private);
+      let ephemeral_private = x25519_dalek::EphemeralSecret::random_from_rng(&mut rng);
+      let ephemeral_public = x25519_dalek::PublicKey::from(&ephemeral_private);
       let recipient_public = Self::unpack_public(recipient_public_key);
       let shared_secret = ephemeral_private.diffie_hellman(&recipient_public);
 
@@ -159,7 +159,7 @@ impl Cipher for RustX25519ChaCha20Poly1305Cipher {
       }
       let mut ephemeral_public_raw = [0u8; 32];
       ephemeral_public_raw.copy_from_slice(&crypted_key[0..32]);
-      let ephemeral_public = x25519_dalek_ng::PublicKey::from(ephemeral_public_raw);
+      let ephemeral_public = x25519_dalek::PublicKey::from(ephemeral_public_raw);
       let recipient_private = Self::unpack_private(user.1);
       let shared_secret = recipient_private.diffie_hellman(&ephemeral_public);
       let mut seal_key = SecretBytes::zeroed(32);

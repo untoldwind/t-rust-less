@@ -44,14 +44,14 @@ tokio-util = { version = "0.7", features = ["compat"] }
 toml = "0"
 typenum = "1"
 url = "2"
-x25519-dalek-ng = "1"
+x25519-dalek = { version =  "2", features = ["static_secrets"] }
 zeroize = { workspace = true }
 zeroize_derive = { workspace = true }
-zxcvbn = "2"
+zxcvbn = "3"
 
 [dev-dependencies]
 byteorder = "1"
-hex-literal = "0"
+hex-literal = "1"
 quickcheck = "1"
 spectral = "0"
 tempfile = "3"
