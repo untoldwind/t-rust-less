@@ -96,18 +96,5 @@ pub fn synchronize_blocks(local: Arc<dyn BlockStore>, remote: Arc<dyn BlockStore
     remote.add_block(&block)?;
   }
 
-  for remote_change_log in remote_change_logs {
-    if remote_change_log.node != local.node_id() {
-      local.update_change_log(remote_change_log)?;
-    }
-  }
-
-  if let Some(local_change_log) = local_change_logs
-    .into_iter()
-    .find(|change_log| change_log.node == local.node_id())
-  {
-    remote.update_change_log(local_change_log)?;
-  }
-
   Ok(local_changes)
 }

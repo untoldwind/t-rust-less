@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::memguard::weak::ZeroingWords;
 
-use super::{BlockStore, ChangeLog, RingContent, RingId, StoreError, StoreResult};
+use super::{BlockStore, RingContent, RingId, StoreError, StoreResult};
 
 mod synchronize;
 
@@ -68,8 +68,8 @@ impl BlockStore for SyncBlockStore {
     self.local.store_index(index_id, raw)
   }
 
-  fn add_block(&self, raw: &[u8]) -> StoreResult<String> {
-    self.local.add_block(raw)
+  fn insert_block(&self, block_id: &str, node_id: &str, raw: &[u8]) -> StoreResult<()> {
+    self.local.insert_block(block_id, node_id, raw)
   }
 
   fn get_block(&self, block: &str) -> StoreResult<ZeroingWords> {
@@ -80,12 +80,7 @@ impl BlockStore for SyncBlockStore {
     }
   }
 
-  fn commit(&self, changes: &[super::Change]) -> StoreResult<()> {
-    self.local.commit(changes)
-  }
-
-  fn update_change_log(&self, _change_log: ChangeLog) -> StoreResult<()> {
-    // Note: Intentionally left blank. There should be no nested sync stores
-    Ok(())
+  fn check_block(&self, block_id: &str) -> StoreResult<bool> {
+    self.local.check_block(block_id)
   }
 }

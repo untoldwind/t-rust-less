@@ -21,6 +21,7 @@ dropbox-sdk = { version = "0", optional = true }
 futures = "0.3"
 hmac = "0.12"
 itertools = "0"
+hashlink = "0"
 log = { workspace = true }
 num-derive = "0"
 num-traits = "0"

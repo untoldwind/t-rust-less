@@ -15,7 +15,7 @@ use crate::secrets_store::{SecretStoreError, SecretStoreResult, SecretsStore};
 use crate::secrets_store_capnp::{block, ring, KeyType};
 use crate::{
   api::ZeroizeDateTime,
-  block_store::{BlockStore, Change, Operation, StoreError},
+  block_store::{BlockStore, StoreError},
 };
 use crate::{
   api::{EventData, EventHub, Identity, Secret, SecretList, SecretListFilter, SecretVersion, Status},
@@ -334,10 +334,6 @@ impl SecretsStore for MultiLaneSecretsStore {
     };
 
     let block_id = self.block_store.add_block(&block_content)?;
-    self.block_store.commit(&[Change {
-      op: Operation::Add,
-      block: block_id.clone(),
-    }])?;
     self.event_hub.send(EventData::SecretVersionAdded {
       store_name: self.name.clone(),
       secret_id: secret_version.secret_id.clone(),

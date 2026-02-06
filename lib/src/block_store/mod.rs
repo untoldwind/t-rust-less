@@ -99,23 +99,26 @@ pub trait BlockStore: std::fmt::Debug + Send + Sync {
   ///
   /// The result of an add operation is a unique key of the data block.
   ///
-  fn add_block(&self, raw: &[u8]) -> StoreResult<String>;
+  fn add_block(&self, raw: &[u8]) -> StoreResult<String> {
+    let block_id = generate_block_id(raw);
+    self.insert_block(&block_id, self.node_id(), raw)?;
+    Ok(block_id)
+  }
+
+  /// Insert a data block with a given id.
+  ///
+  /// Blocks never be overwritten, this method should produce an error if
+  /// a block with the same id alread exists.
+  ///
+  fn insert_block(&self, block_id: &str, node_id: &str, raw: &[u8]) -> StoreResult<()>;
+
   /// Get a block by its id.
   ///
-  fn get_block(&self, block: &str) -> StoreResult<ZeroingWords>;
+  fn get_block(&self, block_id: &str) -> StoreResult<ZeroingWords>;
 
-  /// Commit a set of changes to the store.
+  /// Check if a block exists.
   ///
-  /// After adding one or more blocks to the store every client has to
-  /// commit its changes. This will create an entry in the `change_log` so that
-  /// other clients will notice the new data blocks.
-  ///
-  fn commit(&self, changes: &[Change]) -> StoreResult<()>;
-
-  /// Update changelog of other nodes.
-  ///
-  /// This is intended for store synchronization only.
-  fn update_change_log(&self, change_log: ChangeLog) -> StoreResult<()>;
+  fn check_block(&self, block_id: &str) -> StoreResult<bool>;
 }
 
 pub fn open_block_store(url: &str, node_id: &str) -> StoreResult<Arc<dyn BlockStore>> {

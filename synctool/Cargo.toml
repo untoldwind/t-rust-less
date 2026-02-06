@@ -1,0 +1,8 @@
+[package]
+name = "t-rust-less-synctool"
+version.workspace = true
+authors = ["Untoldwind <landru@untoldwind.net>"]
+edition = "2021"
+
+[dependencies]
+t-rust-less-lib = { path = "../lib" }

@@ -1,9 +1,10 @@
 use byteorder::{ByteOrder, LittleEndian};
+use hashlink::LinkedHashMap;
 use log::{debug, info, warn};
 use std::{
   collections::HashMap,
   fs::{metadata, read_dir, File},
-  io::{self, BufRead, BufReader, Read, Seek, SeekFrom, Write},
+  io::{self, Read, Seek, SeekFrom, Write},
   path::{Path, PathBuf},
   sync::RwLock,
 };
@@ -13,9 +14,16 @@ use crate::memguard::weak::ZeroingWords;
 use super::{BlockStore, Change, ChangeLog, Operation, StoreError, StoreResult};
 
 #[derive(Debug)]
+struct WalFileRef {
+  node_id: String,
+  pos: u64,
+}
+
+#[derive(Debug)]
 pub struct LocalWalBlockStore {
   node_id: String,
   base_dir: RwLock<PathBuf>,
+  block_refs: RwLock<LinkedHashMap<String, WalFileRef>>,
 }
 
 impl LocalWalBlockStore {
@@ -30,9 +38,11 @@ impl LocalWalBlockStore {
       )))
     } else {
       info!("Opening local wal store on: {}", base_dir.to_string_lossy());
+      let block_refs = Self::scan_wal_files(&base_dir)?;
       Ok(LocalWalBlockStore {
         node_id: node_id.to_string(),
         base_dir: RwLock::new(base_dir),
+        block_refs: RwLock::new(block_refs),
       })
     }
   }
@@ -88,20 +98,47 @@ impl LocalWalBlockStore {
     Ok(ring_files)
   }
 
-  fn parse_change_log(node_id: &str, file: &File) -> StoreResult<ChangeLog> {
-    let reader = BufReader::new(file);
-    let mut change_log = ChangeLog::new(node_id);
+  fn scan_wal_files(base_dir: &Path) -> StoreResult<LinkedHashMap<String, WalFileRef>> {
+    let mut result = LinkedHashMap::new();
+    for maybe_entry in read_dir(base_dir)? {
+      let entry = maybe_entry?;
 
-    for maybe_line in reader.lines() {
-      let line = maybe_line?;
-      match line.split(' ').collect::<Vec<&str>>().as_slice() {
-        ["A", block] => change_log.changes.push(Change::new(Operation::Add, *block)),
-        ["D", block] => change_log.changes.push(Change::new(Operation::Delete, *block)),
-        _ => (),
+      if !entry.metadata()?.is_file() {
+        continue;
+      }
+      if let Some(file_name) = entry.file_name().to_str() {
+        if !file_name.ends_with(".blocks") {
+          continue;
+        }
+
+        let node_id = file_name.trim_end_matches(".blocks");
+
+        let mut block_file = File::options().read(true).open(entry.path())?;
+
+        let mut header = [0u8; 8];
+        let mut pos = 0u64;
+
+        while block_file.read_exact(&mut header).is_ok() {
+          let data_size = LittleEndian::read_u32(&header);
+          let blockid_size = LittleEndian::read_u32(&header[4..]);
+          let mut block_id = vec![0u8; blockid_size as usize];
+          block_file.read_exact(&mut block_id)?;
+          block_file.seek_relative(data_size as i64)?;
+
+          result.insert(
+            String::from_utf8(block_id).unwrap(),
+            WalFileRef {
+              node_id: node_id.to_string(),
+              pos,
+            },
+          );
+
+          pos += (data_size + blockid_size + 8) as u64;
+        }
       }
     }
 
-    Ok(change_log)
+    Ok(result)
   }
 }
 
@@ -150,22 +187,25 @@ impl BlockStore for LocalWalBlockStore {
 
   fn change_logs(&self) -> StoreResult<Vec<super::ChangeLog>> {
     debug!("Try retrieve change logs");
+    let mut changes_by_node = HashMap::new();
+    for (block_id, file_ref) in self.block_refs.read()?.iter() {
+      let changes: &mut Vec<Change> = match changes_by_node.get_mut(&file_ref.node_id) {
+        Some(change_log) => change_log,
+        _ => {
+          changes_by_node.insert(file_ref.node_id.to_string(), vec![]);
+          changes_by_node.get_mut(&file_ref.node_id).unwrap()
+        }
+      };
+      changes.push(Change {
+        op: Operation::Add,
+        block: block_id.to_string(),
+      });
+    }
+
     let mut change_logs: Vec<ChangeLog> = vec![];
 
-    for maybe_entry in read_dir(self.base_dir.read()?.as_path())? {
-      let entry = maybe_entry?;
-
-      if !entry.metadata()?.is_file() {
-        continue;
-      }
-      if let Some(file_name) = entry.file_name().to_str() {
-        if !file_name.ends_with(".commits") {
-          continue;
-        }
-        let file = File::open(entry.path())?;
-
-        change_logs.push(Self::parse_change_log(file_name.trim_end_matches(".commits"), &file)?);
-      }
+    for (node, changes) in changes_by_node.into_iter() {
+      change_logs.push(ChangeLog { node, changes });
     }
 
     Ok(change_logs)
@@ -189,87 +229,67 @@ impl BlockStore for LocalWalBlockStore {
     Ok(())
   }
 
-  fn add_block(&self, raw: &[u8]) -> StoreResult<String> {
-    let base_dir = self.base_dir.write()?;
-    let block_file_path = base_dir.join(format!("{}.blocks", self.node_id));
+  fn insert_block(&self, block_id: &str, node_id: &str, raw: &[u8]) -> StoreResult<()> {
+    if self.block_refs.read()?.contains_key(block_id) {
+      return Err(StoreError::Conflict(block_id.to_string()));
+    }
 
-    let block_id = match metadata(&block_file_path) {
-      Ok(metadata) => format!("{}:{}", self.node_id, metadata.len()),
-      Err(ref err) if err.kind() == io::ErrorKind::NotFound => format!("{}:0", self.node_id),
+    let base_dir = self.base_dir.write()?;
+    let block_file_path = base_dir.join(format!("{}.blocks", node_id));
+
+    let pos = match metadata(&block_file_path) {
+      Ok(metadata) => metadata.len(),
+      Err(ref err) if err.kind() == io::ErrorKind::NotFound => 0,
       Err(err) => return Err(err.into()),
     };
 
     let mut block_file = File::options().create(true).append(true).open(block_file_path)?;
 
-    let mut chunk_size = [0u8; 8];
-    LittleEndian::write_u64(&mut chunk_size, raw.len() as u64);
-    block_file.write_all(&chunk_size)?;
+    let raw_block_id = block_id.as_bytes();
+    let mut header = [0u8; 8];
+    LittleEndian::write_u32(&mut header, raw.len() as u32);
+    LittleEndian::write_u32(&mut header[4..], raw_block_id.len() as u32);
+    block_file.write_all(&header)?;
+    block_file.write_all(raw_block_id)?;
     block_file.write_all(raw)?;
     block_file.flush()?;
     block_file.sync_all()?;
 
-    Ok(block_id)
+    self.block_refs.write()?.insert(
+      block_id.to_string(),
+      WalFileRef {
+        node_id: self.node_id.to_string(),
+        pos,
+      },
+    );
+
+    Ok(())
   }
 
-  fn get_block(&self, block: &str) -> StoreResult<crate::memguard::weak::ZeroingWords> {
+  fn get_block(&self, block_id: &str) -> StoreResult<crate::memguard::weak::ZeroingWords> {
     let base_dir = self.base_dir.read()?;
-    let (node_id, offset) = block
-      .split_once(':')
-      .ok_or_else(|| StoreError::InvalidBlock(block.to_string()))?;
-    let offset = offset
-      .parse::<u64>()
-      .map_err(|_| StoreError::InvalidBlock(block.to_string()))?;
+    let (file_path, offset) = match self.block_refs.read()?.get(block_id) {
+      Some(WalFileRef { node_id, pos, .. }) => (base_dir.join(format!("{node_id}.blocks")), *pos),
+      _ => return Err(StoreError::InvalidBlock(block_id.to_string())),
+    };
 
-    let mut block_file = File::open(base_dir.join(format!("{node_id}.blocks")))?;
+    let mut block_file = File::open(file_path)?;
     block_file.seek(SeekFrom::Start(offset))?;
-    let mut chunk_size = [0u8; 8];
-    block_file.read_exact(&mut chunk_size)?;
-    let chunk_size = LittleEndian::read_u64(&chunk_size) as usize;
-    let mut content: ZeroingWords = ZeroingWords::allocate_zeroed_vec(chunk_size / 8);
+    let mut header = [0u8; 8];
+    block_file.read_exact(&mut header)?;
+    let data_size = LittleEndian::read_u32(&header) as usize;
+    if !data_size.is_multiple_of(8) {
+      warn!("Data length not aligned to 8 bytes. Probably this is not the file you are looking for.");
+    }
+    let block_id_size = LittleEndian::read_u32(&header[4..]) as i64;
+    block_file.seek_relative(block_id_size)?;
+    let mut content: ZeroingWords = ZeroingWords::allocate_zeroed_vec(data_size / 8);
     block_file.read_exact(&mut content)?;
 
     Ok(content)
   }
 
-  fn commit(&self, changes: &[super::Change]) -> StoreResult<()> {
-    let base_dir = self.base_dir.write()?;
-    let mut log_file = File::options()
-      .create(true)
-      .write(true)
-      .read(true)
-      .truncate(false)
-      .open(base_dir.join(format!("{}.commits", self.node_id)))?;
-    let existing = Self::parse_change_log(&self.node_id, &log_file)?;
-    log_file.seek(SeekFrom::End(0))?;
-
-    if existing.changes.iter().any(|change| changes.contains(change)) {
-      return Err(StoreError::Conflict("Change already committed".to_string()));
-    }
-    for change in changes {
-      match change.op {
-        Operation::Add => writeln!(log_file, "A {}", change.block)?,
-        Operation::Delete => writeln!(log_file, "D {}", change.block)?,
-      }
-    }
-    log_file.flush()?;
-    log_file.sync_all()?;
-
-    Ok(())
-  }
-
-  fn update_change_log(&self, change_log: super::ChangeLog) -> StoreResult<()> {
-    let base_dir = self.base_dir.write()?;
-    let mut change_log_file = File::create(base_dir.join(format!("{}.commits", self.node_id)))?;
-
-    for change in change_log.changes {
-      match change.op {
-        Operation::Add => writeln!(change_log_file, "A {}", change.block)?,
-        Operation::Delete => writeln!(change_log_file, "D {}", change.block)?,
-      }
-    }
-    change_log_file.flush()?;
-    change_log_file.sync_all()?;
-
-    Ok(())
+  fn check_block(&self, block_id: &str) -> StoreResult<bool> {
+    Ok(self.block_refs.read()?.contains_key(block_id))
   }
 }

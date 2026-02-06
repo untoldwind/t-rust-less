@@ -1,10 +1,10 @@
 use std::{collections::HashMap, path::Path};
 
-use sled::transaction::ConflictableTransactionError;
+use sled::transaction::{ConflictableTransactionError, Transactional};
 
-use crate::memguard::weak::ZeroingWords;
+use crate::{block_store::Operation, memguard::weak::ZeroingWords};
 
-use super::{generate_block_id, BlockStore, Change, ChangeLog, RingContent, RingId, StoreError, StoreResult};
+use super::{BlockStore, Change, ChangeLog, RingContent, RingId, StoreError, StoreResult};
 
 #[derive(Debug)]
 pub struct SledBlockStore {
@@ -131,51 +131,53 @@ impl BlockStore for SledBlockStore {
     Ok(())
   }
 
-  fn add_block(&self, raw: &[u8]) -> StoreResult<String> {
-    let block_id = generate_block_id(raw);
-    self.blocks.insert(&block_id, raw)?;
-    self.blocks.flush()?;
-    Ok(block_id)
-  }
-
-  fn get_block(&self, block: &str) -> StoreResult<ZeroingWords> {
-    self
-      .blocks
-      .get(block)?
-      .map(|ring| ring.as_ref().into())
-      .ok_or_else(|| StoreError::InvalidBlock(block.to_string()))
-  }
-
-  fn commit(&self, changes: &[Change]) -> StoreResult<()> {
-    self.change_logs.transaction::<_, _, StoreError>(|tx| {
-      let new_changes = match tx.get(&self.node_id)? {
+  fn insert_block(&self, block_id: &str, node_id: &str, raw: &[u8]) -> StoreResult<()> {
+    (&self.blocks, &self.change_logs).transaction(|(blocks, change_logs)| {
+      let existing_block = blocks.insert(block_id, raw)?;
+      if existing_block.is_some() {
+        return Err(ConflictableTransactionError::Abort(StoreError::Conflict(
+          block_id.to_string(),
+        )));
+      }
+      let change = Change {
+        op: Operation::Add,
+        block: block_id.to_string(),
+      };
+      let new_changes = match change_logs.get(node_id)? {
         Some(existing_raw) => {
           let mut existing: Vec<Change> = rmp_serde::from_read(existing_raw.as_ref())
             .map_err(|e| ConflictableTransactionError::Abort(StoreError::from(e)))?;
-          if existing.iter().any(|change| changes.contains(change)) {
+          if existing.contains(&change) {
             return Err(ConflictableTransactionError::Abort(StoreError::Conflict(
               "Change already committed".to_string(),
             )));
           }
-          existing.extend_from_slice(changes);
+          existing.push(change);
           existing
         }
-        None => changes.to_vec(),
+        None => vec![change],
       };
       let raw =
         rmp_serde::to_vec_named(&new_changes).map_err(|e| ConflictableTransactionError::Abort(StoreError::from(e)))?;
-      tx.insert(self.node_id.as_str(), raw)?;
+      change_logs.insert(self.node_id.as_str(), raw)?;
+
+      blocks.flush();
+      change_logs.flush();
+
       Ok(())
     })?;
-    self.change_logs.flush()?;
     Ok(())
   }
 
-  fn update_change_log(&self, change_log: ChangeLog) -> StoreResult<()> {
-    let raw = rmp_serde::to_vec_named(&change_log.changes)?;
-    self.change_logs.insert(change_log.node.as_str(), raw)?;
-    self.change_logs.flush()?;
+  fn get_block(&self, block_id: &str) -> StoreResult<ZeroingWords> {
+    self
+      .blocks
+      .get(block_id)?
+      .map(|ring| ring.as_ref().into())
+      .ok_or_else(|| StoreError::InvalidBlock(block_id.to_string()))
+  }
 
-    Ok(())
+  fn check_block(&self, block_id: &str) -> StoreResult<bool> {
+    Ok(self.blocks.contains_key(block_id)?)
   }
 }

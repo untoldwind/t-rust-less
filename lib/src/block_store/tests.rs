@@ -1,12 +1,70 @@
 use super::{open_block_store, BlockStore, RingId, StoreError};
 use crate::block_store::model::Operation;
-use crate::block_store::{Change, ChangeLog};
+use crate::block_store::{Change, ChangeLog, RingContent, StoreResult};
 use crate::memguard::weak::ZeroingWords;
+use data_encoding::HEXLOWER;
 use rand::rngs::ThreadRng;
 use rand::{distributions, thread_rng, Rng};
 use spectral::prelude::*;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tempfile::Builder;
+
+struct ExpectedState {
+  rings: HashMap<String, RingContent>,
+  change_logs: HashMap<String, Vec<Change>>,
+  blocks: HashMap<String, ZeroingWords>,
+}
+
+impl ExpectedState {
+  fn from_store(store: Arc<dyn BlockStore>) -> StoreResult<Self> {
+    let mut rings = HashMap::new();
+    for ring_id in store.list_ring_ids()? {
+      let content = store.get_ring(&ring_id.0)?;
+      rings.insert(ring_id.0, content);
+    }
+    let mut blocks = HashMap::new();
+    let mut change_logs = HashMap::new();
+    for change_log in store.change_logs()? {
+      for change in &change_log.changes {
+        if change.op == Operation::Add {
+          blocks.insert(change.block.clone(), store.get_block(&change.block)?);
+        }
+      }
+      change_logs.insert(change_log.node, change_log.changes);
+    }
+
+    Ok(ExpectedState {
+      rings,
+      change_logs,
+      blocks,
+    })
+  }
+
+  fn test(self, actual: Arc<dyn BlockStore>) {
+    for (ring_id, expected) in self.rings {
+      assert_that!(actual.get_ring(&ring_id)).is_ok_containing(expected);
+    }
+    for (block_id, expected) in self.blocks {
+      assert_that!(actual.get_block(&block_id)).is_ok_containing(expected);
+    }
+    let mut actual_change_logs = HashMap::new();
+    for change_log in actual.change_logs().unwrap() {
+      actual_change_logs.insert(change_log.node, change_log.changes);
+    }
+    assert_that!(actual_change_logs).is_equal_to(self.change_logs);
+  }
+}
+
+fn common_persistent_store_tests(url: &str) {
+  let store = open_block_store(url, "node1").unwrap();
+
+  common_store_tests(store.clone());
+
+  let expected = ExpectedState::from_store(store).unwrap();
+  let reopened = open_block_store(url, "node1").unwrap();
+  expected.test(reopened);
+}
 
 fn common_store_tests(store: Arc<dyn BlockStore>) {
   let mut rng = thread_rng();
@@ -107,7 +165,11 @@ fn common_test_index(store: &dyn BlockStore, rng: &mut ThreadRng) {
 }
 
 fn common_test_blocks_commits(store: &dyn BlockStore, rng: &mut ThreadRng) {
+  let my_node_id = store.node_id();
+
   assert_that(&store.get_block("00000000000")).is_err_containing(StoreError::InvalidBlock("00000000000".to_string()));
+
+  let non_existent = "does-not-exists";
 
   let block1 = rng
     .sample_iter(distributions::Standard)
@@ -122,9 +184,23 @@ fn common_test_blocks_commits(store: &dyn BlockStore, rng: &mut ThreadRng) {
     .take(200 * 8)
     .collect::<Vec<u8>>();
 
+  let block3_id = HEXLOWER.encode(&rng.sample_iter(distributions::Standard).take(32).collect::<Vec<u8>>());
+
   let block1_id = store.add_block(&block1).unwrap();
   let block2_id = store.add_block(&block2).unwrap();
-  let block3_id = store.add_block(&block3).unwrap();
+  store.insert_block(&block3_id, &my_node_id, &block3).unwrap();
+
+  assert_that!(store.insert_block(&block1_id, &my_node_id, &block1))
+    .is_err_containing(StoreError::Conflict(block1_id.to_string()));
+  assert_that!(store.insert_block(&block2_id, &my_node_id, &block2))
+    .is_err_containing(StoreError::Conflict(block2_id.to_string()));
+  assert_that!(store.insert_block(&block3_id, &my_node_id, &block3))
+    .is_err_containing(StoreError::Conflict(block3_id.to_string()));
+
+  assert_that!(store.check_block(&block1_id)).is_ok_containing(true);
+  assert_that!(store.check_block(&block2_id)).is_ok_containing(true);
+  assert_that!(store.check_block(&block3_id)).is_ok_containing(true);
+  assert_that!(store.check_block(&non_existent)).is_ok_containing(false);
 
   assert_that!(&block1_id).is_not_equal_to(&block2_id);
   assert_that!(&block1_id).is_not_equal_to(&block3_id);
@@ -134,50 +210,8 @@ fn common_test_blocks_commits(store: &dyn BlockStore, rng: &mut ThreadRng) {
   assert_that!(store.get_block(&block2_id)).is_ok_containing(ZeroingWords::from(block2.as_ref()));
   assert_that!(store.get_block(&block3_id)).is_ok_containing(ZeroingWords::from(block3.as_ref()));
 
-  assert_that!(store.commit(&[
-    Change {
-      op: Operation::Add,
-      block: block1_id.clone(),
-    },
-    Change {
-      op: Operation::Add,
-      block: block2_id.clone(),
-    },
-  ]))
-  .is_ok();
-
-  assert_that!(store.change_logs()).is_ok_containing(vec![ChangeLog {
-    node: store.node_id().to_string(),
-    changes: vec![
-      Change {
-        op: Operation::Add,
-        block: block1_id.clone(),
-      },
-      Change {
-        op: Operation::Add,
-        block: block2_id.clone(),
-      },
-    ],
-  }]);
-
-  assert_that(&store.commit(&[Change {
-    op: Operation::Add,
-    block: block2_id.clone(),
-  }]))
-  .is_err()
-  .matches(|error| match error {
-    StoreError::Conflict(_) => true,
-    _ => false,
-  });
-
-  assert_that(&store.commit(&[Change {
-    op: Operation::Add,
-    block: block3_id.clone(),
-  }]))
-  .is_ok();
-
   assert_that(&store.change_logs()).is_ok_containing(vec![ChangeLog {
-    node: store.node_id().to_string(),
+    node: my_node_id.to_string(),
     changes: vec![
       Change {
         op: Operation::Add,
@@ -203,9 +237,7 @@ fn test_local_dir_store() {
   #[cfg(windows)]
   let url = format!("file:///{}", tempdir.path().to_string_lossy().replace('\\', "/"));
 
-  let store = open_block_store(&url, "node1").unwrap();
-
-  common_store_tests(store);
+  common_persistent_store_tests(&url);
 }
 
 #[test]
@@ -223,9 +255,7 @@ fn test_local_wal_store() {
   #[cfg(windows)]
   let url = format!("wal:///{}", tempdir.path().to_string_lossy().replace('\\', "/"));
 
-  let store = open_block_store(&url, "node1").unwrap();
-
-  common_store_tests(store);
+  common_persistent_store_tests(&url);
 }
 
 #[cfg(feature = "sled")]
@@ -237,7 +267,5 @@ fn test_sled_store() {
   #[cfg(windows)]
   let url = format!("sled:///{}", tempdir.path().to_string_lossy().replace('\\', "/"));
 
-  let store = open_block_store(url.as_str(), "node1").unwrap();
-
-  common_store_tests(store);
+  common_persistent_store_tests(&url);
 }

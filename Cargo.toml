@@ -1,5 +1,5 @@
 [workspace]
-members = ["lib", "cli", "daemon", "native", "experiments"]
+members = ["lib", "cli", "daemon", "native", "synctool", "experiments"]
 resolver = "2"
 
 [workspace.package]

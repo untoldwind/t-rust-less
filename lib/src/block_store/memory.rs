@@ -1,7 +1,8 @@
 use std::collections::{btree_map, BTreeMap, HashMap};
 use std::sync::RwLock;
 
-use super::{generate_block_id, BlockStore, Change, ChangeLog, RingContent, RingId, StoreError, StoreResult};
+use super::{BlockStore, Change, ChangeLog, RingContent, RingId, StoreError, StoreResult};
+use crate::block_store::Operation;
 use crate::memguard::weak::ZeroingWords;
 
 /// Memory based reference implementation of a block store.
@@ -27,6 +28,25 @@ impl MemoryBlockStore {
       blocks: RwLock::new(HashMap::new()),
       changes: RwLock::new(HashMap::new()),
     }
+  }
+}
+
+impl MemoryBlockStore {
+  fn commit(&self, node_id: &str, changes: &[Change]) -> StoreResult<()> {
+    let mut stored_changes = self.changes.write()?;
+
+    match stored_changes.get_mut(node_id) {
+      Some(existing) => {
+        if existing.iter().any(|change| changes.contains(change)) {
+          return Err(StoreError::Conflict("Change already committed".to_string()));
+        }
+        existing.extend_from_slice(changes);
+      }
+      None => {
+        stored_changes.insert(self.node_id.to_string(), changes.to_vec());
+      }
+    }
+    Ok(())
   }
 }
 
@@ -97,45 +117,38 @@ impl BlockStore for MemoryBlockStore {
     Ok(())
   }
 
-  fn add_block(&self, raw: &[u8]) -> StoreResult<String> {
-    let block_id = generate_block_id(raw);
+  fn insert_block(&self, block_id: &str, node_id: &str, raw: &[u8]) -> StoreResult<()> {
+    if self.check_block(block_id)? {
+      return Err(StoreError::Conflict(block_id.to_string()));
+    }
+
     let mut blocks = self.blocks.write()?;
 
-    blocks.insert(block_id.clone(), raw.into());
-    Ok(block_id)
+    blocks.insert(block_id.to_string(), raw.into());
+
+    self.commit(
+      node_id,
+      &[Change {
+        op: Operation::Add,
+        block: block_id.to_string(),
+      }],
+    )?;
+
+    Ok(())
   }
 
-  fn get_block(&self, block: &str) -> StoreResult<ZeroingWords> {
+  fn get_block(&self, block_id: &str) -> StoreResult<ZeroingWords> {
     let blocks = self.blocks.read()?;
 
     blocks
-      .get(block)
+      .get(block_id)
       .cloned()
-      .ok_or_else(|| StoreError::InvalidBlock(block.to_string()))
+      .ok_or_else(|| StoreError::InvalidBlock(block_id.to_string()))
   }
 
-  fn commit(&self, changes: &[Change]) -> StoreResult<()> {
-    let mut stored_changes = self.changes.write()?;
+  fn check_block(&self, block_id: &str) -> StoreResult<bool> {
+    let blocks = self.blocks.read()?;
 
-    match stored_changes.get_mut(&self.node_id) {
-      Some(existing) => {
-        if existing.iter().any(|change| changes.contains(change)) {
-          return Err(StoreError::Conflict("Change already committed".to_string()));
-        }
-        existing.extend_from_slice(changes);
-      }
-      None => {
-        stored_changes.insert(self.node_id.to_string(), changes.to_vec());
-      }
-    }
-    Ok(())
-  }
-
-  fn update_change_log(&self, change_log: ChangeLog) -> StoreResult<()> {
-    let mut stored_changes = self.changes.write()?;
-
-    stored_changes.insert(change_log.node, change_log.changes);
-
-    Ok(())
+    Ok(blocks.contains_key(block_id))
   }
 }

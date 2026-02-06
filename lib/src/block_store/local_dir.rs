@@ -1,11 +1,9 @@
-use super::{
-  generate_block_id, BlockStore, Change, ChangeLog, Operation, RingContent, RingId, StoreError, StoreResult,
-};
+use super::{BlockStore, Change, ChangeLog, Operation, RingContent, RingId, StoreError, StoreResult};
 use crate::memguard::weak::ZeroingWords;
 use log::warn;
 use log::{debug, info};
 use std::collections::HashMap;
-use std::fs::{metadata, read_dir, DirBuilder, File, OpenOptions};
+use std::fs::{exists, metadata, read_dir, DirBuilder, File, OpenOptions};
 use std::io::prelude::*;
 use std::io::{self, BufReader, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
@@ -120,6 +118,33 @@ impl LocalDirBlockStore {
       Err(err) => Err(err.into()),
     }
   }
+
+  fn commit(&self, node_id: &str, changes: &[Change]) -> StoreResult<()> {
+    let base_dir = self.base_dir.write()?;
+    DirBuilder::new().recursive(true).create(base_dir.join("logs"))?;
+    let mut log_file = OpenOptions::new()
+      .create(true)
+      .write(true)
+      .read(true)
+      .truncate(false)
+      .open(base_dir.join("logs").join(node_id))?;
+    let existing = Self::parse_change_log(node_id, &log_file)?;
+    log_file.seek(SeekFrom::End(0))?;
+
+    if existing.changes.iter().any(|change| changes.contains(change)) {
+      return Err(StoreError::Conflict("Change already committed".to_string()));
+    }
+    for change in changes {
+      match change.op {
+        Operation::Add => writeln!(log_file, "A {}", change.block)?,
+        Operation::Delete => writeln!(log_file, "D {}", change.block)?,
+      }
+    }
+    log_file.flush()?;
+    log_file.sync_all()?;
+
+    Ok(())
+  }
 }
 
 impl BlockStore for LocalDirBlockStore {
@@ -212,74 +237,47 @@ impl BlockStore for LocalDirBlockStore {
     Ok(())
   }
 
-  fn add_block(&self, raw: &[u8]) -> StoreResult<String> {
-    let base_dir = self.base_dir.write()?;
-    let block_id = generate_block_id(raw);
-    let block_file_path = Self::block_file(&base_dir, &block_id)?;
+  fn insert_block(&self, block_id: &str, node_id: &str, raw: &[u8]) -> StoreResult<()> {
+    {
+      let base_dir = self.base_dir.write()?;
+      let block_file_path = Self::block_file(&base_dir, block_id)?;
 
-    DirBuilder::new()
-      .recursive(true)
-      .create(block_file_path.parent().unwrap())?;
-    let mut block_file = File::create(block_file_path)?;
+      if exists(&block_file_path)? {
+        return Err(StoreError::Conflict(block_id.to_string()));
+      }
 
-    block_file.write_all(raw)?;
-    block_file.flush()?;
-    block_file.sync_all()?;
+      DirBuilder::new()
+        .recursive(true)
+        .create(block_file_path.parent().unwrap())?;
+      let mut block_file = File::create(block_file_path)?;
 
-    Ok(block_id)
+      block_file.write_all(raw)?;
+      block_file.flush()?;
+      block_file.sync_all()?;
+    }
+
+    self.commit(
+      node_id,
+      &[Change {
+        op: Operation::Add,
+        block: block_id.to_string(),
+      }],
+    )?;
+
+    Ok(())
   }
 
-  fn get_block(&self, block: &str) -> StoreResult<ZeroingWords> {
+  fn get_block(&self, block_id: &str) -> StoreResult<ZeroingWords> {
     let base_dir = self.base_dir.read()?;
-    let block_file_path = Self::block_file(&base_dir, block)?;
+    let block_file_path = Self::block_file(&base_dir, block_id)?;
 
-    Self::read_optional_file(block_file_path)?.ok_or_else(|| StoreError::InvalidBlock(block.to_string()))
+    Self::read_optional_file(block_file_path)?.ok_or_else(|| StoreError::InvalidBlock(block_id.to_string()))
   }
 
-  fn commit(&self, changes: &[Change]) -> StoreResult<()> {
-    let base_dir = self.base_dir.write()?;
-    DirBuilder::new().recursive(true).create(base_dir.join("logs"))?;
-    let mut log_file = OpenOptions::new()
-      .create(true)
-      .write(true)
-      .read(true)
-      .truncate(false)
-      .open(base_dir.join("logs").join(&self.node_id))?;
-    let existing = Self::parse_change_log(&self.node_id, &log_file)?;
-    log_file.seek(SeekFrom::End(0))?;
+  fn check_block(&self, block_id: &str) -> StoreResult<bool> {
+    let base_dir = self.base_dir.read()?;
+    let block_file_path = Self::block_file(&base_dir, block_id)?;
 
-    if existing.changes.iter().any(|change| changes.contains(change)) {
-      return Err(StoreError::Conflict("Change already committed".to_string()));
-    }
-    for change in changes {
-      match change.op {
-        Operation::Add => writeln!(log_file, "A {}", change.block)?,
-        Operation::Delete => writeln!(log_file, "D {}", change.block)?,
-      }
-    }
-    log_file.flush()?;
-    log_file.sync_all()?;
-
-    Ok(())
-  }
-
-  fn update_change_log(&self, change_log: ChangeLog) -> StoreResult<()> {
-    let base_dir = self.base_dir.write()?;
-    let change_log_file_path = base_dir.join("logs").join(&change_log.node);
-    DirBuilder::new()
-      .recursive(true)
-      .create(change_log_file_path.parent().unwrap())?;
-    let mut change_log_file = File::create(change_log_file_path)?;
-
-    for change in change_log.changes {
-      match change.op {
-        Operation::Add => writeln!(change_log_file, "A {}", change.block)?,
-        Operation::Delete => writeln!(change_log_file, "D {}", change.block)?,
-      }
-    }
-    change_log_file.flush()?;
-    change_log_file.sync_all()?;
-
-    Ok(())
+    Ok(exists(block_file_path)?)
   }
 }
