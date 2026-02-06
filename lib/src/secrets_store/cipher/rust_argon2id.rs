@@ -50,6 +50,7 @@ impl KeyDerivation for RustArgon2id {
     let config = Config {
       ad: &[],
       hash_length: key_length as u32,
+      thread_mode: argon2::ThreadMode::Sequential,
       lanes: p.lanes,
       mem_cost: p.mem_cost,
       secret: &[],
