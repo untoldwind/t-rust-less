@@ -288,7 +288,7 @@ fn identity_capnp_serialization() {
   fn check_serialize(identity: Identity) -> bool {
     let mut buf = ZeroizeBytesBuffer::with_capacity(8192);
     rmp_serde::encode::write_named(&mut buf, &identity).unwrap();
-    let deserialized: Identity = rmp_serde::from_read_ref(&buf).unwrap();
+    let deserialized: Identity = rmp_serde::from_slice(&buf).unwrap();
 
     identity == deserialized
   }
@@ -301,7 +301,7 @@ fn status_capnp_serialization() {
   fn check_serialize(status: Status) -> bool {
     let mut buf = ZeroizeBytesBuffer::with_capacity(8192);
     rmp_serde::encode::write_named(&mut buf, &status).unwrap();
-    let deserialized: Status = rmp_serde::from_read_ref(&buf).unwrap();
+    let deserialized: Status = rmp_serde::from_slice(&buf).unwrap();
 
     status == deserialized
   }
@@ -314,7 +314,7 @@ fn secret_list_filter_capnp_serialization() {
   fn check_serialize(filter: SecretListFilter) -> bool {
     let mut buf = ZeroizeBytesBuffer::with_capacity(8192);
     rmp_serde::encode::write_named(&mut buf, &filter).unwrap();
-    let deserialized: SecretListFilter = rmp_serde::from_read_ref(&buf).unwrap();
+    let deserialized: SecretListFilter = rmp_serde::from_slice(&buf).unwrap();
 
     filter == deserialized
   }
@@ -327,7 +327,7 @@ fn secret_list_capnp_serialization() {
   fn check_serialize(list: SecretList) -> bool {
     let mut buf = ZeroizeBytesBuffer::with_capacity(8192);
     rmp_serde::encode::write_named(&mut buf, &list).unwrap();
-    let deserialized: SecretList = rmp_serde::from_read_ref(&buf).unwrap();
+    let deserialized: SecretList = rmp_serde::from_slice(&buf).unwrap();
 
     list == deserialized
   }
@@ -340,7 +340,7 @@ fn secret_version_capnp_serialization() {
   fn check_serialize(secret_version: SecretVersion) -> bool {
     let mut buf = ZeroizeBytesBuffer::with_capacity(8192);
     rmp_serde::encode::write_named(&mut buf, &secret_version).unwrap();
-    let deserialized: SecretVersion = rmp_serde::from_read_ref(&buf).unwrap();
+    let deserialized: SecretVersion = rmp_serde::from_slice(&buf).unwrap();
 
     secret_version == deserialized
   }
@@ -353,7 +353,7 @@ fn password_strength_capnp_serialization() {
   fn check_serialize(password_strength: PasswordStrength) -> bool {
     let mut buf = ZeroizeBytesBuffer::with_capacity(8192);
     rmp_serde::encode::write_named(&mut buf, &password_strength).unwrap();
-    let deserialized: PasswordStrength = rmp_serde::from_read_ref(&buf).unwrap();
+    let deserialized: PasswordStrength = rmp_serde::from_slice(&buf).unwrap();
 
     password_strength == deserialized
   }
@@ -366,7 +366,7 @@ fn secret_capnp_serialization() {
   fn check_serialize(secret: Secret) -> bool {
     let mut buf = ZeroizeBytesBuffer::with_capacity(8192);
     rmp_serde::encode::write_named(&mut buf, &secret).unwrap();
-    let deserialized: Secret = rmp_serde::from_read_ref(&buf).unwrap();
+    let deserialized: Secret = rmp_serde::from_slice(&buf).unwrap();
 
     secret == deserialized
   }
@@ -379,7 +379,7 @@ fn command_serialization() {
   fn check_serialize(command: Command) -> bool {
     let mut buf = ZeroizeBytesBuffer::with_capacity(8192);
     rmp_serde::encode::write_named(&mut buf, &command).unwrap();
-    let deserialized: Command = rmp_serde::from_read_ref(&buf).unwrap();
+    let deserialized: Command = rmp_serde::from_slice(&buf).unwrap();
 
     command == deserialized
   }

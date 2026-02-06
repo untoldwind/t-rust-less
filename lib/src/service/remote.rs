@@ -38,7 +38,7 @@ where
 
   reader.read_exact(&mut buf)?;
 
-  Ok(rmp_serde::from_read_ref(buf.as_slice())?)
+  Ok(rmp_serde::from_slice(buf.as_slice())?)
 }
 
 fn send_recv<'a, S, E>(stream: &'a Arc<Mutex<S>>, command: Command) -> Result<CommandResult, E>

@@ -39,7 +39,7 @@ impl SecretWords {
   /// the original bytes are zeroed out (or are already in some secured memspace.
   /// This different signature should be a reminder of that.
   pub fn from_secured(bytes: &[u8]) -> Self {
-    if bytes.len() % 8 != 0 {
+    if !bytes.len().is_multiple_of(8) {
       warn!("Bytes not aligned to 8 bytes. Probably these are not the bytes you are looking for.");
     }
     unsafe {
@@ -198,7 +198,7 @@ impl Clone for SecretWords {
 
 impl From<&mut [u8]> for SecretWords {
   fn from(bytes: &mut [u8]) -> Self {
-    if bytes.len() % 8 != 0 {
+    if !bytes.len().is_multiple_of(8) {
       warn!("Bytes not aligned to 8 bytes. Probably these are not the bytes you are looking for.");
     }
     unsafe {
@@ -240,7 +240,7 @@ impl From<&mut [Word]> for SecretWords {
 
 impl From<Vec<u8>> for SecretWords {
   fn from(mut bytes: Vec<u8>) -> Self {
-    if bytes.len() % 8 != 0 {
+    if !bytes.len().is_multiple_of(8) {
       warn!("Bytes not aligned to 8 bytes. Probably these are not the bytes you are looking for.");
     }
     unsafe {

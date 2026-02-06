@@ -55,7 +55,7 @@ impl DerefMut for ZeroingWords {
 
 impl From<&[u8]> for ZeroingWords {
   fn from(bytes: &[u8]) -> Self {
-    if bytes.len() % 8 != 0 {
+    if !bytes.len().is_multiple_of(8) {
       warn!("Bytes not aligned to 8 bytes. Probably these are not the bytes you are looking for.");
     }
     let len = bytes.len() / 8;

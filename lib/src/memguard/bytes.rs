@@ -656,7 +656,7 @@ mod tests {
 
     rmp_serde::encode::write_named(&mut buffer, &random).unwrap();
 
-    let deserialized: SecretBytes = rmp_serde::from_read_ref(&buffer).unwrap();
+    let deserialized: SecretBytes = rmp_serde::from_slice(&buffer).unwrap();
 
     assert_that(&deserialized).is_equal_to(&random);
   }

@@ -36,7 +36,7 @@ impl Processor {
 
     rd.read_exact(&mut buf).await?;
 
-    Ok(Some(rmp_serde::from_read_ref(buf.as_slice())?))
+    Ok(Some(rmp_serde::from_slice(buf.as_slice())?))
   }
 
   pub async fn process_command<W>(&mut self, wr: &mut W, command: Command) -> Result<(), Box<dyn Error>>

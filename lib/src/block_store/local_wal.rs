@@ -42,7 +42,7 @@ impl LocalWalBlockStore {
     match File::open(path) {
       Ok(mut file) => {
         let file_len = file.metadata()?.len() as usize;
-        if file_len % 8 != 0 {
+        if !file_len.is_multiple_of(8) {
           warn!("File length not aligned to 8 bytes. Probably this is not the file you are looking for.");
         }
         let mut content: ZeroingWords = ZeroingWords::allocate_zeroed_vec(file_len / 8);
