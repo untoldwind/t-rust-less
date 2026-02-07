@@ -1,4 +1,5 @@
 use crate::processor::Processor;
+use anyhow::Result;
 use futures::future;
 use log::{error, info};
 use std::error::Error;
@@ -11,7 +12,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::UnixListener;
 use tokio::signal;
 
-pub async fn run_server(service: Arc<LocalTrustlessService<LocalConfigProvider>>) -> Result<(), Box<dyn Error>> {
+pub async fn run_server(service: Arc<LocalTrustlessService<LocalConfigProvider>>) -> Result<()> {
   let socket_path = daemon_socket_path();
 
   info!("Listening on socket {}", socket_path.to_string_lossy());

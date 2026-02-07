@@ -14,11 +14,12 @@ mod windows;
 #[cfg(windows)]
 use windows::run_server;
 
-use std::{error::Error, sync::Arc};
+use anyhow::Result;
+use std::sync::Arc;
 use t_rust_less_lib::service::{config::LocalConfigProvider, local::LocalTrustlessService, TrustlessService};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<()> {
   let args = cli::Args::parse();
 
   #[cfg(not(unix))]

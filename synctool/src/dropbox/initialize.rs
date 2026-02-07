@@ -11,7 +11,8 @@ use log::error;
 use tiny_http::{Header, Response, Server};
 use url::Url;
 
-use crate::block_store::{dropbox::APP_KEY, StoreError, StoreResult};
+use super::APP_KEY;
+use crate::error::{SyncError, SyncResult};
 
 const REDIRECT_URL: &str = "http://127.0.0.1:9898";
 
@@ -35,25 +36,25 @@ pub struct ServerHandle {
 }
 
 impl ServerHandle {
-  fn wait_for_auth_code(&mut self) -> StoreResult<String> {
+  fn wait_for_auth_code(&mut self) -> SyncResult<String> {
     let join_handle = match self.join_handle.take() {
       Some(join_handle) => join_handle,
-      None => return Err(StoreError::IO("Already waiting".to_string())),
+      None => return Err(SyncError::Generic("Already waiting".to_string())),
     };
     match join_handle.join() {
       Ok(Ok(authcode_url)) => Ok(
         Url::parse(&authcode_url)?
           .query_pairs()
           .find_map(|(key, value)| if key == "code" { Some(value.to_string()) } else { None })
-          .ok_or_else(|| StoreError::IO("auth url does not contain code".to_string()))?,
+          .ok_or_else(|| SyncError::Generic("auth url does not contain code".to_string()))?,
       ),
       Ok(Err(err)) => {
         error!("Failed receiving dropbox authcode {err}");
-        Err(StoreError::IO(err))
+        Err(SyncError::Generic(err))
       }
       Err(err) => {
         error!("Failed receiving dropbox authcode {err:?}");
-        Err(StoreError::IO(format!("{err:?}")))
+        Err(SyncError::Generic(format!("{err:?}")))
       }
     }
   }
@@ -73,7 +74,7 @@ pub struct DropboxInitializer {
 }
 
 impl DropboxInitializer {
-  pub fn wait_for_authentication(mut self) -> StoreResult<String> {
+  pub fn wait_for_authentication(mut self) -> SyncResult<String> {
     let auth_code = self.server_handle.wait_for_auth_code()?;
 
     let mut authorization = Authorization::from_auth_code(
@@ -85,13 +86,13 @@ impl DropboxInitializer {
     authorization.obtain_access_token(NoauthDefaultClient::default())?;
     let token = authorization
       .save()
-      .ok_or_else(|| StoreError::IO("Failed to obtain dropbox token".to_string()))?;
+      .ok_or_else(|| SyncError::Generic("Failed to obtain dropbox token".to_string()))?;
 
     Ok(format!("dropbox://{}@{}", token, self.name))
   }
 }
 
-pub fn initialize_store(name: &str) -> StoreResult<DropboxInitializer> {
+pub fn initialize_store(name: &str) -> SyncResult<DropboxInitializer> {
   let oauth2_flow = Oauth2Type::PKCE(PkceCode::new());
   let auth_url = AuthorizeUrlBuilder::new(APP_KEY, &oauth2_flow)
     .redirect_uri(REDIRECT_URL)
@@ -106,8 +107,8 @@ pub fn initialize_store(name: &str) -> StoreResult<DropboxInitializer> {
   })
 }
 
-pub fn start_authcode_server() -> StoreResult<ServerHandle> {
-  let server = Arc::new(Server::http("127.0.0.1:9898").map_err(|e| StoreError::IO(format!("{e}")))?);
+pub fn start_authcode_server() -> SyncResult<ServerHandle> {
+  let server = Arc::new(Server::http("127.0.0.1:9898").map_err(|e| SyncError::Generic(format!("{e}")))?);
   let server_cloned = server.clone();
 
   let join_handle = thread::spawn(move || {

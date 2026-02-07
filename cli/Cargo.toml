@@ -20,7 +20,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 t-rust-less-lib = { path = "../lib" }
 termion = { version = "4", optional = true }
-url = "2"
+url = { workspace = true }
 zeroize = { workspace = true }
 zeroize_derive = { workspace = true }
 

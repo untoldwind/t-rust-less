@@ -5,6 +5,7 @@ authors = ["Untoldwind <landru@untoldwind.net>"]
 edition = "2021"
 
 [dependencies]
+anyhow = { workspace = true }
 chrono = { workspace = true }
 clap = { workspace = true, features = ["cargo", "derive"] }
 clap_complete = { workspace = true }
@@ -19,9 +20,3 @@ zeroize = { workspace = true }
 [target.'cfg(unix)'.dependencies]
 libc = "0"
 systemd-journal-logger = "0"
-
-[build-dependencies]
-clap = { version = "2", default-features = false, features = [
-    "suggestions",
-    "color",
-] }

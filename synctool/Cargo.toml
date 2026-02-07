@@ -3,6 +3,30 @@ name = "t-rust-less-synctool"
 version.workspace = true
 authors = ["Untoldwind <landru@untoldwind.net>"]
 edition = "2021"
+license = "MIT"
 
 [dependencies]
 t-rust-less-lib = { path = "../lib" }
+pcloud = { version = "3", optional = true }
+dropbox-sdk = { version = "0", optional = true, features = ["default_async_client"] }
+tiny_http = { version = "0", optional = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+url = { workspace = true }
+clap = { workspace = true, features = ["cargo", "derive"] }
+tokio = { version = "1", features = ["full"] }
+tokio-util = "0"
+anyhow = { workspace = true }
+
+[features]
+default = ["dropbox", "pcloud"]
+dropbox = ["dep:dropbox-sdk", "dep:tiny_http"]
+pcloud = ["dep:pcloud"]
+
+[lib]
+name = "t_rust_less_synctool"
+path = "src/lib.rs"
+
+[[bin]]
+name = "t-rust-less-synctool"
+path = "src/main.rs"

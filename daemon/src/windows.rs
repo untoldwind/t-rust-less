@@ -1,5 +1,6 @@
 use std::{error::Error, sync::Arc};
 
+use anyhow::Result;
 use log::{error, info};
 use t_rust_less_lib::service::config::LocalConfigProvider;
 use t_rust_less_lib::service::local::LocalTrustlessService;
@@ -9,7 +10,7 @@ use tokio::signal;
 
 use crate::processor::Processor;
 
-pub async fn run_server(service: Arc<LocalTrustlessService<LocalConfigProvider>>) -> Result<(), Box<dyn Error>> {
+pub async fn run_server(service: Arc<LocalTrustlessService<LocalConfigProvider>>) -> Result<()> {
   let mut server = ServerOptions::new()
     .first_pipe_instance(true)
     .reject_remote_clients(true)

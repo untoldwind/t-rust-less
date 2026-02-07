@@ -4,8 +4,6 @@ use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use url::Url;
 
-#[cfg(feature = "dropbox")]
-pub mod dropbox;
 mod error;
 mod local_dir;
 mod local_wal;
@@ -137,12 +135,6 @@ pub fn open_block_store(url: &str, node_id: &str) -> StoreResult<Arc<dyn BlockSt
     #[cfg(feature = "sled")]
     "sled" => Ok(Arc::new(sled::SledBlockStore::new(
       store_url.to_file_path().unwrap(),
-      node_id,
-    )?)),
-    #[cfg(feature = "dropbox")]
-    "dropbox" => Ok(Arc::new(dropbox::DropboxBlockStore::new(
-      store_url.username(),
-      store_url.host_str().unwrap(),
       node_id,
     )?)),
     _ => Err(StoreError::InvalidStoreUrl(url.to_string())),

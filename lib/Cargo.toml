@@ -17,7 +17,6 @@ chacha20-poly1305-aead = "0"
 chrono = { workspace = true, features = ["serde"] }
 data-encoding = "2"
 dirs = { workspace = true }
-dropbox-sdk = { version = "0", optional = true }
 futures = "0.3"
 hmac = "0.12"
 itertools = "0"
@@ -26,7 +25,6 @@ log = { workspace = true }
 num-derive = "0"
 num-traits = "0"
 openssl = { version = "0", features = ["vendored"], optional = true }
-pcloud = { version = "3", optional = true }
 rand = { workspace = true }
 rmp-serde = { workspace = true }
 rsa = { version = "0.9", optional = true }
@@ -39,12 +37,11 @@ sled = { version = "0", optional = true }
 specta = { version = "2.0.0-rc", features = ["chrono"], optional = true }
 sublime_fuzzy = "0"
 thiserror = { workspace = true }
-tiny_http = { version = "0", optional = true }
 tokio = { version = "1", features = ["net", "rt"] }
 tokio-util = { version = "0.7", features = ["compat"] }
 toml = "0"
 typenum = "1"
-url = "2"
+url = { workspace = true }
 x25519-dalek = { version =  "2", features = ["static_secrets"] }
 zeroize = { workspace = true }
 zeroize_derive = { workspace = true }
@@ -59,7 +56,6 @@ tempfile = "3"
 
 [features]
 default = ["with_x11", "with_wayland", "rust_crypto"]
-dropbox = ["dropbox-sdk", "tiny_http"]
 nightly-features = []
 rust_crypto = ["rsa", "aes-gcm"]
 use_os = []
