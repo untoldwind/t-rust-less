@@ -1,7 +1,5 @@
 mod initialize;
 
-use std::collections::VecDeque;
-
 pub use initialize::*;
 
 use dropbox_sdk::{
@@ -40,7 +38,13 @@ impl DroboxRemoteFS {
 
 impl RemoteFS for DroboxRemoteFS {
   async fn download_to<W: AsyncWrite + Unpin>(&self, path: String, target: &mut W) -> SyncResult<u64> {
-    let result = files::download(&self.client, &files::DownloadArg::new(path), None, None).await?;
+    let result = files::download(
+      &self.client,
+      &files::DownloadArg::new(format!("{}/{}", self.base_dir, path)),
+      None,
+      None,
+    )
+    .await?;
     let content = result.body.ok_or_else(|| SyncError::Generic("No body".to_string()))?;
     let bytes = io::copy(&mut content.compat(), target).await?;
 

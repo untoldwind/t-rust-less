@@ -17,6 +17,7 @@ clap = { workspace = true, features = ["cargo", "derive"] }
 tokio = { version = "1", features = ["full"] }
 tokio-util = "0"
 anyhow = { workspace = true }
+futures = "0"
 
 [features]
 default = ["dropbox", "pcloud"]

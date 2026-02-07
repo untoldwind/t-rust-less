@@ -23,6 +23,12 @@ pub enum SyncError {
   #[cfg(feature = "pcloud")]
   #[error("pcloud error")]
   PCloud(#[from] pcloud::Error),
+  #[cfg(feature = "pcloud")]
+  #[error("pcloud error")]
+  PCloudBuilder(#[from] pcloud::builder::Error),
+  #[cfg(feature = "pcloud")]
+  #[error("pcloud error")]
+  PCloudReqwest(#[from] pcloud::reqwest::Error),
 }
 
 pub type SyncResult<T> = Result<T, SyncError>;
