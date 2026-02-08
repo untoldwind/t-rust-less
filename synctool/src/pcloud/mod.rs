@@ -4,7 +4,7 @@ use tokio::io::{self, AsyncRead, AsyncWrite};
 
 use crate::{
   error::{SyncError, SyncResult},
-  remote_fs::{RemoteFS, RemoteFileMetadata},
+  remote_fs::{DownloadTask, RemoteFS, RemoteFileMetadata, UploadTask},
 };
 
 pub struct PCloudRemoteFS {
@@ -47,8 +47,8 @@ impl RemoteFS for PCloudRemoteFS {
     todo!()
   }
 
-  async fn download_to<W: AsyncWrite + Unpin>(&self, path: &str, target: &mut W) -> SyncResult<u64> {
-    let file_links = self.client.get_file_link(format!("{}{}", self.base_dir, path)).await?;
+  async fn download_to<W: AsyncWrite + Unpin>(&self,  task: &mut DownloadTask<'_, W>) -> SyncResult<u64> {
+    let file_links = self.client.get_file_link(format!("{}{}", self.base_dir, task.path)).await?;
 
     for link in file_links.links() {
       match self.check_file_link(link).await {
@@ -56,7 +56,7 @@ impl RemoteFS for PCloudRemoteFS {
           let stream = success.bytes_stream().map_err(std::io::Error::other);
           let mut source = tokio_util::io::StreamReader::new(stream);
 
-          io::copy(&mut source, target).await?;
+          io::copy(&mut source, task.target).await?;
         }
         Err(err) => log::warn!("PCloud link failed: {err}"),
       };
@@ -64,7 +64,7 @@ impl RemoteFS for PCloudRemoteFS {
     Err(SyncError::Generic("Download failed: No more links to try".to_string()))
   }
 
-  async fn upload_from<R: AsyncRead>(&self, path: &str, source: &mut R) -> SyncResult<u64> {
+  async fn upload_from<R: AsyncRead>(&self, task: &mut UploadTask<'_, R>) -> SyncResult<u64> {
     todo!()
   }
 }

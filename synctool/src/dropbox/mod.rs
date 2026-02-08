@@ -14,7 +14,7 @@ use tokio_util::compat::FuturesAsyncReadCompatExt;
 
 use crate::{
   error::{SyncError, SyncResult},
-  remote_fs::{RemoteFS, RemoteFileMetadata},
+  remote_fs::{DownloadTask, RemoteFS, RemoteFileMetadata, UploadTask},
 };
 
 pub const APP_KEY: &str = "3q0sff542l6r3ly";
@@ -46,21 +46,21 @@ impl RemoteFS for DroboxRemoteFS {
     todo!()
   }
 
-  async fn download_to<W: AsyncWrite + Unpin>(&self, path: &str, target: &mut W) -> SyncResult<u64> {
+  async fn download_to<W: AsyncWrite + Unpin>(&self,  task: &mut DownloadTask<'_, W>) -> SyncResult<u64> {
     let result = files::download(
       &self.client,
-      &files::DownloadArg::new(format!("{}/{}", self.base_dir, path)),
+      &files::DownloadArg::new(format!("{}/{}", self.base_dir, task.path)),
       None,
       None,
     )
     .await?;
     let content = result.body.ok_or_else(|| SyncError::Generic("No body".to_string()))?;
-    let bytes = io::copy(&mut content.compat(), target).await?;
+    let bytes = io::copy(&mut content.compat(), task.target).await?;
 
     Ok(bytes)
   }
 
-  async fn upload_from<R: AsyncRead>(&self, path: &str, source: &mut R) -> SyncResult<u64> {
+  async fn upload_from<R: AsyncRead>(&self, task: &mut  UploadTask<'_, R>) -> SyncResult<u64> {
     todo!()
   }
 }
