@@ -1,10 +1,10 @@
 use futures::stream::TryStreamExt;
 use pcloud::{stream::StreamingLink, Client, Credentials, Region};
-use tokio::io::{self, AsyncWrite};
+use tokio::io::{self, AsyncRead, AsyncWrite};
 
 use crate::{
   error::{SyncError, SyncResult},
-  remote_fs::RemoteFS,
+  remote_fs::{RemoteFS, RemoteFileMetadata},
 };
 
 pub struct PCloudRemoteFS {
@@ -39,7 +39,15 @@ impl PCloudRemoteFS {
 }
 
 impl RemoteFS for PCloudRemoteFS {
-  async fn download_to<W: AsyncWrite + Unpin>(&self, path: String, target: &mut W) -> SyncResult<u64> {
+  async fn list_folder(&self, path: &str) -> SyncResult<Vec<RemoteFileMetadata>> {
+    todo!()
+  }
+
+  async fn ensure_folders(&self, paths: &[&str]) -> SyncResult<()> {
+    todo!()
+  }
+
+  async fn download_to<W: AsyncWrite + Unpin>(&self, path: &str, target: &mut W) -> SyncResult<u64> {
     let file_links = self.client.get_file_link(format!("{}{}", self.base_dir, path)).await?;
 
     for link in file_links.links() {
@@ -54,5 +62,9 @@ impl RemoteFS for PCloudRemoteFS {
       };
     }
     Err(SyncError::Generic("Download failed: No more links to try".to_string()))
+  }
+
+  async fn upload_from<R: AsyncRead>(&self, path: &str, source: &mut R) -> SyncResult<u64> {
+    todo!()
   }
 }

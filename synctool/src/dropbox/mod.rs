@@ -1,5 +1,6 @@
 mod initialize;
 
+use futures::AsyncBufRead;
 pub use initialize::*;
 
 use dropbox_sdk::{
@@ -8,12 +9,12 @@ use dropbox_sdk::{
   default_async_client::UserAuthDefaultClient,
   oauth2::Authorization,
 };
-use tokio::io::{self, AsyncWrite};
+use tokio::io::{self, AsyncRead, AsyncWrite};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 
 use crate::{
   error::{SyncError, SyncResult},
-  remote_fs::RemoteFS,
+  remote_fs::{RemoteFS, RemoteFileMetadata},
 };
 
 pub const APP_KEY: &str = "3q0sff542l6r3ly";
@@ -37,7 +38,15 @@ impl DroboxRemoteFS {
 }
 
 impl RemoteFS for DroboxRemoteFS {
-  async fn download_to<W: AsyncWrite + Unpin>(&self, path: String, target: &mut W) -> SyncResult<u64> {
+  async fn list_folder(&self, path: &str) -> SyncResult<Vec<RemoteFileMetadata>> {
+    todo!()
+  }
+
+  async fn ensure_folders(&self, paths: &[&str]) -> SyncResult<()> {
+    todo!()
+  }
+
+  async fn download_to<W: AsyncWrite + Unpin>(&self, path: &str, target: &mut W) -> SyncResult<u64> {
     let result = files::download(
       &self.client,
       &files::DownloadArg::new(format!("{}/{}", self.base_dir, path)),
@@ -49,6 +58,10 @@ impl RemoteFS for DroboxRemoteFS {
     let bytes = io::copy(&mut content.compat(), target).await?;
 
     Ok(bytes)
+  }
+
+  async fn upload_from<R: AsyncRead>(&self, path: &str, source: &mut R) -> SyncResult<u64> {
+    todo!()
   }
 }
 
