@@ -1,7 +1,4 @@
-mod initialize;
-
-use futures::AsyncBufRead;
-pub use initialize::*;
+pub mod initialize;
 
 use dropbox_sdk::{
   async_client_trait::UserAuthClient,
@@ -46,7 +43,7 @@ impl RemoteFS for DroboxRemoteFS {
     todo!()
   }
 
-  async fn download_to<W: AsyncWrite + Unpin>(&self,  task: &mut DownloadTask<'_, W>) -> SyncResult<u64> {
+  async fn download_to<W: AsyncWrite + Unpin>(&self, task: &mut DownloadTask<'_, W>) -> SyncResult<u64> {
     let result = files::download(
       &self.client,
       &files::DownloadArg::new(format!("{}/{}", self.base_dir, task.path)),
@@ -60,7 +57,7 @@ impl RemoteFS for DroboxRemoteFS {
     Ok(bytes)
   }
 
-  async fn upload_from<R: AsyncRead>(&self, task: &mut  UploadTask<'_, R>) -> SyncResult<u64> {
+  async fn upload_from<R: AsyncRead>(&self, task: &mut UploadTask<'_, R>) -> SyncResult<u64> {
     todo!()
   }
 }

@@ -18,6 +18,9 @@ tokio = { version = "1", features = ["full"] }
 tokio-util = "0"
 anyhow = { workspace = true }
 futures = "0"
+env_logger = { workspace = true }
+dialoguer = "0"
+open = "5"
 
 [features]
 default = ["dropbox", "pcloud"]

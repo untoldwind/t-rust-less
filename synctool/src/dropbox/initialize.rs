@@ -67,13 +67,25 @@ impl Drop for ServerHandle {
 }
 
 pub struct DropboxInitializer {
-  name: String,
   oauth2_flow: Oauth2Type,
   pub auth_url: Url,
   server_handle: ServerHandle,
 }
 
 impl DropboxInitializer {
+  pub fn new() -> SyncResult<Self> {
+    let oauth2_flow = Oauth2Type::PKCE(PkceCode::new());
+    let auth_url = AuthorizeUrlBuilder::new(APP_KEY, &oauth2_flow)
+      .redirect_uri(REDIRECT_URL)
+      .build();
+    let server_handle = start_authcode_server()?;
+
+    Ok(DropboxInitializer {
+      oauth2_flow,
+      auth_url,
+      server_handle,
+    })
+  }
   pub fn wait_for_authentication(mut self) -> SyncResult<String> {
     let auth_code = self.server_handle.wait_for_auth_code()?;
 
@@ -88,23 +100,8 @@ impl DropboxInitializer {
       .save()
       .ok_or_else(|| SyncError::Generic("Failed to obtain dropbox token".to_string()))?;
 
-    Ok(format!("dropbox://{}@{}", token, self.name))
+    Ok(token)
   }
-}
-
-pub fn initialize_store(name: &str) -> SyncResult<DropboxInitializer> {
-  let oauth2_flow = Oauth2Type::PKCE(PkceCode::new());
-  let auth_url = AuthorizeUrlBuilder::new(APP_KEY, &oauth2_flow)
-    .redirect_uri(REDIRECT_URL)
-    .build();
-  let server_handle = start_authcode_server()?;
-
-  Ok(DropboxInitializer {
-    name: name.to_string(),
-    oauth2_flow,
-    auth_url,
-    server_handle,
-  })
 }
 
 pub fn start_authcode_server() -> SyncResult<ServerHandle> {

@@ -7,6 +7,8 @@ use crate::{
   remote_fs::{DownloadTask, RemoteFS, RemoteFileMetadata, UploadTask},
 };
 
+pub mod initialize;
+
 pub struct PCloudRemoteFS {
   client: Client,
   base_dir: String,
@@ -47,8 +49,11 @@ impl RemoteFS for PCloudRemoteFS {
     todo!()
   }
 
-  async fn download_to<W: AsyncWrite + Unpin>(&self,  task: &mut DownloadTask<'_, W>) -> SyncResult<u64> {
-    let file_links = self.client.get_file_link(format!("{}{}", self.base_dir, task.path)).await?;
+  async fn download_to<W: AsyncWrite + Unpin>(&self, task: &mut DownloadTask<'_, W>) -> SyncResult<u64> {
+    let file_links = self
+      .client
+      .get_file_link(format!("{}{}", self.base_dir, task.path))
+      .await?;
 
     for link in file_links.links() {
       match self.check_file_link(link).await {
