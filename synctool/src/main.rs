@@ -3,7 +3,7 @@ use clap::Parser;
 
 mod cli;
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
   let args = cli::Args::parse();
 
@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
   log_builder.target(env_logger::Target::Stderr);
   log_builder.init();
 
-  args.command.run(args.remote)?;
+  args.command.run(&args).await?;
 
   Ok(())
 }

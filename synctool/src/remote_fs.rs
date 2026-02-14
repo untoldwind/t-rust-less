@@ -32,19 +32,21 @@ pub struct UploadTaskResult {
   pub result: SyncResult<u64>,
 }
 
-pub trait RemoteFS {
-  fn list_folder(&self, path: &str) -> impl Future<Output = SyncResult<Vec<RemoteFileMetadata>>>;
+pub trait RemoteFS: Send + Sync {
+  fn list_folder(&self, path: &str) -> impl Future<Output = SyncResult<Vec<RemoteFileMetadata>>> + Send;
 
-  fn ensure_folders(&self, paths: &[&str]) -> impl Future<Output = SyncResult<()>>;
+  fn ensure_folders(&self, paths: &[&str]) -> impl Future<Output = SyncResult<()>> + Send;
 
-  fn download_to<W: AsyncWrite + Unpin>(&self, task: &mut DownloadTask<'_, W>)
-    -> impl Future<Output = SyncResult<u64>>;
+  fn download_to<W: AsyncWrite + Send + Unpin>(
+    &self,
+    task: &mut DownloadTask<'_, W>,
+  ) -> impl Future<Output = SyncResult<u64>> + Send;
 
-  fn parallel_download_to<W: AsyncWrite + Unpin>(
+  fn parallel_download_to<W: AsyncWrite + Send + Unpin>(
     &self,
     parallel: usize,
     tasks: &mut [DownloadTask<'_, W>],
-  ) -> impl Future<Output = Vec<DownloadTaskResult>> {
+  ) -> impl Future<Output = Vec<DownloadTaskResult>> + Send {
     stream::iter(tasks)
       .map(async |task| {
         let result = self.download_to(task).await;
@@ -57,13 +59,16 @@ pub trait RemoteFS {
       .collect()
   }
 
-  fn upload_from<R: AsyncRead>(&self, task: &mut UploadTask<'_, R>) -> impl Future<Output = SyncResult<u64>>;
+  fn upload_from<R: AsyncRead + Send>(
+    &self,
+    task: &mut UploadTask<'_, R>,
+  ) -> impl Future<Output = SyncResult<u64>> + Send;
 
-  fn parallel_upload_from<R: AsyncRead>(
+  fn parallel_upload_from<R: AsyncRead + Send>(
     &self,
     parallel: usize,
     tasks: &mut [UploadTask<'_, R>],
-  ) -> impl Future<Output = Vec<UploadTaskResult>> {
+  ) -> impl Future<Output = Vec<UploadTaskResult>> + Send {
     stream::iter(tasks)
       .map(async |task| {
         let result = self.upload_from(task).await;

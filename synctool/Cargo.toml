@@ -7,25 +7,30 @@ license = "MIT"
 
 [dependencies]
 t-rust-less-lib = { path = "../lib" }
-pcloud = { version = "3", optional = true }
-dropbox-sdk = { version = "0", optional = true, features = ["default_async_client"] }
-tiny_http = { version = "0", optional = true }
-thiserror = { workspace = true }
-log = { workspace = true }
-url = { workspace = true }
-clap = { workspace = true, features = ["cargo", "derive"] }
-tokio = { version = "1", features = ["full"] }
-tokio-util = "0"
+
 anyhow = { workspace = true }
-futures = "0"
-env_logger = { workspace = true }
+clap = { workspace = true, features = ["cargo", "derive", "env"] }
+const-hex = { version = "1", optional = true }
 dialoguer = "0"
+dropbox-sdk = { version = "0", optional = true, features = ["default_async_client"] }
+env_logger = { workspace = true }
+futures = "0"
+log = { workspace = true }
 open = "5"
+pcloud = { version = "3", optional = true }
+serde = { workspace = true, features = ["derive"], optional = true }
+sha1 = { version = "0", optional = true }
+thiserror = { workspace = true }
+tiny_http = { version = "0", optional = true }
+tokio = { version = "1", features = ["rt", "macros", "sync"] }
+tokio-util = "0"
+url = { workspace = true }
+zeroize = { workspace = true }
 
 [features]
 default = ["dropbox", "pcloud"]
 dropbox = ["dep:dropbox-sdk", "dep:tiny_http"]
-pcloud = ["dep:pcloud"]
+pcloud = ["dep:pcloud", "dep:sha1", "dep:serde", "dep:const-hex"]
 
 [lib]
 name = "t_rust_less_synctool"

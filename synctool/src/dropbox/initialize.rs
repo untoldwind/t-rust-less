@@ -10,6 +10,7 @@ use dropbox_sdk::{
 use log::error;
 use tiny_http::{Header, Response, Server};
 use url::Url;
+use zeroize::Zeroizing;
 
 use super::APP_KEY;
 use crate::error::{SyncError, SyncResult};
@@ -86,7 +87,8 @@ impl DropboxInitializer {
       server_handle,
     })
   }
-  pub fn wait_for_authentication(mut self) -> SyncResult<String> {
+
+  pub fn wait_for_authentication(mut self) -> SyncResult<Zeroizing<String>> {
     let auth_code = self.server_handle.wait_for_auth_code()?;
 
     let mut authorization = Authorization::from_auth_code(
@@ -100,7 +102,7 @@ impl DropboxInitializer {
       .save()
       .ok_or_else(|| SyncError::Generic("Failed to obtain dropbox token".to_string()))?;
 
-    Ok(token)
+    Ok(token.into())
   }
 }
 
