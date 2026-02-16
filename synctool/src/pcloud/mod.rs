@@ -1,5 +1,5 @@
 use futures::stream::TryStreamExt;
-use pcloud::{stream::StreamingLink, Client, Credentials, Region};
+use pcloud::{entry::Entry, folder::FolderIdentifier, stream::StreamingLink, Client, Credentials, Region};
 use tokio::io::{self, AsyncRead, AsyncWrite};
 
 use crate::{
@@ -42,7 +42,28 @@ impl PCloudRemoteFS {
 
 impl RemoteFS for PCloudRemoteFS {
   async fn list_folder(&self, path: &str) -> SyncResult<Vec<RemoteFileMetadata>> {
-    todo!()
+    let folder = self
+      .client
+      .list_folder(FolderIdentifier::Path(format!("{}/{}", self.base_dir, path).into()))
+      .await?;
+    if let Some(entries) = folder.contents {
+      Ok(
+        entries
+          .into_iter()
+          .filter_map(|e| match e {
+            Entry::File(file) => Some(RemoteFileMetadata {
+              path: format!("{}/{}/{}", self.base_dir, path, file.base.name),
+              name: file.base.name,
+              size: file.size.unwrap_or_default() as u64,
+              mtime: file.base.modified.into(),
+            }),
+            _ => None,
+          })
+          .collect(),
+      )
+    } else {
+      Ok(vec![])
+    }
   }
 
   async fn ensure_folders(&self, paths: &[&str]) -> SyncResult<()> {

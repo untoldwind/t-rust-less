@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use crate::layout::SyncProgress;
+
 #[derive(Debug, Error)]
 pub enum SyncError {
   #[error("Generic: {0}")]
@@ -8,6 +10,10 @@ pub enum SyncError {
   IO(#[from] std::io::Error),
   #[error("URL")]
   URL(#[from] url::ParseError),
+  #[error("SyncSend")]
+  SyncSend(#[from] tokio::sync::mpsc::error::SendError<SyncProgress>),
+  #[error("Chrono")]
+  Chrono(#[from] chrono::ParseError),
   #[cfg(feature = "dropbox")]
   #[error("dropbox error")]
   Dropbox(#[from] dropbox_sdk::Error),

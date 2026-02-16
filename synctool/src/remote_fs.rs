@@ -6,6 +6,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use crate::error::SyncResult;
 
 pub struct RemoteFileMetadata {
+  pub name: String,
   pub path: String,
   pub size: u64,
   pub mtime: SystemTime,

@@ -1,9 +1,13 @@
 pub mod initialize;
 
+use std::{str::FromStr, time::SystemTime};
+
+use chrono::DateTime;
 use dropbox_sdk::{
   async_client_trait::UserAuthClient,
   async_routes::files::{self, ListFolderError},
   default_async_client::UserAuthDefaultClient,
+  files::Metadata,
   oauth2::Authorization,
 };
 use tokio::io::{self, AsyncRead, AsyncWrite};
@@ -36,7 +40,32 @@ impl DroboxRemoteFS {
 
 impl RemoteFS for DroboxRemoteFS {
   async fn list_folder(&self, path: &str) -> SyncResult<Vec<RemoteFileMetadata>> {
-    todo!()
+    let mut result = vec![];
+
+    let mut list_result = files::list_folder(
+      &self.client,
+      &files::ListFolderArg::new(format!("{}/{}", self.base_dir, path)),
+    )
+    .await?;
+    loop {
+      for entry in &list_result.entries {
+        if let Metadata::File(file) = entry {
+          result.push(RemoteFileMetadata {
+            path: format!("{}/{}/{}", self.base_dir, path, file.name),
+            name: file.name.clone(),
+            size: file.size,
+            mtime: DateTime::parse_from_rfc3339(&file.client_modified)?.into(),
+          });
+        }
+      }
+      if !list_result.has_more {
+        break;
+      }
+      list_result =
+        files::list_folder_continue(&self.client, &files::ListFolderContinueArg::new(list_result.cursor)).await?;
+    }
+
+    Ok(result)
   }
 
   async fn ensure_folders(&self, paths: &[&str]) -> SyncResult<()> {

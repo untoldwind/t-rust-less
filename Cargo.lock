@@ -3307,6 +3307,7 @@ name = "t-rust-less-synctool"
 version = "0.2.23"
 dependencies = [
  "anyhow",
+ "chrono",
  "clap",
  "const-hex",
  "dialoguer",
